@@ -21,6 +21,7 @@ from isaaclab.utils import configclass
 # from isaaclab.utils.math import sample_uniform
 
 from .....isaaclab_assets.isaaclab_assets.robots import production_assets
+import os
 
 @configclass
 class HRTaskAllocEnvCfg(DirectRLEnvCfg):
@@ -30,14 +31,22 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     action_space = 10
     #The real state/observation_space is complicated, settiing 2 is only for initializing gym Env
     observation_space = 2
-    state_space = 2
-
+    state_space = 2    
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
-
-    # machine, human, robot
-    # obj_part10_cfg: ArticulationCfg = production_assets.obj_part10_cfg
-
+    #asset path, include machine, human, robot
+    asset_path = os.path.expanduser("~") + "/work/Dataset/3D_model/all.usd"
+    n_max_product = 5
+    n_max_human = 3
+    n_max_robot = 3
     # scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1, env_spacing=4.0, replicate_physics=True)
+    # cuda decive
+    cuda_device_str = "cuda:0"
+    #train_cfg will be update when running train.py
+    train_cfg = None
+
+    def _valid_train_cfg(self):
+        #update train_cfg when running train.py
+        return self.train_cfg != None
 
