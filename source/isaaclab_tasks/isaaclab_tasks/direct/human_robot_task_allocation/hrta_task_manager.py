@@ -31,8 +31,8 @@ class TaskManager(object):
         if self._test:
            np.random.seed(1)
            self._eval_times = train_cfg['test_times']
-           self.acti_num_agv = train_cfg['test_acti_num_agv']
-           self.acti_num_charc = train_cfg['test_acti_num_charc']
+           self.acti_num_agv = train_cfg['test_one']['acti_agv']
+           self.acti_num_charc = train_cfg['test_one']['acti_charc']
         return
     
     def reset(self, acti_num_charc, acti_num_agv):

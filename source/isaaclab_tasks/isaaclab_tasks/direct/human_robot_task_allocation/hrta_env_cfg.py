@@ -36,6 +36,9 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
     #asset path, include machine, human, robot
     asset_path = os.path.expanduser("~") + "/work/Dataset/3D_model/all.usd"
+    occupancy_map_path = os.path.expanduser("~") + "/work/Dataset/3D_model/occupancy_map.png"
+    route_character_file_path = os.path.expanduser("~") + "/work/Dataset/3D_model/routes_character.pkl"
+    route_agv_file_path = os.path.expanduser("~") + "/work/Dataset/3D_model/routes_agv.pkl"
     n_max_product = 5
     n_max_human = 3
     n_max_robot = 3
@@ -45,8 +48,11 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     cuda_device_str = "cuda:0"
     #train_cfg will be update when running train.py
     train_cfg = None
-
+    #test settings, for human 1-3 x robot 1-3
+    test_env_length_settings = [[1250, 1250, 1250], [1000, 1000, 1000], [1000, 1000, 1000]]
     def _valid_train_cfg(self):
         #update train_cfg when running train.py
         return self.train_cfg != None
+    
+
 

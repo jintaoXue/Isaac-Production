@@ -20,7 +20,7 @@ from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from isaaclab.utils import configclass
 from isaaclab.utils.math import sample_uniform
 
-from .human_robot_task_allocation_env_cfg import HRTaskAllocEnvCfg
+from .hrta_env_cfg import HRTaskAllocEnvCfg
 
 
 class HRTaskAllocEnv(DirectRLEnv):

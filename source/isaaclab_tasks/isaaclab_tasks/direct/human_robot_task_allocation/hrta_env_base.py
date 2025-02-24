@@ -20,7 +20,7 @@ from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from isaaclab.utils import configclass
 from isaaclab.utils.math import sample_uniform
 
-from .human_robot_task_allocation_env_cfg import HRTaskAllocEnvCfg
+from .hrta_env_cfg import HRTaskAllocEnvCfg
 
 # from isaacsim.core.utils.nucleus import get_assets_root_path
 from isaacsim.core.utils.prims import delete_prim, get_prim_at_path, set_prim_visibility
@@ -30,7 +30,8 @@ from isaacsim.core.utils.stage import get_current_stage
 from isaacsim.core.prims import RigidPrim, Articulation
 from isaacsim.core.api.world import World
 
-from .human_robot_task_manager import Materials, TaskManager
+from .hrta_task_manager import Materials, TaskManager
+from .hrta_map_route import MapRoute
 class HRTaskAllocEnvBase(DirectRLEnv):
     cfg: HRTaskAllocEnvCfg
 
@@ -75,14 +76,16 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         '''for humans workers (characters), robots (agv+boxs) and task manager'''
         character_list =self.set_up_human(num=self.cfg.n_max_human)
         agv_list, box_list = self.set_up_robot(num=self.cfg.n_max_robot)
-        self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self._train_cfg['params']['config'])
-        
-        self.initialize_pre_def_routes(from_file = True)
+        self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self.cfg.train_cfg['params']['config'])
+        map_route = MapRoute(self.cfg)
+        self.task_manager.characters.routes_dic, self.task_manager.agvs.routes_dic = map_route.load_pre_def_routes()
         self.reset_machine_state()
-        '''max_env_length_settings'''
-        self.max_env_length_settings = [[1250, 1250, 1250], [1000, 1000, 1000], [1000, 1000, 1000]]
 
+        '''max_env_length_settings'''
+        self.test_env_len_settings = self.cfg.test_env_len_settings
         '''test settings'''
+        self._test = self.cfg.train_cfg['params']['config']['test']
+        self._test_all_settings = self.cfg.train_cfg['params']['config']['test_all_settings']
         if self._test and self._test_all_settings:
             self.test_all_idx = -1
             self.test_settings_list = []
@@ -185,7 +188,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.available_task_dic = {'none': -1}
 
         return
-
 
     def _set_up_machine(self):
         self.obj_belt_0 = RigidPrim(

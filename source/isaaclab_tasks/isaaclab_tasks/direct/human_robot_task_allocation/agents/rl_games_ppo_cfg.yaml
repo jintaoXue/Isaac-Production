@@ -76,3 +76,27 @@ params:
     clip_value: True
     seq_length: 4
     bounds_loss_coef: 0.0001
+
+    test: False
+    env_rule_based_exploration: False
+    test_all_settings: False
+    test_all:
+      m_acti_worker: 3
+      m_acti_robot: 3
+    test_one:
+      acti_agv: 2
+      acti_charc: 2
+    test_times: 10
+    test_env_max_length: 2500
+
+    # load_dir: /FactoryTaskAllocationMiC2024-10-24_15-30-51/nn
+    # load_name: /FactoryTaskAllocationMiC_ep_11852_rew_4.8871512.pth
+
+    # load_dir: /FactoryTaskAllocationMiC2024-10-24_15-30-51/nn
+    # load_name: /FactoryTaskAllocationMiC_ep_12919_rew_-3.2757943.pth    
+    
+    # load_dir: /FactoryTaskAllocationMiC2024-10-24_15-30-51/nn
+    # load_name: /FactoryTaskAllocationMiC_ep_14079_rew_8.060657.pth
+    
+    load_dir: ${....load_dir}
+    load_name: ${....load_name}
