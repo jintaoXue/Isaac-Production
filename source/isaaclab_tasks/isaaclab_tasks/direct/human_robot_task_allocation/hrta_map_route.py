@@ -7,6 +7,13 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 from ...utils.hybridAstar import hybridAStar
+from ...utils import quaternion
+
+def world_pose_to_navigation_pose(world_pose):
+    position, orientation = world_pose[0][0].cpu().numpy(), world_pose[1][0].cpu().numpy()
+    euler_angles = quaternion.quaternionToEulerAngles(orientation)
+    nav_pose = [position[0], position[1], euler_angles[2]]
+    return nav_pose
 
 class MapRoute(object):
     

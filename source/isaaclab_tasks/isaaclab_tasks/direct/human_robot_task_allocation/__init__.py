@@ -17,7 +17,7 @@ from . import agents
 
 gym.register(
     id="Isaac-TaskAllocation-Direct-v0",
-    entry_point=f"{__name__}.hrta_env_base:HRTaskAllocEnvBase",
+    entry_point=f"{__name__}.hrta_env:HRTaskAllocEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.hrta_env_cfg:HRTaskAllocEnvCfg",

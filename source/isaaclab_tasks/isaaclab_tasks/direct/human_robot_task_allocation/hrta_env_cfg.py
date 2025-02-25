@@ -27,7 +27,8 @@ import os
 class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 2
-    episode_length_s = 5.0
+    #max_episode_length = max_episode_length_s / (self.cfg.sim.dt * self.cfg.decimation) = 50/(1/60 * 2) = 1500 steps
+    episode_length_s = 50.0 
     action_space = 10
     #The real state/observation_space is complicated, settiing 2 is only for initializing gym Env
     observation_space = 2
@@ -49,7 +50,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     #train_cfg will be update when running train.py
     train_cfg = None
     #test settings, for human 1-3 x robot 1-3
-    test_env_length_settings = [[1250, 1250, 1250], [1000, 1000, 1000], [1000, 1000, 1000]]
+    train_env_len_setting = [[1250, 1250, 1250], [1000, 1000, 1000], [1000, 1000, 1000]]
     def _valid_train_cfg(self):
         #update train_cfg when running train.py
         return self.train_cfg != None

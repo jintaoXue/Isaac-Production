@@ -32,6 +32,7 @@ from isaacsim.core.api.world import World
 
 from .hrta_task_manager import Materials, TaskManager
 from .hrta_map_route import MapRoute
+
 class HRTaskAllocEnvBase(DirectRLEnv):
     cfg: HRTaskAllocEnvCfg
 
@@ -43,7 +44,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         
         # self.joint_pos = self.cartpole.data.joint_pos
         # self.joint_vel = self.cartpole.data.joint_vel
-
+    
     def _setup_scene(self):
 
         assert self.scene.num_envs == 1, "Temporary only support num_envs == 1"
@@ -62,7 +63,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         
         # for debug, visualize only prims 
         # stage_utils.print_stage_prim_paths()
-
         cube_list, hoop_list, bending_tube_list, upper_tube_list, product_list = [],[],[],[],[]
         for i in range(self.cfg.n_max_product):
             cube, hoop, bending_tube, upper_tube, product = self.set_up_material(num=i)
@@ -71,7 +71,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             bending_tube_list.append(bending_tube)
             upper_tube_list.append(upper_tube)
             product_list.append(product)
-        #materials states
+        #materials states, machine state
         self.materials : Materials = Materials(cube_list=cube_list, hoop_list=hoop_list, bending_tube_list=bending_tube_list, upper_tube_list=upper_tube_list, product_list = product_list)
         '''for humans workers (characters), robots (agv+boxs) and task manager'''
         character_list =self.set_up_human(num=self.cfg.n_max_human)
@@ -79,25 +79,12 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self.cfg.train_cfg['params']['config'])
         map_route = MapRoute(self.cfg)
         self.task_manager.characters.routes_dic, self.task_manager.agvs.routes_dic = map_route.load_pre_def_routes()
-        self.reset_machine_state()
 
-        '''max_env_length_settings'''
-        self.test_env_len_settings = self.cfg.test_env_len_settings
+        self.train_env_len_settings = self.cfg.train_env_len_setting
         '''test settings'''
         self._test = self.cfg.train_cfg['params']['config']['test']
-        self._test_all_settings = self.cfg.train_cfg['params']['config']['test_all_settings']
-        if self._test and self._test_all_settings:
-            self.test_all_idx = -1
-            self.test_settings_list = []
-            for w in range(self._train_cfg['params']['config']["max_num_worker"]):
-                for r in range(self._train_cfg['params']['config']["max_num_robot"]):
-                    for i in range(self._train_cfg['params']['config']['test_times']):  
-                        self.test_settings_list.append((w+1,r+1))
-        '''gantt chart'''
-        self.actions_list = []
-        self.time_frames = []
-        self.gantt_charc = []
-        self.gantt_agv = []
+        if self._test:
+            self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
         
         # # clone and replicate
         # self.scene.clone_environments(copy_from_source=False)
@@ -106,8 +93,203 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         # light_cfg.func("/World/Light", light_cfg)
 
-    def _pre_physics_step(self, actions: torch.Tensor) -> None:
-        self.actions = self.action_scale * actions.clone()
+    def reset(self, num_worker=None, num_robot=None, seed=None, options=None):
+        """Resets the task and applies default zero actions to recompute observations and states."""
+        # now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # print(f"[{now}] Running RL reset")
+
+        self.reset_buf[0] = 1
+        self.reset_step(num_worker=num_worker, num_robot=num_robot)
+        actions = torch.zeros((self.num_envs, 1), device=self.cuda_device)
+        obs_dict, _, _, _, _ = self.step(actions)
+
+        return obs_dict
+    
+    def reset_step(self, num_worker=None, num_robot=None):
+        env_id = 0
+        if self.reset_buf[env_id] == 1:
+            self.reset_buf[env_id] = 0
+            self.episode_length_buf[env_id] = 0
+            self.post_reset(acti_num_char=num_worker, acti_num_robot=num_robot)
+        return
+
+
+    def post_reset(self, acti_num_char=None, acti_num_robot=None) -> None:
+        #TODO
+        if self._test:
+            self.max_episode_length = self.test_env_max_length
+            if self._test_all_settings:
+                if self.test_all_idx in range(0, len(self.test_settings_list)):
+                    acti_num_char, acti_num_robot = self.test_settings_list[self.test_all_idx]
+                self.test_all_idx += 1 
+
+        self.task_manager.reset(acti_num_char, acti_num_robot)
+        self.materials.reset()
+        self.reset_machine_state()
+        self.task_mask = self.get_task_mask()
+        self.pre_task_mask_dic = self.get_task_mask_dic(self.task_mask)
+        self.scene.write_data_to_sim()
+        self.sim.forward()
+        if not self._test:
+            self.max_episode_length = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
+        return 
+    
+    def done_update(self):
+        """Assign environments for reset if successful or failed."""
+        task_finished = self.materials.done()
+        is_last_step = self.episode_length_buf[0] >= self.max_episode_length - 1
+        #TODO for debug
+        # is_last_step = False
+        # If max episode length has been reached
+        if is_last_step or task_finished :
+            self.reset_buf[0] = 1
+            '''gantt chart'''
+            if self.generate_gantt_chart:
+                self.save_gantt_chart() 
+            '''end'''
+            print("num worker:{}, num agv&box:{}, env_length:{}, max_env_len:{}, task_finished:{}".format(self.task_manager.characters.acti_num_charc, 
+                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.max_episode_length, task_finished))
+        else:
+            pass
+    
+    def update_task_mask(self):
+        self.task_mask = self.get_task_mask()
+        self.available_task_dic = self.get_task_mask_dic(self.task_mask)
+
+    def get_rule_based_action(self):
+        
+        return torch.tensor(self.task_mask.argmax(1) + 1, device=self.device).unsqueeze(0) 
+        
+    def caculate_metric_action(self, actions):
+        self.reward_action = None
+        task_id = actions[0] - 1
+        task = self.task_manager.task_dic[task_id.item()]
+        if task not in self.pre_task_mask_dic.keys():
+            self.reward_action = -0.1
+        elif task == 'none':
+            if len(self.pre_task_mask_dic.keys()) > 1:
+                self.reward_action = -0.001
+            else:
+                self.reward_action = 0.
+        else:
+            self.reward_action = 0.1
+
+    def calculate_metrics(self):
+        task_finished = self.materials.done()
+        is_last_step = self.episode_length_buf[0] >= self.max_episode_length - 1
+        """Compute reward at current timestep."""
+        reward_time = (self.episode_length_buf[0] - self.pre_progress_step)*-0.001
+        progress = self.materials.progress()
+        if is_last_step: 
+            if task_finished:
+                rew_task = 0.6
+            else:
+                rew_task = -1.5 + self.materials.progress()
+        else:
+            if task_finished:
+                rew_task = 1
+            else:
+                rew_task = (progress - self.materials.pre_progress)*0.2
+
+        self.reward_buf[0] = self.reward_action + reward_time + rew_task
+        self.pre_progress_step = self.episode_length_buf[0].clone()
+        self.materials.pre_progress = progress
+        self.extras['progress'] = progress
+        self.extras['rew_action'] = self.reward_action
+        self.extras['env_length'] = self.episode_length_buf[0].clone()
+        self.extras['max_env_len'] = self.max_episode_length
+        self.extras['time_step'] = f"{self.episode_length_buf[0].cpu()}"
+        self.extras['num_worker'] = self.task_manager.characters.acti_num_charc
+        self.extras['num_robot'] = self.task_manager.agvs.acti_num_agv
+        if self._test:
+            self.extras['worker_initial_pose'] = self.task_manager.ini_worker_pose
+            self.extras['robot_initial_pose'] = self.task_manager.ini_agv_pose
+            self.extras['box_initial_pose'] = self.task_manager.ini_box_pose
+        # self.reward_test_list.append(self.reward_buf[0].clone())
+        return
+    
+    def get_task_mask(self):
+
+        task_mask = torch.zeros(len(self.task_manager.task_dic), device=self.cuda_device)
+        worker, agv, box = self.check_task_lacking_entity()
+        have_wab = worker and agv and box
+        have_w = worker
+        have_ab = agv and box
+        if have_wab and self.state_depot_hoop == 0 and 'hoop_preparing' not in self.task_manager.task_in_dic.keys() and self.materials.hoop_states.count(0) > 0:
+            task_mask[1] = 1
+        if have_wab and self.state_depot_bending_tube == 0 and 'bending_tube_preparing' not in self.task_manager.task_in_dic.keys() and self.materials.bending_tube_states.count(0) > 0:
+            task_mask[2] = 1
+        if have_w and self.station_state_inner_left == 0 and 'hoop_loading_inner' not in self.task_manager.task_in_dic.keys() and self.materials.hoop_states.count(2)>0: #loading
+            task_mask[3] = 1
+        if have_w and self.station_state_inner_right == 0 and 'bending_tube_loading_inner' not in self.task_manager.task_in_dic.keys() and self.materials.bending_tube_states.count(2)>0: 
+            task_mask[4] = 1
+        if have_w and self.station_state_outer_left == 0 and 'hoop_loading_outer' not in self.task_manager.task_in_dic.keys() and self.materials.hoop_states.count(2)>0: #loading
+            task_mask[5] = 1
+        if have_w and self.station_state_outer_right == 0 and 'bending_tube_loading_outer' not in self.task_manager.task_in_dic.keys() and self.materials.bending_tube_states.count(2)>0: 
+            task_mask[6] = 1
+        if have_w and self.cutting_machine_state == 1 and 'cutting_cube' not in self.task_manager.task_in_dic.keys(): #cuttting cube
+            task_mask[7] = 1
+        if have_ab and (self.materials.produce_product_req() == True) and 'collect_product' not in self.task_manager.task_in_dic.keys():
+            task_mask[8] = 1
+        if have_w and 'collect_product' in self.task_manager.task_in_dic.keys() and self.task_manager.boxs.product_collecting_idx >=0 and \
+                len(self.task_manager.boxs.product_idx_list[self.task_manager.boxs.product_collecting_idx])>0 and \
+                'placing_product' not in self.task_manager.task_in_dic.keys() and self.gripper_inner_task not in range (4, 8):
+            task_mask[9] = 1
+
+        if task_mask.count_nonzero() == 0:
+            task_mask[0] = 1
+        
+        return task_mask
+     
+    def get_task_mask_dic(self, task_mask):
+        available_task_dic = {}
+        if task_mask[0] == 1:
+            available_task_dic['none'] = -1
+        if task_mask[1] == 1:
+            available_task_dic['hoop_preparing'] = 0
+        if task_mask[2] == 1:
+            available_task_dic['bending_tube_preparing'] = 1
+        if task_mask[3] == 1:
+            available_task_dic['hoop_loading_inner'] = 2
+        if task_mask[4] == 1: 
+            available_task_dic['bending_tube_loading_inner'] = 3
+        if task_mask[5] == 1:
+            available_task_dic['hoop_loading_outer'] = 4
+        if task_mask[6] == 1: 
+            available_task_dic['bending_tube_loading_outer'] = 5
+        if task_mask[7] == 1:
+            available_task_dic['cutting_cube'] = 6
+        if task_mask[8] == 1:
+            available_task_dic['collect_product'] = 7
+        if task_mask[9] == 1:
+            available_task_dic['placing_product'] = 8
+        return available_task_dic
+
+    def check_task_lacking_entity(self):
+        worker = [a*b for a,b in zip(self.task_manager.characters.states,self.task_manager.characters.tasks)].count(0)
+        agv = [a*b for a,b in zip(self.task_manager.agvs.states,self.task_manager.agvs.tasks)].count(0)
+        box = [a*b for a,b in zip(self.task_manager.boxs.states,self.task_manager.boxs.tasks)].count(0)
+        return worker>0, agv>0, box>0
+
+    def set_up_test_setting(self, train_sub_cfg):
+        self.test_env_max_length = train_sub_cfg['test_env_max_length']
+        self._test_all_settings = train_sub_cfg['test_all_settings']
+        if self._test_all_settings:
+            self.test_all_idx = -1
+            self.test_settings_list = []
+            for w in range(train_sub_cfg['test_all']["m_acti_worker"]):
+                for r in range(train_sub_cfg['test_all']["m_acti_robot"]):
+                    for i in range(train_sub_cfg['test_times']):  
+                        self.test_settings_list.append((w+1,r+1))
+        else:
+            '''test one setting, the task_manager class will handle'''
+            '''gantt chart'''
+            self.generate_gantt_chart = train_sub_cfg['test_one']['gantt_chart']
+            if self.generate_gantt_chart:
+                self.actions_list = []
+                self.time_frames = []
+                self.gantt_charc = []
+                self.gantt_agv = []
 
     def reset_machine_state(self):
         # conveyor
@@ -321,4 +503,18 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             robot_list.append(agv)
         return robot_list, box_list 
 
+    def save_gantt_chart(self):
+        # plt.show()
+        import os, pickle
+        # gant_path = os.getcwd() + '/omniisaacgymenvs/draw/gantt' + '/' + 'noe_data'
+        gant_path = os.getcwd() + '/omniisaacgymenvs/draw/gantt' + '/' + 'n_data'
+        dic = {}   
+        dic['initial'] = [self.task_manager.ini_worker_pose ,self.task_manager.ini_agv_pose, self.task_manager.ini_box_pose] 
+        dic['action'] = self.actions_list
+        dic['charc'] = self.gantt_charc
+        dic['agv'] = self.gantt_agv
+        dic['time'] = self.time_frames
 
+        with open(gant_path, 'wb') as f:
+            pickle.dump(dic, f)
+        return

@@ -17,3 +17,13 @@ Part8 龙门架中间放料区
 Part9 上料抓手 
 Part10 激光切料区
 Part11 激光焊接区
+
+
+# todo
+
+gantt chart
+argparse
+
+self.max_episode_length 是否可以修改?
+
+render的代码学要修改

@@ -25,7 +25,7 @@ class TaskManager(object):
                           5:'bending_tube_loading_outer', 6:'cutting_cube', 7:'collect_product', 8:'placing_product'}
         self.task_in_set = set()
         self.task_in_dic = {}
-        self.task_mask = torch.zeros(len(self.task_dic), device=cuda_device)
+        # self.task_mask = torch.zeros(len(self.task_dic), device=cuda_device)
         self.task_dic_inverse = {value: key for key, value in self.task_dic.items()}
         self._test = train_cfg['test']
         if self._test:
@@ -52,8 +52,8 @@ class TaskManager(object):
         self.ini_box_pose = self.boxs.reset(acti_num_agv)
         self.task_in_set = set()
         self.task_in_dic = {}
-        self.task_mask = torch.zeros(len(self.task_dic), device=self.cuda_device)
-        self.task_mask[0] = 1
+        # self.task_mask = torch.zeros(len(self.task_dic), device=self.cuda_device)
+        # self.task_mask[0] = 1
 
     def assign_task(self, task):
         
@@ -155,7 +155,7 @@ class Materials(object):
         for obj in self.product_list:
             self.initial_product_pose.append(obj.get_world_poses())
         
-        self.reset()
+        # self.reset()
 
         position = [[[-14.44042, 4.77828, 0.6]], [[-13.78823, 4.77828, 0.6]], [[-14.44042, 5.59765, 0.6]], [[-13.78823, 5.59765, 0.6]]]
         orientation = [[1 ,0 ,0, 0]]

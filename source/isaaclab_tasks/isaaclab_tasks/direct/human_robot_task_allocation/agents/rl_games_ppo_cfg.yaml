@@ -86,6 +86,7 @@ params:
     test_one:
       acti_agv: 2
       acti_charc: 2
+      gantt_chart: False
     test_times: 10
     test_env_max_length: 2500
 
