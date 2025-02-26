@@ -34,12 +34,11 @@ PYTHON_PATH omniisaacgymenvs/scripts/rlgames_train.py task=FactoryTaskNutBoltPic
 import torch
 from typing import Tuple
 from .hrta_env_base import HRTaskAllocEnvBase
-from .hrta_env_base import TaskManager
 from .hrta_map_route import world_pose_to_navigation_pose
 from isaacsim.core.prims import RigidPrim
-from isaacsim.physx.scripts import utils
+import omni.physx.scripts.utils as physxUtils
 from pxr import Gf, Sdf, Usd, UsdPhysics, UsdGeom, PhysxSchema
-from isaacsim.usd import get_world_transform_matrix
+from omni.usd import get_world_transform_matrix
 
 from ...utils import quaternion  
 import numpy as np
@@ -71,19 +70,13 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.post_welder_step()
             self.done_update()
             self.update_task_mask()
-            if (self.task_mask[1:].count_nonzero() == 0 and self.reset_buf[0] == 0):
-                self.post_task_manager_step(actions=self.get_rule_based_action())
-            else:
-                self.calculate_metrics()
-                obs = self.get_observations()
-                break
+
             # check if we need to do rendering within the physics loop
             # note: checked here once to avoid multiple checks within the loop
             is_rendering = self.sim.has_gui() or self.sim.has_rtx_sensors()
             # perform physics stepping
             for _ in range(self.cfg.decimation):
                 self._sim_step_counter += 1
-                # set actions into simulator
                 self.scene.write_data_to_sim()
                 # simulate
                 self.sim.step(render=False)
@@ -94,7 +87,15 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.sim.render()
                 # update buffers at sim dt
                 self.scene.update(dt=self.physics_dt)
-        return obs, self.reward_buf, self.reset_buf, self.extras
+
+            if (self.task_mask[1:].count_nonzero() == 0 and self.reset_buf[0] == 0):
+                self.post_task_manager_step(actions=self.get_rule_based_action())
+            else:
+                self.calculate_metrics()
+                obs = self.get_observations()
+                break
+
+        return obs, self.reward_buf, self.reset_buf, self.extras, action
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.post_task_manager_step(actions)
@@ -114,7 +115,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         task_id = actions[0] - 1
         task = self.task_manager.task_dic[task_id.item()]
         '''gantt chart'''
-        if self.generate_gantt_chart:
+        if self._test and self.generate_gantt_chart:
             self.actions_list.append(task)
             self.time_frames.append(self.episode_length_buf[0].cpu().item())
         '''end'''
@@ -153,7 +154,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.outer_bending_tube_loading_index = _index
 
         '''gantt chart'''
-        if self.generate_gantt_chart:
+        if self._test and self.generate_gantt_chart:
             def convert(sub_dic, low2high_dic, task_ids):
                 res = []
                 low2high_dic['free'] = 'free'
@@ -1304,7 +1305,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 # product_prim = self.create_fixed_joint(self.materials.upper_tube_list[self.materials.inner_upper_tube_processing_index], 
                 #                         self.materials.cube_list[self.materials.inner_cube_processing_index], 
                 #                         torch.tensor([[0,   0,   0]], device=self.cuda_device), joint_name='UpperTube')
-                # product_prim = utils.createJoint(self._stage, "Fixed", upper_tube_prim, cube_prim)
+                # product_prim = physxUtils.createJoint(self._stage, "Fixed", upper_tube_prim, cube_prim)
                 '''set the upper tube under the ground'''
                 self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(torch.tensor([[0,   0,   -100]], device=self.cuda_device))
                 self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
@@ -1346,7 +1347,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         return matrix
 
     def create_fixed_joint(self, from_prim_view: RigidPrim, to_prim_view: RigidPrim, translate, joint_name):
-        utils.createJoint
+        physxUtils.createJoint
         # from_prim_view.disable_rigid_body_physics()
         # from_prim_view.prims[0].GetAttribute('physics:collisionEnabled').Set(False)
         from_position, from_orientation = from_prim_view.get_world_poses()
@@ -1725,9 +1726,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         obs_dict['is_full_products'] = torch.tensor([self.task_manager.boxs.is_full_products()], dtype=torch.int32, device = self.cuda_device)
         obs_dict['produce_product_req'] = torch.tensor([self.materials.produce_product_req()], dtype=torch.int32, device = self.cuda_device)
         ####7.time_step
-        # obs_dict['time_step'] = self.episode_length_buf[0].cpu()/(self.max_episode_length - 1)
-        obs_dict['time_step'] = torch.tensor([self.episode_length_buf[0].cpu()/1500], dtype=torch.float32, device = self.cuda_device)
-        obs_dict['max_env_len'] = torch.tensor([self.max_episode_length/1500], dtype=torch.float32, device = self.cuda_device)
+        # obs_dict['time_step'] = self.episode_length_buf[0].cpu()/(self.dynamic_episode_len - 1)
+        obs_dict['time_step'] = torch.tensor([self.episode_length_buf[0].cpu()/self.max_episode_length], dtype=torch.float32, device = self.cuda_device)
+        obs_dict['max_env_len'] = torch.tensor([self.dynamic_episode_len/self.max_episode_length], dtype=torch.float32, device = self.cuda_device)
         # (self.episode_length_buf[0].cpu()/2000).unsqueeze(0)
         
         ####10.progress

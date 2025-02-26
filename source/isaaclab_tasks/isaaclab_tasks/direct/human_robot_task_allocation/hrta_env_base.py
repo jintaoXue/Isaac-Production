@@ -38,13 +38,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
     def __init__(self, cfg: HRTaskAllocEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
-        a = 1
-        # self._cart_dof_idx, _ = self.cartpole.find_joints(self.cfg.cart_dof_name)
-        # self._pole_dof_idx, _ = self.cartpole.find_joints(self.cfg.pole_dof_name)
-        
-        # self.joint_pos = self.cartpole.data.joint_pos
-        # self.joint_vel = self.cartpole.data.joint_vel
-    
+
+        self.reward_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.sim.device)
+
     def _setup_scene(self):
 
         assert self.scene.num_envs == 1, "Temporary only support num_envs == 1"
@@ -72,6 +68,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             upper_tube_list.append(upper_tube)
             product_list.append(product)
         #materials states, machine state
+        self._set_up_machine()
         self.materials : Materials = Materials(cube_list=cube_list, hoop_list=hoop_list, bending_tube_list=bending_tube_list, upper_tube_list=upper_tube_list, product_list = product_list)
         '''for humans workers (characters), robots (agv+boxs) and task manager'''
         character_list =self.set_up_human(num=self.cfg.n_max_human)
@@ -85,7 +82,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self._test = self.cfg.train_cfg['params']['config']['test']
         if self._test:
             self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
-        
         # # clone and replicate
         # self.scene.clone_environments(copy_from_source=False)
         
@@ -93,7 +89,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         # light_cfg.func("/World/Light", light_cfg)
 
-    def reset(self, num_worker=None, num_robot=None, seed=None, options=None):
+    def reset(self, num_worker=None, num_robot=None):
         """Resets the task and applies default zero actions to recompute observations and states."""
         # now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # print(f"[{now}] Running RL reset")
@@ -117,13 +113,17 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def post_reset(self, acti_num_char=None, acti_num_robot=None) -> None:
         #TODO
         if self._test:
-            self.max_episode_length = self.test_env_max_length
             if self._test_all_settings:
                 if self.test_all_idx in range(0, len(self.test_settings_list)):
                     acti_num_char, acti_num_robot = self.test_settings_list[self.test_all_idx]
                 self.test_all_idx += 1 
-
-        self.task_manager.reset(acti_num_char, acti_num_robot)
+            self.task_manager.reset(acti_num_char, acti_num_robot)
+            self.dynamic_episode_len = self.test_env_max_length
+        else:
+            assert acti_num_char is None, "wrong training setting"
+            self.task_manager.reset(acti_num_char, acti_num_robot)
+            self.dynamic_episode_len = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
+            
         self.materials.reset()
         self.reset_machine_state()
         self.task_mask = self.get_task_mask()
@@ -131,13 +131,13 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.scene.write_data_to_sim()
         self.sim.forward()
         if not self._test:
-            self.max_episode_length = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
+            self.dynamic_episode_len = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
         return 
     
     def done_update(self):
         """Assign environments for reset if successful or failed."""
         task_finished = self.materials.done()
-        is_last_step = self.episode_length_buf[0] >= self.max_episode_length - 1
+        is_last_step = self.episode_length_buf[0] >= self.dynamic_episode_len - 1
         #TODO for debug
         # is_last_step = False
         # If max episode length has been reached
@@ -148,7 +148,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 self.save_gantt_chart() 
             '''end'''
             print("num worker:{}, num agv&box:{}, env_length:{}, max_env_len:{}, task_finished:{}".format(self.task_manager.characters.acti_num_charc, 
-                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.max_episode_length, task_finished))
+                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished))
         else:
             pass
     
@@ -176,7 +176,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
     def calculate_metrics(self):
         task_finished = self.materials.done()
-        is_last_step = self.episode_length_buf[0] >= self.max_episode_length - 1
+        is_last_step = self.episode_length_buf[0] >= self.dynamic_episode_len - 1
         """Compute reward at current timestep."""
         reward_time = (self.episode_length_buf[0] - self.pre_progress_step)*-0.001
         progress = self.materials.progress()
@@ -197,7 +197,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.extras['progress'] = progress
         self.extras['rew_action'] = self.reward_action
         self.extras['env_length'] = self.episode_length_buf[0].clone()
-        self.extras['max_env_len'] = self.max_episode_length
+        self.extras['max_env_len'] = self.dynamic_episode_len
         self.extras['time_step'] = f"{self.episode_length_buf[0].cpu()}"
         self.extras['num_worker'] = self.task_manager.characters.acti_num_charc
         self.extras['num_robot'] = self.task_manager.agvs.acti_num_agv
@@ -277,19 +277,18 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         if self._test_all_settings:
             self.test_all_idx = -1
             self.test_settings_list = []
-            for w in range(train_sub_cfg['test_all']["m_acti_worker"]):
-                for r in range(train_sub_cfg['test_all']["m_acti_robot"]):
+            for w in range(train_sub_cfg["max_num_worker"]):
+                for r in range(train_sub_cfg["max_num_robot"]):
                     for i in range(train_sub_cfg['test_times']):  
                         self.test_settings_list.append((w+1,r+1))
-        else:
-            '''test one setting, the task_manager class will handle'''
-            '''gantt chart'''
-            self.generate_gantt_chart = train_sub_cfg['test_one']['gantt_chart']
-            if self.generate_gantt_chart:
-                self.actions_list = []
-                self.time_frames = []
-                self.gantt_charc = []
-                self.gantt_agv = []
+        '''test one setting, the task_manager class will handle'''
+        '''gantt chart'''
+        self.generate_gantt_chart = train_sub_cfg['test_one']['gantt_chart']
+        if self.generate_gantt_chart:
+            self.actions_list = []
+            self.time_frames = []
+            self.gantt_charc = []
+            self.gantt_agv = []
 
     def reset_machine_state(self):
         # conveyor
@@ -518,3 +517,4 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         with open(gant_path, 'wb') as f:
             pickle.dump(dic, f)
         return
+    

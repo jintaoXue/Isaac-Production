@@ -51,11 +51,17 @@ import os
 import random
 from datetime import datetime
 
-from isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnvWrapper
+from source.isaaclab_rl.isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnvWrapper, RlGamesGpuEnvHRTA, RlGamesVecEnvWrapperHRTA 
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.torch_runner import Runner
-
+# from source.algo.rainbow import rainbow
+from source.algo.rainbowmini import rainbowmini
+# from source.algo.rainbowmini import rainbownoe
+# from source.algo.rainbowmini import rainbowepsilon
+# from source.algo.rainbowmini import epsilon_noisy
+# from source.algo.rainbowmini import no_dueling
+# from source.algo.rainbowmini import edqn
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -69,8 +75,10 @@ from isaaclab.utils.io import dump_pickle, dump_yaml
 
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.hydra import hydra_task_config
-
+import wandb
 from source.isaaclab_tasks.isaaclab_tasks.direct import human_robot_task_allocation
+# from source.isaaclab_tasks.isaaclab_tasks.direct.human_robot_task_allocation.rl_games_env import RlGamesGpuEnvHRTA
+
 
 @hydra_task_config(args_cli.task, args_cli.algo)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
@@ -112,7 +120,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Logging experiment in directory: {log_root_path}")
     # specify directory for logging runs
-    log_dir = agent_cfg["params"]["config"].get("full_experiment_name", datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    time_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    agent_cfg["params"]["config"]["time_str"] = time_str
+    log_dir = agent_cfg["params"]["config"].get("full_experiment_name", time_str)
+    
+    if agent_cfg["params"]["config"]["test"]:
+        if agent_cfg["params"]["config"]['env_rule_based_exploration']:
+            log_dir = 'test_rule_'+ log_dir
+        else:
+            log_dir= 'test'+ '_'.join(agent_cfg["params"]["config"]['load_name'].split('_')[1:3]) + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3] + '_' + log_dir
+    else:
+        log_dir = agent_cfg["params"]["algo"]["name"] + '_' + log_dir
     # set directory into agent config
     # logging directory path: <train_dir>/<full_experiment_name>
     agent_cfg["params"]["config"]["train_dir"] = log_root_path
@@ -150,23 +168,55 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
     # wrap around environment for rl-games
-    env = RlGamesVecEnvWrapper(env, rl_device, clip_obs, clip_actions)
-
+    env = RlGamesVecEnvWrapperHRTA(env, rl_device, clip_obs, clip_actions)
+    # env = RlGamesVecEnvWrapper(env, rl_device, clip_obs, clip_actions)
+    
     # register the environment to rl-games registry
     # note: in agents configuration: environment name must be "rlgpu"
     vecenv.register(
         "IsaacRlgWrapper", lambda config_name, num_actors, **kwargs: RlGamesGpuEnv(config_name, num_actors, **kwargs)
     )
     env_configurations.register("rlgpu", {"vecenv_type": "IsaacRlgWrapper", "env_creator": lambda **kwargs: env})
+    
+    vecenv.register(
+        "RlgWrapperHRTA", lambda config_name, num_actors, **kwargs: RlGamesGpuEnvHRTA(config_name, num_actors, **kwargs)
+    )
+    env_configurations.register("rlgpu_HRTA", {"vecenv_type": "RlgWrapperHRTA", "env_creator": lambda **kwargs: env})
 
     # set number of actors into agent config
     agent_cfg["params"]["config"]["num_actors"] = env.unwrapped.num_envs
     # create runner from rl-games
     runner = Runner(IsaacAlgoObserver())
-    runner.load(agent_cfg)
+    # runner.algo_factory.register_builder('rainbow', lambda **kwargs: rainbow.RainbowAgent(**kwargs))
+    runner.algo_factory.register_builder('rainbowmini', lambda **kwargs: rainbowmini.RainbowminiAgent(**kwargs))
+    # runner.algo_factory.register_builder('rainbownoe', lambda **kwargs: rainbownoe.RainbownoeAgent(**kwargs))
+    # runner.algo_factory.register_builder('rainbowepsilon', lambda **kwargs: rainbowepsilon.RainbowepsilonAgent(**kwargs))
+    # runner.algo_factory.register_builder('epsilon_noisy', lambda **kwargs: epsilon_noisy.EpsilonNoisyAgent(**kwargs))
+    # runner.algo_factory.register_builder('no_dueling', lambda **kwargs: no_dueling.NoduelAgent(**kwargs))
+    # runner.algo_factory.register_builder('edqn', lambda **kwargs: edqn.RainbowepsilonAgent(**kwargs))
 
+    runner.load(agent_cfg)
     # reset the agent and env
     runner.reset()
+    if agent_cfg["params"]["config"]['wandb_activate']:
+        if agent_cfg["params"]["config"]["test"]:
+            if agent_cfg["params"]["config"]['env_rule_based_exploration']:
+                run_name = 'test_rule_'+ time_str
+            else:
+                load_name = '_'.join(agent_cfg["params"]["config"]['load_name'].split('_')[1:3]) + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3]
+                run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}"
+        else:
+            run_name = f"{agent_cfg['params']['algo']['name']}_{time_str}"
+
+        wandb.init(
+            project=agent_cfg["params"]["config"]['wandb_project'],
+            group='',
+            config=env_cfg.__dict__,
+            sync_tensorboard=False,
+            name=run_name,
+            resume="allow",
+        )
+
     # train the agent
     if args_cli.checkpoint is not None:
         runner.run({"train": True, "play": False, "sigma": train_sigma, "checkpoint": resume_path})

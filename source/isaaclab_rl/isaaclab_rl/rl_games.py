@@ -348,3 +348,23 @@ class RlGamesGpuEnv(IVecEnv):
             The Gym spaces for the environment.
         """
         return self.env.get_env_info()
+
+
+class RlGamesVecEnvWrapperHRTA(RlGamesVecEnvWrapper):
+
+    def reset(self, num_worker=None, num_robot=None):  # noqa: D102
+        obs_dict = self.env.reset(num_worker, num_robot)
+        # process observations and states
+        return obs_dict
+    
+    def step(self, actions):  # noqa: D102
+        return self.env.step(actions)
+
+class RlGamesGpuEnvHRTA(RlGamesGpuEnv):
+
+    def reset(self, num_worker=None, num_robot=None):
+        """Resets the task and applies default zero actions to recompute observations and states."""
+        # now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # print(f"[{now}] Running RL reset")
+        # self.env : HRTaskAllocEnv
+        return self.env.reset(num_worker=num_worker, num_robot=num_robot)

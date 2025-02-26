@@ -21,6 +21,7 @@ class MapRoute(object):
         self.route_character_file_path = env_cfg.route_character_file_path
         self.route_agv_file_path = env_cfg.route_agv_file_path
         self.occupancy_map_path = env_cfg.occupancy_map_path
+        self.cuda_device = torch.device(env_cfg.cuda_device_str)
         return
     
     def load_pre_def_routes(self):

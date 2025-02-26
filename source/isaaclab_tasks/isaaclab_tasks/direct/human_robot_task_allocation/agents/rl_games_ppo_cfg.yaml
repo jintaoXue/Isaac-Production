@@ -99,5 +99,3 @@ params:
     # load_dir: /FactoryTaskAllocationMiC2024-10-24_15-30-51/nn
     # load_name: /FactoryTaskAllocationMiC_ep_14079_rew_8.060657.pth
     
-    load_dir: ${....load_dir}
-    load_name: ${....load_name}
