@@ -126,8 +126,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             
         self.materials.reset()
         self.reset_machine_state()
-        self.task_mask = self.get_task_mask()
-        self.pre_task_mask_dic = self.get_task_mask_dic(self.task_mask)
+        self.update_task_mask()
         self.scene.write_data_to_sim()
         self.sim.forward()
         if not self._test:
@@ -164,10 +163,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.reward_action = None
         task_id = actions[0] - 1
         task = self.task_manager.task_dic[task_id.item()]
-        if task not in self.pre_task_mask_dic.keys():
+        if task not in self.available_task_dic.keys():
             self.reward_action = -0.1
         elif task == 'none':
-            if len(self.pre_task_mask_dic.keys()) > 1:
+            if len(self.available_task_dic.keys()) > 1:
                 self.reward_action = -0.001
             else:
                 self.reward_action = 0.
@@ -366,7 +365,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.depot_product_set = set()
         '''progress step'''
         self.pre_progress_step = 0
-        self.available_task_dic = {'none': -1}
+        # self.available_task_dic = {'none': -1}
 
         return
 

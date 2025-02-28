@@ -37,3 +37,4 @@ self.scheduler lr_scheduler schedule_type (请参考~/Repos/miniconda3/envs/isaa
 
 test setting的num robot character 不一定对
 
+把upper rube 和 inner gripper 的placing 相对位姿改一下

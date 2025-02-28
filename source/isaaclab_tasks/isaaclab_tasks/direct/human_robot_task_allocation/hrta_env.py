@@ -57,6 +57,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         if action is None:
             #generate rule-based action
             action = self.get_rule_based_action()
+        self.post_task_manager_step(action)
         self._pre_physics_step(action)
         ###TODO only support single env training
         # action_mask
@@ -99,7 +100,6 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         return obs, self.reward_buf, self.reset_buf, self.extras, action
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
-        self.post_task_manager_step(actions)
         task_id = actions[0] - 1
         task = self.task_manager.task_dic[task_id.item()]
         self.extras['action_info'] = task
@@ -120,7 +120,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.actions_list.append(task)
             self.time_frames.append(self.episode_length_buf[0].cpu().item())
         '''end'''
-        if task not in self.pre_task_mask_dic.keys():
+        if task not in self.available_task_dic.keys(): #to ensure the safety of action 
             task = 'none'
         if task == 'none':
             pass
@@ -653,7 +653,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif self.gripper_inner_state == 1:
             #gripper is picking
             if self.gripper_inner_task == 1: #picking cut cube
-                target_pose = torch.tensor([[0.5, 0, -0.55, 0, 0.045, -0.045, -0.045, -0.045, 0.045,  0.045]], device=self.cuda_device)
+                target_pose = torch.tensor([[0.5, 0, -0.5, 0, 0.045, -0.045, -0.045, -0.045, 0.045,  0.045]], device=self.cuda_device)
                 next_pos_inner, delta_pos, move_done = self.get_gripper_moving_pose(gripper_pose_inner[0], target_pose[0], 'pick')
                 if move_done: 
                     #choose which station to place on the cube
