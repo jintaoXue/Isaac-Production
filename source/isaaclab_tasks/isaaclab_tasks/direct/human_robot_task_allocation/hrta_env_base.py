@@ -86,8 +86,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # self.scene.clone_environments(copy_from_source=False)
         
         # add lights
-        # light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
-        # light_cfg.func("/World/Light", light_cfg)
+        light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg.func("/World/Light", light_cfg)
 
     def reset(self, num_worker=None, num_robot=None):
         """Resets the task and applies default zero actions to recompute observations and states."""
@@ -120,7 +120,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             self.task_manager.reset(acti_num_char, acti_num_robot)
             self.dynamic_episode_len = self.test_env_max_length
         else:
-            assert acti_num_char is None, "wrong training setting"
+            # assert acti_num_char is None, "wrong training setting"
             self.task_manager.reset(acti_num_char, acti_num_robot)
             self.dynamic_episode_len = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
             
@@ -144,7 +144,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         if is_last_step or task_finished :
             self.reset_buf[0] = 1
             '''gantt chart'''
-            if self.generate_gantt_chart:
+            if self._test and self.generate_gantt_chart:
                 self.save_gantt_chart() 
             '''end'''
             print("num worker:{}, num agv&box:{}, env_length:{}, max_env_len:{}, task_finished:{}".format(self.task_manager.characters.acti_num_charc, 
@@ -158,7 +158,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
     def get_rule_based_action(self):
         
-        return torch.tensor(self.task_mask.argmax(1) + 1, device=self.device).unsqueeze(0) 
+        return (self.task_mask.argmax(0)).unsqueeze(0) 
         
     def caculate_metric_action(self, actions):
         self.reward_action = None

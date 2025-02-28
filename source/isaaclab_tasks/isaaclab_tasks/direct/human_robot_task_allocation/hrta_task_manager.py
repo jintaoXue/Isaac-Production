@@ -57,13 +57,13 @@ class TaskManager(object):
 
     def assign_task(self, task):
         
-        charac_idx = self.characters.assign_task(task, random = True)
-        box_idx = self.boxs.assign_task(task, random = True)
+        charac_idx = self.characters.assign_task(task, random = False)
+        box_idx = self.boxs.assign_task(task, random = False)
         if box_idx >= 0:
             box_xyz, _ = self.boxs.list[box_idx].get_world_poses()
         else:
             box_xyz = None
-        agv_idx = self.agvs.assign_task(task, box_idx, box_xyz, random = True)
+        agv_idx = self.agvs.assign_task(task, box_idx, box_xyz, random = False)
         
         lacking_resource = False
         if charac_idx == -1 or agv_idx == -1 or box_idx == -1:
@@ -361,7 +361,7 @@ class Characters(object):
         self.states[idx] = 0
         self.tasks[idx] = 0
 
-    def assign_task(self, high_level_task, random = True):
+    def assign_task(self, high_level_task, random = False):
         #todo 
         if high_level_task not in self.task_range:
             return -2
@@ -524,7 +524,7 @@ class Agvs(object):
         self.tasks[idx] = 0
         self.states[idx] = 0
 
-    def assign_task(self, high_level_task, box_idx, box_xyz, random):
+    def assign_task(self, high_level_task, box_idx, box_xyz, random=False):
         #todo  
         if high_level_task not in self.task_range or box_idx == -2:
             return -2
@@ -672,7 +672,7 @@ class TransBoxs(object):
         # self.corresp_charac_idxs[idx] = -1
         # self.corresp_agv_idxs[idx] = -1
 
-    def assign_task(self, high_level_task, random):
+    def assign_task(self, high_level_task, random=False):
         #todo
         if high_level_task not in self.task_range:
             return -2

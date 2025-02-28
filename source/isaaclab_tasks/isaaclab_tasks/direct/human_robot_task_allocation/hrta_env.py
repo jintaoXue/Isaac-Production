@@ -53,9 +53,10 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Step buffers. Refresh tensors. Compute observations and reward. Reset environments."""
         # process actions
+        action = None
         if action is None:
             #generate rule-based action
-            action = self.get_rule_based_action(action)
+            action = self.get_rule_based_action()
         self._pre_physics_step(action)
         ###TODO only support single env training
         # action_mask

@@ -33,3 +33,7 @@ wandb
 修复自动补全
 
 self.scheduler lr_scheduler schedule_type (请参考~/Repos/miniconda3/envs/isaac-lab/lib/python3.10/site-packages/rl_games/common/a2c_common.py)
+解决办法，在gym register 部分order_enforce=False
+
+test setting的num robot character 不一定对
+
