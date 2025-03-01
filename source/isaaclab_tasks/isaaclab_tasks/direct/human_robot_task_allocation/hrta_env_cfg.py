@@ -40,17 +40,21 @@ class HRTaViewerCfg(ViewerCfg):
     # # view of all
     # self.camera_position = [-18, 14, 50]
     # self.camera_target = [-18, 5, 3]
+    # eye: tuple[float, float, float] = (-18, 14, 50)
+    # """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
+    # lookat: tuple[float, float, float] = (-18, 5, 3)
+    # view of grippers
     eye: tuple[float, float, float] = (-18, 14, 50)
-    """Initial camera position (in m). Default is (7.5, 7.5, 7.5)."""
     lookat: tuple[float, float, float] = (-18, 5, 3)
 
 @configclass
 class HRTaskAllocEnvCfg(DirectRLEnvCfg):
 
     # env
-    decimation = 2
+    decimation = 1
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
+    sim_step_interval = 1000
     # viewer
     viewer: HRTaViewerCfg = HRTaViewerCfg()
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500

@@ -106,11 +106,11 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         if self.reset_buf[env_id] == 1:
             self.reset_buf[env_id] = 0
             self.episode_length_buf[env_id] = 0
-            self.post_reset(acti_num_char=num_worker, acti_num_robot=num_robot)
+            self.reset_step_helper(acti_num_char=num_worker, acti_num_robot=num_robot)
         return
 
 
-    def post_reset(self, acti_num_char=None, acti_num_robot=None) -> None:
+    def reset_step_helper(self, acti_num_char=None, acti_num_robot=None) -> None:
         #TODO
         if self._test:
             if self._test_all_settings:

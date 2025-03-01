@@ -79,16 +79,17 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             # perform physics stepping
             for _ in range(self.cfg.decimation):
                 self._sim_step_counter += 1
-                self.scene.write_data_to_sim()
+                # self.scene.write_data_to_sim()
                 # simulate
-                self.sim.step(render=False)
+                if self._sim_step_counter % self.cfg.sim_step_interval == 0:
+                    self.sim.step(render=False)
                 # render between steps only if the GUI or an RTX sensor needs it
                 # note: we assume the render interval to be the shortest accepted rendering interval.
                 #    If a camera needs rendering at a faster frequency, this will lead to unexpected behavior.
                 if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering:
                     self.sim.render()
                 # update buffers at sim dt
-                self.scene.update(dt=self.physics_dt)
+                # self.scene.update(dt=self.physics_dt)
 
             if (self.task_mask[1:].count_nonzero() == 0 and self.reset_buf[0] == 0):
                 self.post_task_manager_step(actions=self.get_rule_based_action())
@@ -815,14 +816,16 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 if move_done:
                     if self.station_state_inner_middle == 7:
                         self.station_state_inner_middle = 8 #welding_middle
-                        # orientation = torch.tensor([[ 1.0000e+00,  9.0108e-17, -1.9728e-17,  1.0443e-17]], device=self.cuda_device)
-                        orientation = torch.tensor([[ 7.0711e-01, -6.5715e-12,  1.3597e-12,  7.0711e-01]], device=self.cuda_device)
-                        self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(
-                            positions=position+torch.tensor([[0,   0,   -1.7]], device=self.cuda_device), orientations=orientation)
-                        self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
+
                     elif self.station_state_inner_middle == 9: #welded_middle 
                         #if done reset the outer gripper
                         self.gripper_outer_state = 0
+                else:
+                    # orientation = torch.tensor([[ 1.0000e+00,  9.0108e-17, -1.9728e-17,  1.0443e-17]], device=self.cuda_device)
+                    orientation = torch.tensor([[ 7.0711e-01, -6.5715e-12,  1.3597e-12,  7.0711e-01]], device=self.cuda_device)
+                    self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(
+                        positions=position+torch.tensor([[0,   0,   -1.7]], device=self.cuda_device), orientations=orientation)
+                    self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
             elif self.gripper_outer_task == 4:
                 #place upper tube to outer station
                 target_pose = torch.tensor([[5.2, 0, -0.25, 0, 0.045, -0.045, -0.045, -0.045, 0.045,  0.045]], device=self.cuda_device)
@@ -830,14 +833,15 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 if move_done:
                     if self.station_state_outer_middle == 7:
                         self.station_state_outer_middle = 8 #welding_middle
-                        # orientation = torch.tensor([[ 1.0000e+00,  9.0108e-17, -1.9728e-17,  1.0443e-17]], device=self.cuda_device)
-                        orientation = torch.tensor([[ 7.0711e-01, -6.5715e-12,  1.3597e-12,  7.0711e-01]], device=self.cuda_device)
-                        self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(
-                            positions=position+torch.tensor([[0,   0,   -1.7]], device=self.cuda_device), orientations=orientation)
-                        self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
                     elif self.station_state_outer_middle == 9: #welded_middle 
                         #if done reset the outer gripper
                         self.gripper_outer_state = 0
+                else:
+                    # orientation = torch.tensor([[ 1.0000e+00,  9.0108e-17, -1.9728e-17,  1.0443e-17]], device=self.cuda_device)
+                    orientation = torch.tensor([[ 7.0711e-01, -6.5715e-12,  1.3597e-12,  7.0711e-01]], device=self.cuda_device)
+                    self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(
+                        positions=position+torch.tensor([[0,   0,   -1.7]], device=self.cuda_device), orientations=orientation)
+                    self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
 
         return next_pos_outer
     
@@ -1676,7 +1680,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 # self.gripper_inner_task = 5 
                 # self.gripper_inner_state = 1
             else:
-                self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(torch.tensor([[0,   0,   -100]], device=self.cuda_device))
+                position = torch.tensor([[-21.5430,   6.8,   1.2]], device=self.cuda_device)
+                orientation = torch.tensor([[ 7.0711e-01, -6.5715e-12,  1.3597e-12,  7.0711e-01]], device=self.cuda_device)
+                self.materials.upper_tube_list[pick_up_upper_tube_index].set_world_poses(positions=position, orientations=orientation)
                 self.materials.upper_tube_list[pick_up_upper_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
         elif self.welder_outer_state == 9: #welded_upper
             #do the reset
