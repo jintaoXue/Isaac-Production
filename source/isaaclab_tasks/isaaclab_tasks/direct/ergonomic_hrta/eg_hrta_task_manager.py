@@ -108,7 +108,7 @@ class TaskManager(object):
                     self.task_in_dic[task]['lacking_resource'] = False
                 
         return 
-    step_fatigue(idx, state, task)
+
     def corresp_charac_agv_box_idx(self, task):
         if task not in self.task_in_dic.keys():
             return -1, -1, -1
