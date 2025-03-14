@@ -26,7 +26,7 @@ class Fatigue(object):
         #combine all the subtask and state
         self.phy_free_state_dic = {"free", "waiting_box"}
         self.psy_free_state_dic = {"free", "waiting_box"}
-        self.phy_fatigue_ce_dic = {"approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
+        self.phy_fatigue_ce_dic = {"approaching": 0.0, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
         self.psy_fatigue_ce_dic = {"approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
