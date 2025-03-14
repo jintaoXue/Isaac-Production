@@ -41,4 +41,7 @@ env reset fialed: 解决办法，在gym register 部分order_enforce=False
 
 test setting的num robot character 不一定对
 
+# human fatigue 建模
+
+# 加一个movement time 把map_route 函数加一下
 
