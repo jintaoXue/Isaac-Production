@@ -26,22 +26,21 @@ class Fatigue(object):
         #combine all the subtask and state
         self.phy_free_state_dic = {"free", "waiting_box"}
         self.psy_free_state_dic = {"free", "waiting_box"}
-        self.phy_fatigue_ce_dic = {"approaching": 0.0, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
+        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
-        self.psy_fatigue_ce_dic = {"approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
+        self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
         self.phy_recovery_ce_dic = {"human_type_0": 0.1}
         self.psy_recovery_ce_dic = {"human_type_0": 0.1}
         scale = 0.1
+        self.ONE_STEP_TIME = 1.0
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale, self.phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale, self.psy_fatigue_ce_dic)
         self.phy_recovery_ce_dic = self.scale_coefficient(scale, self.phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale, self.psy_recovery_ce_dic)
         
-        self.ONE_STEP_TIME = 1.0
-
         # self.device = cuda_device
         self.idx = human_idx
         
@@ -49,9 +48,11 @@ class Fatigue(object):
         self.psy_recovery_coefficient = self.psy_recovery_ce_dic[human_type]
         self.phy_fatigue = None
         self.psy_fatigue = None
-        self.pre_state_type = None
-        self.state_history = None
-        self.time_history = None 
+
+        self.state_subtask_history = None
+        self.phy_history = None # value, state, time
+        self.psy_history = None
+        # self.time_history = None 
 
         return
     
@@ -59,17 +60,25 @@ class Fatigue(object):
         return {key: (v * scale)  for (key, v) in dic.items()}
     
     def reset(self):
+        self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
         self.pre_state_type = 'free'
-        self.state_history = []
-        self.time_history = [] 
+        self.phy_history = [(0, self.time_step)] # value, time_step
+        self.psy_history = [(0, self.time_step)]
+        self.state_subtask_history = [('free', 'free', self.time_step)] #state, subtask, time_step 
         return
     
     def step(self, state_type, subtask):
-        
         self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask)
         self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask)
+        self.time_step += 1
+        self.phy_history.append((self.phy_fatigue, self.time_step))
+        self.psy_history.append((self.psy_fatigue, self.time_step))
+        pre_state_type, pre_subtask, _ = self.state_subtask_history[-1]
+        if pre_state_type != state_type or pre_subtask != subtask:
+            self.state_subtask_history.append([(state_type, subtask, self.time_step)]) #state, subtask, time_step 
+
         return
     
     def predict(self, subtask_list, time_steps_list):
