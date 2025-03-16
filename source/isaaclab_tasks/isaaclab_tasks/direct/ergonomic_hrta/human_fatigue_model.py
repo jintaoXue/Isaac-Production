@@ -36,10 +36,11 @@ class Fatigue(object):
         self.psy_recovery_ce_dic = {"human_type_0": 0.1}
         scale = 0.1
         self.ONE_STEP_TIME = 1.0
+        self.time_step = None
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale, self.phy_fatigue_ce_dic)
-        self.psy_fatigue_ce_dic = self.scale_coefficient(scale, self.psy_fatigue_ce_dic)
+        self.psy_fatigue_ce_dic = self.scale_coefficient(scale*0.5, self.psy_fatigue_ce_dic)
         self.phy_recovery_ce_dic = self.scale_coefficient(scale, self.phy_recovery_ce_dic)
-        self.psy_recovery_ce_dic = self.scale_coefficient(scale, self.psy_recovery_ce_dic)
+        self.psy_recovery_ce_dic = self.scale_coefficient(scale*0.5, self.psy_recovery_ce_dic)
         
         # self.device = cuda_device
         self.idx = human_idx
@@ -50,6 +51,7 @@ class Fatigue(object):
         self.psy_fatigue = None
 
         self.state_subtask_history = None
+        self.state_task_history = None
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None 
@@ -57,27 +59,33 @@ class Fatigue(object):
         return
     
     def scale_coefficient(self, scale, dic : dict):
-        return {key: (v * scale)  for (key, v) in dic.items()}
+        return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
     
     def reset(self):
+        if self.time_step is not None and self.time_step > 100:
+            self.plot_curve()
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
         self.pre_state_type = 'free'
         self.phy_history = [(0, self.time_step)] # value, time_step
         self.psy_history = [(0, self.time_step)]
-        self.state_subtask_history = [('free', 'free', self.time_step)] #state, subtask, time_step 
+        self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
+        self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         return
     
-    def step(self, state_type, subtask):
+    def step(self, state_type, subtask, task):
         self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask)
         self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask)
         self.time_step += 1
         self.phy_history.append((self.phy_fatigue, self.time_step))
         self.psy_history.append((self.psy_fatigue, self.time_step))
-        pre_state_type, pre_subtask, _ = self.state_subtask_history[-1]
+        pre_state_type, pre_subtask, _ , _, _= self.state_subtask_history[-1]
         if pre_state_type != state_type or pre_subtask != subtask:
-            self.state_subtask_history.append([(state_type, subtask, self.time_step)]) #state, subtask, time_step 
+            self.state_subtask_history.append((state_type, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
+        _, pre_task, _ , _, _= self.state_task_history[-1]
+        if pre_task != task:
+            self.state_task_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
 
         return
     
@@ -112,6 +120,42 @@ class Fatigue(object):
                 _lambda = -self.psy_fatigue_ce_dic[subtask]
             F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*self.ONE_STEP_TIME))
         return F_0
+    
+    def plot_curve(self):
+        import matplotlib.pyplot as plt
+        plt.style.use('seaborn-v0_8-white')
+        # plt.rcParams["font.family"] = "Times New Roman"
+        plt.rcParams['pdf.fonttype'] = 42
+        # plt.tick_params(axis='both', labelsize=50)
+        params = {'legend.fontsize': 15,
+            'legend.handlelength': 2}
+        plt.rcParams.update(params)
+        # plt.rcParams['xtick.labelsize'] = 14  # x轴刻度标签字体大小
+        # plt.rcParams['ytick.labelsize'] = 14  # y轴刻度标签字体大小
+        fig = plt.figure(figsize=(20,10), dpi=100)
+        # gs = gridspec(1,4, )
+        # gs = fig.add_gridspec(1,4) 
+        ax = plt.subplot(111)
+        # ax_2 = plt.subplot(212)
+        ax.set_title('Fatigue curve', fontsize=20)
+        ax.set_xlabel('time step', fontsize=15)
+        ax.tick_params(axis='both', which='both', labelsize=15)
+        line_labels = ['Physiological fatigue', 'Psychological fatigue']
+        data = [self.phy_history, self.psy_history]
+        color_dict = {'Physiological fatigue': 'crimson', 'Psychological fatigue': 'orange', 'EDQN2': 'forestgreen', 'EBQ-G': 'dodgerblue', 'EBQ-N': 'palevioletred', 'EBQ-GN':'blueviolet', "NoSp": 'silver'}
+        for _data, line_label in zip(data, line_labels):
+            _data = np.array(_data)
+            x,y = _data[:, 1], _data[:, 0]
+            ax.plot(x, y, '-', color=color_dict[line_label], label=line_label, ms=5, linewidth=2, marker='o')
+        
+        vlines = np.array(self.state_task_history)[:, -1]
+        ax.vlines(vlines.astype(np.int32), 0, 1, linestyles='dashed', colors='silver')
+        ax.legend()
+        
+        plt.tight_layout()
+        plt.show()
+        # path = os.path.dirname(__file__)
+        # fig.savefig('{}.pdf'.format(path + '/' + 'polyline'), bbox_inches='tight')
     
 
 
@@ -278,11 +322,11 @@ class Characters(object):
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
         return position, orientation, reaching_flag
     
-    def step_fatigue(self, idx, state, task):
+    def step_fatigue(self, idx, state, subtask, task):
         state_type = self.state_character_dic[state]
-        task_type = self.sub_task_character_dic[task]
+        subtask = self.sub_task_character_dic[subtask]
         fatigue : Fatigue = self.fatigue_list[idx]
-        fatigue.step(state_type, task_type)
+        fatigue.step(state_type, subtask, task)
 
     def get_fatigue(self, idx):
         fatigue : Fatigue = self.fatigue_list[idx]

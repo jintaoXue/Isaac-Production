@@ -216,8 +216,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         charac : RigidPrim = self.task_manager.characters.list[idx]
         state = self.task_manager.characters.states[idx]
         task = self.task_manager.characters.tasks[idx]
-        self.task_manager.characters.step_fatigue(idx, state, task)
         high_level_task = self.task_manager.characters.low2high_level_task_mapping(task)
+        self.task_manager.characters.step_fatigue(idx, state, task, high_level_task)
         _, corresp_agv_idx, corresp_box_idx = self.task_manager.corresp_charac_agv_box_idx(high_level_task) 
         current_pose = charac.get_world_poses()
         target_position = None
