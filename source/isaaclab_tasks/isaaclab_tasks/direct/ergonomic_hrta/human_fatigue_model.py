@@ -32,15 +32,16 @@ class Fatigue(object):
         self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
-        self.phy_recovery_ce_dic = {"human_type_0": 0.1}
+        self.phy_recovery_ce_dic = {"human_type_0": 0.05}
         self.psy_recovery_ce_dic = {"human_type_0": 0.1}
-        scale = 0.1
+        scale_phy = 0.1
+        scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
         self.time_step = None
-        self.phy_fatigue_ce_dic = self.scale_coefficient(scale, self.phy_fatigue_ce_dic)
-        self.psy_fatigue_ce_dic = self.scale_coefficient(scale*0.5, self.psy_fatigue_ce_dic)
-        self.phy_recovery_ce_dic = self.scale_coefficient(scale, self.phy_recovery_ce_dic)
-        self.psy_recovery_ce_dic = self.scale_coefficient(scale*0.5, self.psy_recovery_ce_dic)
+        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy, self.phy_fatigue_ce_dic)
+        self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
+        self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy, self.phy_recovery_ce_dic)
+        self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.psy_recovery_ce_dic)
         
         # self.device = cuda_device
         self.idx = human_idx
@@ -62,8 +63,8 @@ class Fatigue(object):
         return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
     
     def reset(self):
-        # if self.time_step is not None and self.time_step > 100:
-        #     self.plot_curve()
+        if self.time_step is not None and self.time_step > 100:
+            self.plot_curve()
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
@@ -146,7 +147,7 @@ class Fatigue(object):
         for _data, line_label in zip(data, line_labels):
             _data = np.array(_data)
             x,y = _data[:, 1], _data[:, 0]
-            ax.plot(x, y, '-', color=color_dict[line_label], label=line_label, ms=5, linewidth=2, marker='o')
+            ax.plot(x, y, '-', color=color_dict[line_label], label=line_label, ms=5, linewidth=2, marker='.', linestyle='dashed')
         
         vlines = np.array(self.state_task_history)[:, -1]
         ax.vlines(vlines.astype(np.int32), 0, 1, linestyles='dashed', colors='silver')

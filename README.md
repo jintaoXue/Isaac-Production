@@ -45,4 +45,6 @@ test setting的num robot character 不一定对
 
 # 加一个movement time 把map_route 函数加一下
 
-# 加一个predict task max fatigue 
+# 加一个predict task max fatigue
+
+# 修正一下task的持续时间 以及机器控制
