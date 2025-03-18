@@ -6,6 +6,7 @@ import torch
 
 from ...utils import quaternion
 from .human_fatigue_model import Characters
+from .eg_hrta_env_cfg import HRTaskAllocEnvCfg
 def random_zero_index(data):
 
     if data.count(0)>=1:
@@ -425,7 +426,6 @@ class Agvs(object):
         else: return -1
 
 
-
 class TransBoxs(object):
 
     def __init__(self, box_list) -> None:
@@ -451,7 +451,7 @@ class TransBoxs(object):
         # for obj in self.list:
         #     self.initial_pose_list.append(obj.get_world_poses())
 
-        self.CAPACITY = 4
+        self.CAPACITY = HRTaskAllocEnvCfg.box_capacity
         self.reset()
         return
     

@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import math
 from ...utils import quaternion
-
+from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic
 
 
 
@@ -23,9 +23,18 @@ def random_zero_index(data):
 class Fatigue(object):
 
     def __init__(self, human_idx, human_type) -> None:
-        #combine all the subtask and state
+        #task_human_subtasks_dic
+        #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
+        box_capacity = HRTaskAllocEnvCfg.box_capacity
+        self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*box_capacity, 
+            'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*box_capacity, 
+            'hoop_loading_inner': ['hoop_loading_inner'], 'bending_tube_loading_inner': ['bending_tube_loading_inner'], 
+            'hoop_loading_outer': ['hoop_loading_outer'], 'bending_tube_loading_outer':['bending_tube_loading_outer'], 
+            'cutting_cube':['cutting_cube'], 'collect_product':['free'], 'placing_product':['placing_product']*box_capacity}
+        self.task_fatigue_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.phy_free_state_dic = {"free", "waiting_box"}
         self.psy_free_state_dic = {"free", "waiting_box"}
+        #coefficient dic: combine all the subtask and state
         self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
@@ -90,7 +99,8 @@ class Fatigue(object):
 
         return
     
-    def predict(self, subtask_list, time_steps_list):
+    def predict(self):
+        
         
         return
 
@@ -201,8 +211,9 @@ class Characters(object):
         self.cutting_cube_pose = [-29.83212, -1.54882, np.deg2rad(0)]
 
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
-        self.PUTTING_TIME = 5
-        self.LOADING_TIME = 5
+        self.PUTTING_TIME = HRTaskAllocEnvCfg.human_putting_time
+        self.LOADING_TIME = HRTaskAllocEnvCfg.human_loading_time
+        self.CUTTING_MACHINE_TIME = HRTaskAllocEnvCfg.cutting_machine_oper_len
         
         self.fatigue_list : list[Fatigue] = []
         for i in range(0,len(self.character_list)):

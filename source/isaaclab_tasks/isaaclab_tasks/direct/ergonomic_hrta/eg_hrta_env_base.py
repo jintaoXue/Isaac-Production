@@ -298,7 +298,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.cutting_state_dic = {0:"free", 1:"work", 2:"reseting"}
         self.cutting_machine_state = 0
         self.c_machine_oper_time = 0
-        self.c_machine_oper_len = 10
+        self.c_machine_oper_len = self.cfg.cutting_machine_oper_len
         #gripper
         speed = 0.6
         self.operator_gripper = torch.tensor([speed]*10, device='cuda:0')
@@ -317,7 +317,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # self.max_speed_welder = 0.1
         self.welder_inner_oper_time = 0
         self.welder_outer_oper_time = 0
-        self.welding_once_time = 20
+        self.welding_once_time = self.cfg.welding_once_time
         self.operator_welder = torch.tensor([0.4], device='cuda:0')
         self.welder_task_dic = {0: "reset", 1:"weld_left", 2:"weld_right", 3:"weld_middle",}
         self.welder_state_dic = {0: "free_empty", 1: "moving_left", 2:"welding_left", 3:"welded_left", 4:"moving_right",

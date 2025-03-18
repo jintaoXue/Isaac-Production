@@ -23,6 +23,10 @@ from isaaclab.utils import configclass
 import os
 from .....isaaclab.isaaclab.envs.common import ViewerCfg
 
+#high_level_task
+high_level_task_dic =  {-1:'none', 0: 'hoop_preparing', 1:'bending_tube_preparing', 2:'hoop_loading_inner', 3:'bending_tube_loading_inner', 4:'hoop_loading_outer', 
+                5:'bending_tube_loading_outer', 6:'cutting_cube', 7:'collect_product', 8:'placing_product'}
+
 
 @configclass
 class HRTaViewerCfg(ViewerCfg):
@@ -79,7 +83,13 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     cuda_device_str = "cuda:0"
     #train_cfg will be update when running train.py
     train_cfg = None
+    cutting_machine_oper_len = 10
+    welding_once_time = 20
+    human_loading_time = 5
+    human_putting_time = 5
+    box_capacity = 4
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py
         return self.train_cfg != None
+
