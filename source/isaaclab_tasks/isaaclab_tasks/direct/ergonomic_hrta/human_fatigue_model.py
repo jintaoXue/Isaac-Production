@@ -49,7 +49,7 @@ class Fatigue(object):
         scale_phy = 0.1
         scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
-        self.update_predict_dic()
+        
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy, self.phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
         self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy, self.phy_recovery_ce_dic)
@@ -59,7 +59,7 @@ class Fatigue(object):
         self.idx = human_idx
         self.phy_recovery_coefficient = self.phy_recovery_ce_dic[human_type]
         self.psy_recovery_coefficient = self.psy_recovery_ce_dic[human_type]
-
+        self.update_predict_dic()
         self.phy_fatigue = None
         self.psy_fatigue = None
         self.time_step = None
