@@ -25,7 +25,8 @@ class Fatigue(object):
     def __init__(self, human_idx, human_type) -> None:
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
-        box_capacity = HRTaskAllocEnvCfg.box_capacity
+        _cfg = HRTaskAllocEnvCfg()
+        box_capacity = _cfg.box_capacity
         self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*box_capacity, 
             'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*box_capacity, 
             'hoop_loading_inner': ['hoop_loading_inner'], 'bending_tube_loading_inner': ['bending_tube_loading_inner'], 
@@ -211,9 +212,10 @@ class Characters(object):
         self.cutting_cube_pose = [-29.83212, -1.54882, np.deg2rad(0)]
 
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
-        self.PUTTING_TIME = HRTaskAllocEnvCfg.human_putting_time
-        self.LOADING_TIME = HRTaskAllocEnvCfg.human_loading_time
-        self.CUTTING_MACHINE_TIME = HRTaskAllocEnvCfg.cutting_machine_oper_len
+        _cfg = HRTaskAllocEnvCfg()
+        self.PUTTING_TIME = _cfg.human_putting_time
+        self.LOADING_TIME = _cfg.human_loading_time
+        self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
         
         self.fatigue_list : list[Fatigue] = []
         for i in range(0,len(self.character_list)):

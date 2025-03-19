@@ -450,8 +450,8 @@ class TransBoxs(object):
         # self.initial_pose_list = []
         # for obj in self.list:
         #     self.initial_pose_list.append(obj.get_world_poses())
-
-        self.CAPACITY = HRTaskAllocEnvCfg.box_capacity
+        _cfg = HRTaskAllocEnvCfg()
+        self.CAPACITY = _cfg.box_capacity
         self.reset()
         return
     
