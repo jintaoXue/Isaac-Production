@@ -52,7 +52,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
     def step(self, action: torch.Tensor | None
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Step buffers. Refresh tensors. Compute observations and reward. Reset environments."""
-        # process actions
+        # process actions debug TODO
         action = None
         if action is None:
             #generate rule-based action

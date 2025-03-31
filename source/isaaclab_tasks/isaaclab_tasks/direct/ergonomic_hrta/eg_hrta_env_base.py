@@ -156,7 +156,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
 
     def get_rule_based_action(self):
-        
         return (self.task_mask.argmax(0)).unsqueeze(0) 
         
     def caculate_metric_action(self, actions):
