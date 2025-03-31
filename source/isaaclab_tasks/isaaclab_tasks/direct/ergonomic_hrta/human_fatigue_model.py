@@ -49,6 +49,9 @@ class Fatigue(object):
         scale_phy = 0.1
         scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
+        self.ftg_thresh_phy = self.cfg.ftg_thresh_phy
+        self.ftg_thresh_psy = self.cfg.ftg_thresh_psy
+        self.ftg_task_mask = None
         
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy, self.phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
@@ -68,6 +71,7 @@ class Fatigue(object):
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None 
+        
 
         return
     
@@ -85,9 +89,10 @@ class Fatigue(object):
         self.psy_history = [(0, self.time_step)]
         self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
+        self.update_ftg_mask()
         return
     
-    def step(self, state_type, subtask, task):
+    def step(self, state_type, subtask, task, ftg_prediction = None):
         self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
@@ -99,9 +104,22 @@ class Fatigue(object):
         _, pre_task, _ , _, _= self.state_task_history[-1]
         if pre_task != task:
             self.state_task_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
-
+        self.update_ftg_mask(ftg_prediction)
         return
     
+    def update_ftg_mask(self, prediction=None):
+        if prediction is None:
+            #adopt rule based mask
+            _fatigue = np.array(list(self.task_phy_prediction_dic.values())) + self.phy_fatigue
+            _mask = np.where(_fatigue < self.ftg_thresh_phy, 1, 0)
+            self.ftg_task_mask = torch.from_numpy(_mask) 
+            self.ftg_task_mask[0] = 1
+        else:
+            #adopt cost function prediction based
+            pass
+        
+        return
+
     def update_predict_dic(self):
         for key, v in self.task_phy_prediction_dic.items():
             subtask_seq = self.task_human_subtasks_dic[key]
@@ -226,13 +244,16 @@ class Characters(object):
 
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
         _cfg = HRTaskAllocEnvCfg()
+        self.cfg = _cfg
         self.PUTTING_TIME = _cfg.human_putting_time
         self.LOADING_TIME = _cfg.human_loading_time
         self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
         
+        self.n_max_human = _cfg.n_max_human
         self.fatigue_list : list[Fatigue] = []
         for i in range(0,len(self.character_list)):
             self.fatigue_list.append(Fatigue(i, 'human_type_0'))
+        self.fatigue_task_masks = None
         return
     
     def reset(self, acti_num_charc = None, random = None):
@@ -260,12 +281,20 @@ class Characters(object):
             self.reset_path(i)
         self.loading_operation_time_steps = [0 for i in range(acti_num_charc)]
 
+        self.fatigue_task_masks = torch.zeros((self.n_max_human, len(high_level_task_dic)), dtype=torch.int32)
         for i in range(0, acti_num_charc):
             fatigue : Fatigue = self.fatigue_list[i]
             fatigue.reset()
+            self.fatigue_task_masks[i] = fatigue.ftg_task_mask
+        
 
         return initial_pose_str
 
+    # def get_fatigue_task_masks(self):
+    #     fatigue_task_masks = torch.zeros((self.n_max_human, len(high_level_task_dic)), device=self.cfg.cuda_device_str)
+    #     for i in range(0, self.acti_num_charc):
+    #         fatigue_task_masks[i] = self.fatigue_list[i].ftg_task_mask
+    #     return fatigue_task_masks
 
     def reset_idx(self, idx):
         if idx < 0 :
@@ -349,11 +378,13 @@ class Characters(object):
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
         return position, orientation, reaching_flag
     
-    def step_fatigue(self, idx, state, subtask, task):
+    def step_fatigue(self, idx, state, subtask, task, ftg_prediction = None):
+        
         state_type = self.state_character_dic[state]
         subtask = self.sub_task_character_dic[subtask]
         fatigue : Fatigue = self.fatigue_list[idx]
-        fatigue.step(state_type, subtask, task)
+        fatigue.step(state_type, subtask, task, ftg_prediction)
+        self.fatigue_task_masks[idx] = fatigue.ftg_task_mask
 
     def get_fatigue(self, idx):
         fatigue : Fatigue = self.fatigue_list[idx]

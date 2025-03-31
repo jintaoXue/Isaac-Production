@@ -151,7 +151,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         else:
             pass
     
+    # def update_ergonomic
+
     def update_task_mask(self):
+        self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
 
@@ -236,9 +239,18 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
         if task_mask.count_nonzero() == 0:
             task_mask[0] = 1
-        
+
         return task_mask
-     
+
+    def get_fatigue_mask(self):
+        # fatigue_mask = torch.zeros(len(self.task_manager.task_dic), device=self.cuda_device)
+        _masks = self.task_manager.characters.fatigue_task_masks
+        fatigue_mask = _masks[0]
+        for i in range(1, len(_masks)):
+            fatigue_mask =  fatigue_mask ^ _masks[i]
+    
+        return fatigue_mask
+    
     def get_task_mask_dic(self, task_mask):
         available_task_dic = {}
         if task_mask[0] == 1:
