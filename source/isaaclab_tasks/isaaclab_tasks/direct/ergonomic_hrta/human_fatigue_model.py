@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import math
 from ...utils import quaternion
-from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic
+from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic
 
 
 
@@ -280,14 +280,14 @@ class Characters(object):
             self.reset_idx(i)
             self.reset_path(i)
         self.loading_operation_time_steps = [0 for i in range(acti_num_charc)]
-
+        
+        #1 is avaiable, 0 means worker is over fatigue threshold
         self.fatigue_task_masks = torch.zeros((self.n_max_human, len(high_level_task_dic)), dtype=torch.int32)
         for i in range(0, acti_num_charc):
             fatigue : Fatigue = self.fatigue_list[i]
             fatigue.reset()
             self.fatigue_task_masks[i] = fatigue.ftg_task_mask
         
-
         return initial_pose_str
 
     # def get_fatigue_task_masks(self):
@@ -306,11 +306,17 @@ class Characters(object):
         #todo 
         if high_level_task not in self.task_range:
             return -2
+        
+        _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
+        _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx]
+        a = np.array(self.tasks)
+        b = self.fatigue_task_masks.numpy()
+        
         if random:
             idx = random_zero_index(self.tasks)
         else: 
-            idx = self.find_available_charac()
-
+            idx = self.find_available_charac(self.tasks*self.fatigue_task_masks)
+            
         if idx == -1:
             return idx
         if high_level_task == 'hoop_preparing':
@@ -349,9 +355,9 @@ class Characters(object):
             self.tasks[idx] = 10
         return idx
     
-    def find_available_charac(self, idx=0):
+    def find_available_charac(self, mask, idx=0):
         try:
-            return self.tasks.index(idx)
+            return mask.index(idx)
         except: 
             return -1
 

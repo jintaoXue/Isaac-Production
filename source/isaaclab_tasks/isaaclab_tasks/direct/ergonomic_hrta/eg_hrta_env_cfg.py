@@ -26,7 +26,7 @@ from .....isaaclab.isaaclab.envs.common import ViewerCfg
 #high_level_task
 high_level_task_dic =  {-1:'none', 0: 'hoop_preparing', 1:'bending_tube_preparing', 2:'hoop_loading_inner', 3:'bending_tube_loading_inner', 4:'hoop_loading_outer', 
                 5:'bending_tube_loading_outer', 6:'cutting_cube', 7:'collect_product', 8:'placing_product'}
-
+high_level_task_rev_dic = {v: k for k, v in high_level_task_dic.items()}
 
 @configclass
 class HRTaViewerCfg(ViewerCfg):
