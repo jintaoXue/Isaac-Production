@@ -154,7 +154,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     # def update_ergonomic
 
     def update_task_mask(self):
-        
+        if self.episode_length_buf[0] >= 600:
+            a = 1
         self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
         self.task_mask = self.task_mask * self.fatigue_mask.to(self.cfg.cuda_device_str)

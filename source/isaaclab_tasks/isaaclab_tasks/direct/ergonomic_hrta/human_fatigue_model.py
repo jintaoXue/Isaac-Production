@@ -11,10 +11,10 @@ from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_
 
 ######### for human fatigue #####
 
-def random_zero_index(data):
-
-    if data.count(0)>=1:
-        indexs = np.argwhere(np.array(data) == 0)
+def random_zero_index(data : np.ndarray):
+    zero_data = data == 0
+    if np.count_nonzero(zero_data)>=1:
+        indexs = np.argwhere(zero_data)
         _idx = np.random.randint(low=0, high = len(indexs)) 
         return indexs[_idx][0]
     else:
@@ -38,7 +38,7 @@ class Fatigue(object):
         self.phy_free_state_dic = {"free", "waiting_box"}
         self.psy_free_state_dic = {"free", "waiting_box"}
         #coefficient dic: combine all the subtask and state
-        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
+        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": -0.001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
         self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
@@ -309,13 +309,15 @@ class Characters(object):
         
         _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
         _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx]
-        a = np.array(self.tasks)
-        b = self.fatigue_task_masks.numpy()
+        #task == 0 means the human doing no task, is free
+        np_task = np.array(self.tasks)
+        np_task = np.where(_fatigue_mask, np_task, -1)
         
         if random:
             idx = random_zero_index(self.tasks)
         else: 
-            idx = self.find_available_charac(self.tasks*self.fatigue_task_masks)
+            # idx = self.find_available_charac(np_task.tolist())
+            idx = self.find_available_charac(self.tasks)
             
         if idx == -1:
             return idx
@@ -355,7 +357,7 @@ class Characters(object):
             self.tasks[idx] = 10
         return idx
     
-    def find_available_charac(self, mask, idx=0):
+    def find_available_charac(self, mask : list, idx=0):
         try:
             return mask.index(idx)
         except: 
