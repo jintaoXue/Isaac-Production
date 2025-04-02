@@ -251,8 +251,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # fatigue_mask = torch.zeros(len(self.task_manager.task_dic), device=self.cuda_device)
         _masks = self.task_manager.characters.fatigue_task_masks
         fatigue_mask = _masks[0]
-        for i in range(1, len(_masks)):
-            fatigue_mask =  fatigue_mask ^ _masks[i]
+        for i in range(1, self.task_manager.characters.acti_num_charc):
+            fatigue_mask =  fatigue_mask | _masks[i]
     
         return fatigue_mask
     

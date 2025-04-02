@@ -22,7 +22,7 @@ import wandb
 import copy
 
 
-class RainbowLagAgent():
+class SafeRainbowAgent():
     def __init__(self, base_name, params):
 
         self.config : DictConfig = params['config']
@@ -594,12 +594,13 @@ class RainbowLagAgent():
             # rewards_cpu = rewards.squeeze().cpu()
             # dones_cpu = dones.squeeze().cpu()
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
-            if dones[0]:
+            done_flag = copy.deepcopy(dones[0]) 
+            if done_flag:
                 next_obs = self.env_reset(num_worker=num_worker, num_robot=num_robot)   
             self.obs = next_obs.copy()
             reward_extra = 0.
             repeat_times = 1
-            if dones[0]:
+            if done_flag:
                 _,_,_,_,_infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
                 if goal_finished:
@@ -612,6 +613,7 @@ class RainbowLagAgent():
                         reward_extra = -0.001
                 # print("reward_extra:{}, env_len:{}".format(reward_extra, _infos['env_length']))
                 if not random_exploration or goal_finished:
+                    #when doing random exploration, when want find solution for each setting
                     break
         return temporary_buffer, reward_extra, repeat_times
     
