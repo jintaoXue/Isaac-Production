@@ -154,11 +154,11 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     # def update_ergonomic
 
     def update_task_mask(self):
-        if self.episode_length_buf[0] >= 600:
-            a = 1
+        # if self.episode_length_buf[0] >= 700:
+        #     a = 1
         self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
-        self.task_mask = self.task_mask * self.fatigue_mask.to(self.cfg.cuda_device_str)
+        self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
 
     def get_rule_based_action(self):
@@ -214,7 +214,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     
     def get_task_mask(self):
 
-        task_mask = torch.zeros(len(self.task_manager.task_dic), device=self.cuda_device)
+        task_mask = torch.zeros(len(self.task_manager.task_dic))
         worker, agv, box = self.check_task_lacking_entity()
         have_wab = worker and agv and box
         have_w = worker
@@ -233,7 +233,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             task_mask[6] = 1
         if have_w and self.cutting_machine_state == 1 and 'cutting_cube' not in self.task_manager.task_in_dic.keys(): #cuttting cube
             task_mask[7] = 1
-        if have_ab and (self.materials.produce_product_req() == True) and 'collect_product' not in self.task_manager.task_in_dic.keys():
+        #when material 处于准备好的状态，要么边线库有，要么正在被加工。如果没有准备好，那么不可能执行collect product的任务
+        #English: only when material is ready for propcessing (at depot, loaded, processing, processed), the collect product mission is activate 
+        if self.materials.have_collecting_product_req() and have_ab and (self.materials.produce_product_req() == True) and 'collect_product' not in self.task_manager.task_in_dic.keys():
             task_mask[8] = 1
         if have_w and 'collect_product' in self.task_manager.task_in_dic.keys() and self.task_manager.boxs.product_collecting_idx >=0 and \
                 len(self.task_manager.boxs.product_idx_list[self.task_manager.boxs.product_collecting_idx])>0 and \

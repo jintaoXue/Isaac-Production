@@ -35,17 +35,17 @@ class Fatigue(object):
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         
-        self.phy_free_state_dic = {"free", "waiting_box"}
-        self.psy_free_state_dic = {"free", "waiting_box"}
+        self.phy_free_state_dic = {"free", "waiting_box", "approaching"}
+        self.psy_free_state_dic = {"free", "waiting_box", "approaching"}
         #coefficient dic: combine all the subtask and state
-        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": -0.001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
-                        'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
+        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
+                        'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.15, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
-        self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": 0.0001, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.2, 
-                        'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.2, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
+        self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
+                        'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.15, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
-        self.phy_recovery_ce_dic = {"human_type_0": 0.05}
-        self.psy_recovery_ce_dic = {"human_type_0": 0.1}
+        self.phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
+        self.psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
         scale_phy = 0.1
         scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
@@ -60,8 +60,8 @@ class Fatigue(object):
         
         # self.device = cuda_device
         self.idx = human_idx
-        self.phy_recovery_coefficient = self.phy_recovery_ce_dic[human_type]
-        self.psy_recovery_coefficient = self.psy_recovery_ce_dic[human_type]
+        # self.phy_recovery_coefficient = self.phy_recovery_ce_dic[human_type]
+        # self.psy_recovery_coefficient = self.psy_recovery_ce_dic[human_type]
         self.update_predict_dic()
         self.phy_fatigue = None
         self.psy_fatigue = None
@@ -71,7 +71,6 @@ class Fatigue(object):
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None 
-        
 
         return
     
@@ -140,13 +139,10 @@ class Fatigue(object):
         # forgetting-fatigue-recovery exponential model
         # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
         if state_type in self.phy_free_state_dic:
-            F_0 = F_0*math.exp(-self.phy_recovery_coefficient*step_time)
+            F_0 = F_0*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
         else:
-            if state_type == "approaching":
-                _lambda = -self.phy_fatigue_ce_dic[state_type]
-            else:
-                assert subtask in self.phy_fatigue_ce_dic.keys()
-                _lambda = -self.phy_fatigue_ce_dic[subtask]
+            assert subtask in self.phy_fatigue_ce_dic.keys()
+            _lambda = -self.phy_fatigue_ce_dic[subtask]
             F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
         return F_0
     
@@ -154,13 +150,10 @@ class Fatigue(object):
         # forgetting-fatigue-recovery exponential model
         # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
         if state_type in self.psy_free_state_dic:
-            F_0 = F_0*math.exp(-self.psy_recovery_coefficient*step_time)
+            F_0 = F_0*math.exp(-self.psy_recovery_ce_dic[state_type]*step_time)
         else:
-            if state_type == "approaching":
-                _lambda = -self.psy_fatigue_ce_dic[state_type]
-            else:
-                assert subtask in self.psy_fatigue_ce_dic.keys()
-                _lambda = -self.psy_fatigue_ce_dic[subtask]
+            assert subtask in self.psy_fatigue_ce_dic.keys()
+            _lambda = -self.psy_fatigue_ce_dic[subtask]
             F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
         return F_0
     

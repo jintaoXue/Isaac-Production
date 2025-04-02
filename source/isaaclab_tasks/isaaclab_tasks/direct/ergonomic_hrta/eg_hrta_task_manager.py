@@ -238,6 +238,14 @@ class Materials(object):
             return True
         except: 
             return False
+    
+    def have_collecting_product_req(self):
+        #only when material is ready for propcessing (at depot, loaded, processing, processed), the collect product mission is activate
+        will_have_product = any(10 <= x <= 13 for x in self.cube_states)
+        prepared_hoops = any(2 <= x <= 5 for x in self.hoop_states)
+        prepared_bending_tube = any(2 <= x <= 5 for x in self.bending_tube_states)
+        ## upper tube is automatically prepared
+        return will_have_product or (prepared_hoops and prepared_bending_tube)
 
     def find_next_raw_cube_index(self):
         # index 

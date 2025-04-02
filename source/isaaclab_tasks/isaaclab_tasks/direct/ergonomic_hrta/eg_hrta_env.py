@@ -729,6 +729,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.station_state_outer_middle = 2
                     self.materials.pick_up_place_cube_index = -1
             elif self.gripper_inner_task == 6: #place_product_from_inner
+                self.materials.cube_states[self.materials.inner_cube_processing_index] = 13
                 placing_material = self.materials.product_list[self.materials.inner_cube_processing_index]
                 orientations = torch.tensor([[ 1, 0,0,0.0]], device=self.cuda_device)
                 translate_tensor = torch.tensor([[0.,  0, -2.]], device=self.cuda_device)
@@ -736,6 +737,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 next_pos_inner, delta_pos, move_done = self.get_gripper_moving_pose(gripper_pose_inner[0], target_pose[0], 'place')
                 if move_done:
                     "a product is produced and placed on the robot, then do resetting"
+                    self.materials.cube_states[self.materials.inner_cube_processing_index] = -1
                     self.gripper_inner_state = 0
                     self.materials.product_states[self.materials.inner_cube_processing_index] = 1 # product is collected
                     collecting_box_idx = self.task_manager.task_in_dic['collect_product']['box_idx'] 
@@ -744,6 +746,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.boxs.counts[collecting_box_idx] += 1
                     self.materials.inner_cube_processing_index = -1
             elif self.gripper_inner_task == 7: #place_product_from_outer
+                self.materials.cube_states[self.materials.outer_cube_processing_index] = 13
                 placing_material = self.materials.product_list[self.materials.outer_cube_processing_index]
                 orientations = torch.tensor([[1,0,0,0.0]], device=self.cuda_device)
                 translate_tensor = torch.tensor([[0, 0., -2.]], device=self.cuda_device)
@@ -751,6 +754,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 next_pos_inner, delta_pos, move_done = self.get_gripper_moving_pose(gripper_pose_inner[0], target_pose[0], 'place')
                 if move_done:
                     "a product is produced and placed on the robot, then do resetting"
+                    self.materials.cube_states[self.materials.outer_cube_processing_index] = -1
                     self.gripper_inner_state = 0
                     self.materials.product_states[self.materials.outer_cube_processing_index] = 1 # product is collected
                     collecting_box_idx = self.task_manager.task_in_dic['collect_product']['box_idx'] 
@@ -1216,12 +1220,14 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             #start welding left
             target = welding_left_pose
             self.welder_inner_oper_time += 1
+            self.materials.cube_states[self.materials.inner_cube_processing_index] = 9
             if self.welder_inner_oper_time > self.welding_once_time:
                 #task finished
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 3 
                 self.station_state_inner_left = 5 #welded
                 self.station_state_inner_middle = 5 #welded_left
+                self.materials.hoop_states[self.materials.inner_hoop_processing_index] = -1
                 # self.station_state_inner_right = 3 #moving right
                 # cube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/cube_" + "{}".format(self.materials.inner_cube_processing_index))
                 # hoop_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/hoop_" + "{}".format(self.materials.inner_hoop_processing_index))
@@ -1238,6 +1244,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             if torch.abs(welder_inner_pose[0] - target) <= THRESHOLD:
                 self.welder_inner_state = 5
         elif self.welder_inner_state == 5: #welding_right
+            self.materials.cube_states[self.materials.inner_cube_processing_index] = 10
             target = welding_right_pose
             self.welder_inner_oper_time += 1
             if self.welder_inner_oper_time > self.welding_once_time:
@@ -1277,6 +1284,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 7 
                 self.station_state_inner_middle = 7 #welded_right
+                self.materials.bending_tube_states[self.materials.inner_bending_tube_processing_index] = -1
                 # self.station_state_inner_right = -1 #welded_right
                 # cube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/cube_" + "{}".format(self.materials.inner_cube_processing_index))
                 # bending_tube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/bending_tube_" + "{}".format(self.materials.inner_bending_tube_processing_index))
@@ -1288,6 +1296,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             if torch.abs(welder_inner_pose[0] - target) <= THRESHOLD and self.welder_inner_task == 3:
                 self.welder_inner_state = 8
         elif self.welder_inner_state == 8: #welding_upper
+            self.materials.cube_states[self.materials.inner_cube_processing_index] = 11
             pick_up_upper_tube_index = self.materials.inner_upper_tube_processing_index
             assert pick_up_upper_tube_index >= 0
             bending_tube_index = self.materials.inner_bending_tube_processing_index
@@ -1296,6 +1305,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.welder_inner_oper_time += 1
             if self.welder_inner_oper_time > self.welding_once_time:
                 #task finished
+                self.materials.cube_states[self.materials.inner_cube_processing_index] = 12
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 9
                 self.station_state_inner_middle = 9 #welded_upper
@@ -1619,6 +1629,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_state = 2
         elif self.welder_outer_state == 2: #welding_left
             #start welding left
+            self.materials.cube_states[self.materials.outer_cube_processing_index] = 9
             target = welding_left_pose
             self.welder_outer_oper_time += 1
             if self.welder_outer_oper_time > self.welding_once_time:
@@ -1627,6 +1638,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_state = 3 
                 self.station_state_outer_left = 5 #welded
                 self.station_state_outer_middle = 5 #welded_left
+                self.materials.hoop_states[self.materials.outer_hoop_processing_index] = -1
                 # self.station_state_outer_right = 3 #moving right
         elif self.welder_outer_state == 3: #welded_left
             target = welding_left_pose
@@ -1638,6 +1650,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             if torch.abs(welder_outer_pose[0] - target) <= THRESHOLD:
                 self.welder_outer_state = 5
         elif self.welder_outer_state == 5: #welding_right
+            self.materials.cube_states[self.materials.outer_cube_processing_index] = 10
             target = welding_right_pose
             self.welder_outer_oper_time += 1
             if self.welder_outer_oper_time > self.welding_once_time:
@@ -1654,11 +1667,13 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 7 
                 self.station_state_outer_middle = 7 #welded_right
+                self.materials.bending_tube_states[self.materials.outer_bending_tube_processing_index] = -1
         elif self.welder_outer_state == 7: #welded_right
             target= welding_middle_pose
             if torch.abs(welder_outer_pose[0] - target) <= THRESHOLD and self.welder_outer_task == 3:
                 self.welder_outer_state = 8
         elif self.welder_outer_state == 8: #welding_upper
+            self.materials.cube_states[self.materials.outer_cube_processing_index] = 11
             pick_up_upper_tube_index = self.materials.outer_upper_tube_processing_index
             assert pick_up_upper_tube_index >= 0 
             bending_tube_index = self.materials.outer_bending_tube_processing_index
@@ -1667,6 +1682,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.welder_outer_oper_time += 1
             if self.welder_outer_oper_time > self.welding_once_time:
                 #task finished
+                self.materials.cube_states[self.materials.outer_cube_processing_index] = 12
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 9
                 self.station_state_outer_middle = 9 #welded_upper
