@@ -1815,53 +1815,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         other_token_mask = torch.ones([16], dtype=bool, device = self.cuda_device)
         obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(3), agv_mask.repeat(3), box_mask.repeat(3)])
 
-        # worker_0_position = self.task_manager.characters.list[0].get_world_poses()
-        # wp_0 = world_pose_to_navigation_pose(worker_0_position)
-        # wp_0_str = self.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=wp_0, in_dis=1000.)
-        # wp_0_num = self.task_manager.characters.poses_dic2num[wp_0_str]
-        # obs_dict['worker_pose_0'] = torch.tensor([wp_0_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['worker_state_0'] = torch.tensor([self.task_manager.characters.states[0]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['worker_task_0'] = torch.tensor([self.task_manager.characters.tasks[0]], dtype=torch.int32, device = self.cuda_device)
-        # worker_1_position = self.task_manager.characters.list[1].get_world_poses()
-        # wp_1 = world_pose_to_navigation_pose(worker_1_position)
-        # wp_1_str = self.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=wp_1, in_dis=1000.)
-        # wp_1_num = self.task_manager.characters.poses_dic2num[wp_1_str]
-        # obs_dict['worker_pose_1'] = torch.tensor([wp_1_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['worker_state_1'] = torch.tensor([self.task_manager.characters.states[1]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['worker_task_1'] = torch.tensor([self.task_manager.characters.tasks[1]], dtype=torch.int32, device = self.cuda_device)
-
-        # ####9.agv state
-        # agv_0_position = self.task_manager.agvs.list[0].get_world_poses()
-        # agvp_0 = world_pose_to_navigation_pose(agv_0_position)
-        # agvp_str_0 = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=agvp_0, in_dis=1000.)
-        # agvp_0_num = self.task_manager.agvs.poses_dic2num[agvp_str_0]
-        # obs_dict['agv_pose_0'] = torch.tensor([agvp_0_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['agv_state_0'] = torch.tensor([self.task_manager.agvs.states[0]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['agv_task_0'] = torch.tensor([self.task_manager.agvs.tasks[0]], dtype=torch.int32, device = self.cuda_device)
-
-        # agv_1_position = self.task_manager.agvs.list[1].get_world_poses()
-        # agvp_1 = world_pose_to_navigation_pose(agv_1_position)
-        # agvp_str_1 = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=agvp_1, in_dis=1000.)
-        # agvp_1_num = self.task_manager.agvs.poses_dic2num[agvp_str_1]
-        # obs_dict['agv_pose_1'] = torch.tensor([agvp_1_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['agv_state_1'] = torch.tensor([self.task_manager.agvs.states[1]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['agv_task_1'] = torch.tensor([self.task_manager.agvs.tasks[1]], dtype=torch.int32, device = self.cuda_device)
-        # ####10.box state
-        # box_0_position = self.task_manager.boxs.list[0].get_world_poses()
-        # boxp_0 = world_pose_to_navigation_pose(box_0_position)
-        # boxp_str_0 = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=boxp_0, in_dis=1000.)
-        # boxp_0_num = self.task_manager.agvs.poses_dic2num[boxp_str_0]
-        # obs_dict['box_pose_0'] = torch.tensor([boxp_0_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['box_state_0'] = torch.tensor([self.task_manager.boxs.states[0]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['box_task_0'] = torch.tensor([self.task_manager.boxs.tasks[0]], dtype=torch.int32, device = self.cuda_device)
-
-        # box_1_position = self.task_manager.boxs.list[1].get_world_poses()
-        # boxp_1 = world_pose_to_navigation_pose(box_1_position)
-        # boxp_str_1 = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=boxp_1, in_dis=1000.)
-        # boxp_1_num = self.task_manager.agvs.poses_dic2num[boxp_str_1]
-        # obs_dict['box_pose_1'] = torch.tensor([boxp_1_num], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['box_state_1'] = torch.tensor([self.task_manager.boxs.states[1]], dtype=torch.int32, device = self.cuda_device)
-        # obs_dict['box_task_1'] = torch.tensor([self.task_manager.boxs.tasks[1]], dtype=torch.int32, device = self.cuda_device)
+        '''fatigue info'''
 
         return obs_dict
     

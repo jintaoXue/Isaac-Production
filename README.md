@@ -53,3 +53,11 @@ test setting的num robot character 不一定对
 1.rule-based只用fatigue model的predcit 函数给到predict的结果，的到worker的task mask分别用于high-level decison 和low-level decision
 2.基于cost function的，这个cost function 会收集所有同质/异质worker的生产状态，或者基于/结合粒子滤波，cost function的输出呢还是high-level task space，不过会有多个worker
 3.在做决策的时候用综合的mask，mask掉不安全的输出
+
+### 网络设计
+
+### 下一步要改的细节
+    1.如果疲劳程度超过1, 工人不管在做什么subtask任务，都会变成休息（会使问题，难度更大
+    2.cost function预测的具体是什么，是完成某一个task的fatigue增加量
+    3.cost function的loss函数
+    4.cost function的数据收集工作（可以先用仿真器训练一个）
