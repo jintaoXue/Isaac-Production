@@ -247,6 +247,7 @@ class Characters(object):
         for i in range(0,len(self.character_list)):
             self.fatigue_list.append(Fatigue(i, 'human_type_0'))
         self.fatigue_task_masks = None
+
         return
     
     def reset(self, acti_num_charc = None, random = None):

@@ -12,7 +12,7 @@ from rl_games.common import vecenv
 from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
-from .memory import ReplayMemory
+from .memory import ReplayMemory, CostfuncMemory
 from .model import DQN, DQNTrans
 from tqdm import trange
 import time
@@ -53,6 +53,7 @@ class SafeRainbowAgent():
         #########buffer
         self.priority_weight_increase = (1 - config['priority_weight']) / (self.max_steps - self.num_warmup_steps)
         self.replay_buffer = ReplayMemory(config, config["replay_buffer_size"])
+        self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
         ####### net
         # self.online_net = DQN(config, self.actions_num).to(device=self._device)
         self.online_net = DQNTrans(config, self.actions_num).to(device=self._device)

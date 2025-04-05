@@ -61,4 +61,6 @@ test setting的num robot character 不一定对
     2.cost function预测的具体是什么，是完成某一个task的fatigue增加量
     3.cost function的loss函数
     4.cost function的数据收集工作（可以先用仿真器训练一个）
+        task_clearing 是收集结束状态， assign_task 是开始状态
     5. 如果是异质的工人，怎么进行训练
+    6. 

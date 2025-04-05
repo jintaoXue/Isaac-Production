@@ -19,6 +19,11 @@ blank_state = {'action_mask': torch.tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 
 Transition_dtype = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])
 blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 
+#fatigue
+costfunc_transition_dtype = np.dtype([('fatigue', dict), ('state', dict)], ('action', np.int32))
+fatigue_blank_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.])}
+costfunc_blank_trans = (fatigue_blank_state, blank_state, torch.zeros((1), dtype=torch.int64))
+
 
 
 # Segment tree data structure where parent node values are sum/max of children node values
@@ -191,3 +196,30 @@ class ReplayMemory():
     return state
 
   next = __next__  # Alias __next__ for Python 2 compatibility
+
+class CostfuncMemory():
+  def __init__(self, size):
+    self.index = 0
+    self.size = size
+    self.full = False  # Used to track actual capacity
+    self.data = np.array([costfunc_blank_trans] * size, dtype=costfunc_transition_dtype)  # Build structured array
+
+  def append(self, data):
+    self.data[self.index] = data  # Store data in underlying data structure
+    self.index = (self.index + 1) % self.size  # Update index
+    self.full = self.full or self.index == 0  # Save when capacity reached
+
+  # Searches for the location of values in sum tree
+  def sample(self, batch_size):
+    total_num = self.total_num()
+    assert total_num >= batch_size, "not enough data"
+    segment_length = total_num / batch_size
+    samples = np.random.uniform(0.0, segment_length, [batch_size])
+    return self.data[samples]
+
+  # Returns data given a data index
+  def get(self, data_index):
+    return self.data[data_index % self.size]
+
+  def total_num(self):
+    return self.index if not self.full else self.size
