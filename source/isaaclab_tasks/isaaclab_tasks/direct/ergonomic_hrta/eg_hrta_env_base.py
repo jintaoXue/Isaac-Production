@@ -42,7 +42,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
         self.reward_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.sim.device)
         self.env_rule_based_exploration = cfg.train_cfg['params']['config']['env_rule_based_exploration']
-
+        
+    def _setup_scene(self):
         assert self.scene.num_envs == 1, "Temporary only support num_envs == 1"
         assert self.cfg._valid_train_cfg()
         self.cuda_device = torch.device(self.cfg.cuda_device_str)
