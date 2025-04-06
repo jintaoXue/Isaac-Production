@@ -55,6 +55,7 @@ class SafeRainbowAgent():
         self.replay_buffer = ReplayMemory(config, config["replay_buffer_size"])
         self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
         ####### net
+        self.only_train_cost_net = self.config['only_train_cost']
         # self.online_net = DQN(config, self.actions_num).to(device=self._device)
         self.online_net = DQNTrans(config, self.actions_num).to(device=self._device)
         if self._test and not self.env_rule_based_exploration:

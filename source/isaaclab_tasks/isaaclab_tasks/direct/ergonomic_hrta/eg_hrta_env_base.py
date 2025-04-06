@@ -41,8 +41,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self.reward_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.sim.device)
-
-    def _setup_scene(self):
+        self.env_rule_based_exploration = cfg.train_cfg['params']['config']['env_rule_based_exploration']
 
         assert self.scene.num_envs == 1, "Temporary only support num_envs == 1"
         assert self.cfg._valid_train_cfg()

@@ -44,7 +44,7 @@ params:
       scale_value: 0.1
     batch_size: 512
     test: False
-    env_rule_based_exploration: False
+    env_rule_based_exploration: True
     test_all_settings: False
 
     max_num_worker: 3
@@ -55,7 +55,7 @@ params:
       gantt_chart: False
     test_times: 10
     test_env_max_length: 2500
-
+    only_train_cost: True
     wandb_activate: False
     # wandb_group: ''
     # wandb_name: ''
