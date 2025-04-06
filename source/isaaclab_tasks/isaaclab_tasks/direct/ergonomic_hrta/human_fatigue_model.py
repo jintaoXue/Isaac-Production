@@ -339,16 +339,10 @@ class Characters(object):
                     if self.tasks[_idx] == 0 and xyz[0][0] < -22:
                         self.tasks[_idx] = 9
                         return _idx
-                    else:
-                        self.tasks[idx] = 9
-                        return idx
-            # if self.tasks[1] == 0: #only assign worker 1 to do the cutting cube task 
-            #     self.tasks[1] = 9
-            #     idx = 1
-            # else:
-            #     return -1
+                self.tasks[idx] = 9
         elif high_level_task == 'placing_product':
             self.tasks[idx] = 10
+        
         return idx
     
     def find_available_charac(self, mask : list, idx=0):

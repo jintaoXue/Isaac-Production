@@ -20,9 +20,13 @@ Transition_dtype = np.dtype([('timestep', np.int32), ('state', dict), ('action',
 blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 
 #fatigue
-costfunc_transition_dtype = np.dtype([('fatigue', dict), ('state', dict)], ('action', np.int32))
-fatigue_blank_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.])}
-costfunc_blank_trans = (fatigue_blank_state, blank_state, torch.zeros((1), dtype=torch.int64))
+costfunc_transition_dtype = np.dtype((dict))
+fatigue_blank_state = blank_state
+additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
+ 'charac_idx':torch.tensor([0]), 'action': torch.tensor([0])}
+for key, value in additional_state.items():
+  fatigue_blank_state[key] = value
+costfunc_blank_trans = fatigue_blank_state
 
 
 
@@ -213,8 +217,8 @@ class CostfuncMemory():
   def sample(self, batch_size):
     total_num = self.total_num()
     assert total_num >= batch_size, "not enough data"
-    segment_length = total_num / batch_size
-    samples = np.random.uniform(0.0, segment_length, [batch_size])
+    # segment_length = total_num / batch_size
+    samples = np.random.choice(total_num, batch_size, replace=False)
     return self.data[samples]
 
   # Returns data given a data index

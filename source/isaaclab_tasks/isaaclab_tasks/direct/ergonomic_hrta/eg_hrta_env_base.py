@@ -32,6 +32,7 @@ from isaacsim.core.api.world import World
 
 from .eg_hrta_task_manager import Materials, TaskManager
 from .eg_hrta_map_route import MapRoute
+from abc import abstractmethod
 
 class HRTaskAllocEnvBase(DirectRLEnv):
     cfg: HRTaskAllocEnvCfg
@@ -127,6 +128,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.materials.reset()
         self.reset_machine_state()
         self.update_task_mask()
+        self.task_manager.obs = self.get_observations()
         self.scene.write_data_to_sim()
         self.sim.forward()
         if not self._test:
@@ -212,6 +214,13 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # self.reward_test_list.append(self.reward_buf[0].clone())
         return
     
+    def get_fatigue_data(self):
+        if len(self.task_manager.fatigue_data_list)>0:
+            self.extras['fatigue_data'] = self.task_manager.fatigue_data_list
+            self.task_manager.fatigue_data_list = []
+        elif 'fatigue_data' in self.extras:
+            del self.extras['fatigue_data']
+
     def get_task_mask(self):
 
         task_mask = torch.zeros(len(self.task_manager.task_dic))
@@ -531,5 +540,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
         with open(gant_path, 'wb') as f:
             pickle.dump(dic, f)
+        return
+    
+    @abstractmethod
+    def get_observations(self) -> dict:
         return
     

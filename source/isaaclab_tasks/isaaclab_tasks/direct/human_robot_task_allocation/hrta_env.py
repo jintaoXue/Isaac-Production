@@ -1086,7 +1086,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif self.station_state_inner_middle == 4: #welding left
             #moved left and wating for the welder finished
             # target_inner_middle_A, target_inner_middle_B = welding_left_pose_A, welding_left_pose_B
-            a = 1
+            pass
         elif self.station_state_inner_middle == 5: #welded_left
             #finished welding left and waiting for the starion right is prepared well
             # target_inner_middle_A, target_inner_middle_B = welding_left_pose_A, welding_left_pose_B
@@ -1096,7 +1096,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_inner_task = 2
         elif self.station_state_inner_middle == 6: #welding_right
             #welding right waiting for the welder finish
-            a = 1
+            pass
         elif self.station_state_inner_middle == 7: #welded_right
             "post_outer_gripper_step to place the upper tube on cube"
             #change the bending tube pose 

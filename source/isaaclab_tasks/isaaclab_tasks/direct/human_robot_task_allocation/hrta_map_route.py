@@ -254,7 +254,6 @@ class MapRoute(object):
             x = x1 + x2[1:]
             y = y1 + y2[1:]
             yaw = yaw1 + yaw2[1:]
-            a = 1
         else:
             start_t = time.time()
             x, y, yaw = hybridAStar.run(s, g, self.mapParameters, plt)

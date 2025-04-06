@@ -7,6 +7,8 @@ import torch
 from ...utils import quaternion
 from .human_fatigue_model import Characters
 from .eg_hrta_env_cfg import HRTaskAllocEnvCfg
+import copy
+
 def random_zero_index(data):
 
     if data.count(0)>=1:
@@ -34,9 +36,11 @@ class TaskManager(object):
            self._eval_times = train_cfg['test_times']
            self.acti_num_agv = train_cfg['test_one']['acti_agv']
            self.acti_num_charc = train_cfg['test_one']['acti_charc']
+        self.obs = None
         return
     
     def reset(self, acti_num_charc, acti_num_agv):
+
         assert not ((acti_num_charc is None) ^ (acti_num_agv is None)), "warning"
         if self._test:
             if acti_num_charc is None:
@@ -53,12 +57,25 @@ class TaskManager(object):
         self.ini_box_pose = self.boxs.reset(acti_num_agv)
         self.task_in_set = set()
         self.task_in_dic = {}
+        #fatigue datetype: 'task': {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'state': {}}
+        self.fatigue_data = {}
+        self.fatigue_data_list = []
         # self.task_mask = torch.zeros(len(self.task_dic), device=self.cuda_device)
         # self.task_mask[0] = 1
 
     def assign_task(self, task):
         
         charac_idx = self.characters.assign_task(task, random = False)
+        if task in self.characters.task_range:
+            # assert charac_idx >= 0, "charac idx should >= 0"
+            if charac_idx < 0:
+                a = 1
+            self.fatigue_data[task] = copy.deepcopy(self.obs) 
+            self.fatigue_data[task]['phy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].phy_fatigue, dtype=torch.float32) 
+            self.fatigue_data[task]['psy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].psy_fatigue, dtype=torch.float32)
+            self.fatigue_data[task]['charac_idx'] = torch.tensor(charac_idx, dtype=torch.int32) 
+            self.fatigue_data[task]['task_str'] = task
+            self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32) 
         box_idx = self.boxs.assign_task(task, random = False)
         if box_idx >= 0:
             box_xyz, _ = self.boxs.list[box_idx].get_world_poses()
@@ -72,12 +89,19 @@ class TaskManager(object):
 
         self.task_in_set.add(task)
         self.task_in_dic[task] = {'charac_idx': charac_idx, 'agv_idx': agv_idx, 'box_idx': box_idx, 'lacking_resource': lacking_resource}
-
+        
         return True
 
     def task_clearing(self, task):
 
         charac_idx, agv_idx, box_idx = self.task_in_dic[task]['charac_idx'], self.task_in_dic[task]['agv_idx'], self.task_in_dic[task]['box_idx']
+        if task in self.characters.task_range:
+            assert charac_idx >=0, "charac idx should >= 0"
+            self.fatigue_data[task]['next_phy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].phy_fatigue, dtype=torch.float32) 
+            self.fatigue_data[task]['next_psy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].psy_fatigue, dtype=torch.float32)
+            del self.fatigue_data[task]['task_str']
+            self.fatigue_data_list.append(self.fatigue_data[task])
+            del self.fatigue_data[task]
         self.characters.reset_idx(charac_idx)
         self.agvs.reset_idx(agv_idx)
         self.boxs.reset_idx(box_idx)

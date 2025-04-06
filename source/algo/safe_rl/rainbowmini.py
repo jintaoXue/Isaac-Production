@@ -458,16 +458,14 @@ class SafeRainbowAgent():
                 self.game_rewards.update(self.current_rewards[done_indices])
                 self.game_lengths.update(self.current_lengths[done_indices])
 
-                # no_timeouts = self.current_lengths <= self.horizon_length
-                # dones = dones * no_timeouts
                 not_dones = 1.0 - dones.float()
-                obs_cpu = {}
-                for key, value in obs.items():
-                    obs_cpu[key] = value.cpu()
+                # obs_cpu = {}
+                # for key, value in obs.items():
+                #     obs_cpu[key] = value.cpu()
                 action_cpu = action.squeeze().cpu()
                 rewards_cpu = rewards.squeeze().cpu()
                 dones_cpu = dones.squeeze().cpu()
-                self.replay_buffer.append(obs_cpu, action_cpu, rewards_cpu+reward_extra, dones_cpu)
+                self.replay_buffer.append(obs, action_cpu, rewards_cpu+reward_extra, dones_cpu)
 
                 if dones[0]:
                     self.episode_num += 1
@@ -517,7 +515,15 @@ class SafeRainbowAgent():
                 # self.replay_buffer.append(obs, action, torch.unsqueeze(rewards, 1), next_obs_processed, torch.unsqueeze(dones, 1))
 
                 # self.obs = next_obs.copy()
-
+            # obs_copy = {}
+            # infos_copy = {}
+            # for key, value in obs.items():
+            #     obs_copy[key] = value.copy()
+            # for key, value in infos.items():
+            #     infos_copy[key] = value.copy()
+            # action_cpu = action.squeeze().cpu()
+            # rewards_cpu = rewards.squeeze().cpu()
+            # dones_cpu = dones.squeeze().cpu()
                 update_time = 0
                 if not random_exploration:
                     self.replay_buffer.priority_weight = min(self.replay_buffer.priority_weight + self.priority_weight_increase, 1)
@@ -558,22 +564,20 @@ class SafeRainbowAgent():
                     action = None
                 else: 
                     action = self.act_random(obs)
-                    # action_mask = obs['action_mask']
-                    # indexs = action_mask.nonzero()
-                    # index = torch.randint(low=0, high = len(indexs), size = (1,), device=self._device) 
-                    # action = indexs[index]
             else:
                 with torch.no_grad():
                     action = self.act(obs).unsqueeze(0)
-                    # action = self.act_e_greedy(obs).unsqueeze(0)
-            #debug TODO
-            # action = None
 
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)
-            # if self.reward_clip > 0:
-            #     reward = max(min(reward, self.reward_clip), -self.reward_clip)  # Clip rewards
-            #TODO only support num_agents == 1
+            if 'fatigue_data' in infos:
+                fatigue_data = infos['fatigue_data']
+                for _data in fatigue_data:
+                    self.costfunc_buffer.append(_data)
+            #debug
+            # if self.costfunc_buffer.total_num() == 3:
+            #     batch_data = self.costfunc_buffer.sample(3)
+            #     data.stack_from_array(batch_data, device=self._device)
             assert self.num_agents == 1, ('only support num_agents == 1')
             self.temp_current_lengths += 1
 
@@ -747,76 +751,4 @@ class SafeRainbowAgent():
                     if self.use_wandb:
                         wandb.finish()
                     break
-                            # if self.step_num >= self.num_warmup_steps and loss is not None:
-                            #     assert type(loss.mean().item()) == float, "not approprate loss"
-                            #     wandb.log({
-                            #             # 'Train/buffer_size': self.replay_buffer.transitions.index,
-                            #             "Train/Loss": loss.mean().item(),
-                            #             # "Train/Loss": loss.mean().cpu().detach().numpy().item(),
-                            #         })                  
-
-                        # self.writer.add_scalar('performance/step_inference_rl_update_fps', fps_total, self.step_num)
-                        # self.writer.add_scalar('performance/step_inference_fps', fps_step_inference, self.step_num)
-                        # self.writer.add_scalar('performance/step_fps', fps_step, self.step_num)
-                        # self.writer.add_scalar('performance/rl_update_time', update_time, self.step_num)
-                        # self.writer.add_scalar('performance/step_inference_time', play_time, self.step_num)
-                        # self.writer.add_scalar('performance/step_time', step_time, self.step_num)
-
-                        # if self.epoch_num >= self.num_warmup_steps and loss is not None:
-                            # self.writer.add_scalar('losses/loss', torch_ext.mean_list(loss).item(), self.step_num)
-
-                        # self.writer.add_scalar('info/epochs', self.epoch_num, self.step_num)
-
-                        # if self.game_rewards.current_size > 0:
-                        #     mean_rewards = self.game_rewards.get_mean()
-                        #     # mean_lengths = self.game_lengths.get_mean()
-
-                        #     # self.writer.add_scalar('rewards/step', mean_rewards, self.step_num)
-                        #     # self.writer.add_scalar('rewards/time', mean_rewards, total_time)
-                        #     # self.writer.add_scalar('episode_lengths/step', mean_lengths, self.step_num)
-                        #     # self.writer.add_scalar('episode_lengths/time', mean_lengths, total_time)
-                        #     checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_rew_' + str(mean_rewards)
-
-                        #     should_exit = False
-
-                        #     # if self.save_freq > 0:
-                        #     #     if self.epoch_num % self.save_freq == 0:
-                        #     #         self.save(os.path.join(self.nn_dir, checkpoint_name))
-                        #                 # Save model parameters on current device (don't move model between devices)
-
-                        #     if mean_rewards > self.last_mean_rewards and self.episode_num >= self.save_best_after:
-                        #         # print('saving next best rewards: ', mean_rewards)
-                        #         self.last_mean_rewards = mean_rewards
-                        #         # self.save(os.path.join(self.nn_dir, self.config['name']))
-                        #         if self.last_mean_rewards > self.config.get('score_to_win', float('inf')):
-                        #             print('Maximum reward achieved. Network won!')
-                        #             # self.save(os.path.join(self.nn_dir, checkpoint_name))
-                        #             should_exit = True
-
-                        #     if self.epoch_num >= self.max_epochs and self.max_epochs != -1:
-                        #         if self.game_rewards.current_size == 0:
-                        #             print('WARNING: Max epochs reached before any env terminated at least once')
-                        #             mean_rewards = -np.inf
-
-                        #         # self.save(os.path.join(self.nn_dir, 'last_' + self.config['name'] + '_ep_' + str(self.epoch_num) \
-                        #         #     + '_rew_' + str(mean_rewards).replace('[', '_').replace(']', '_')))
-                        #         print('MAX EPOCHS NUM!')
-                        #         should_exit = True
-
-                        #     if self.step_num >= self.max_steps and self.max_steps != -1:
-                        #         if self.game_rewards.current_size == 0:
-                        #             print('WARNING: Max steps reached before any env terminated at least once')
-                        #             mean_rewards = -np.inf
-
-                        #         # self.save(os.path.join(self.nn_dir, 'last_' + self.config['name'] + '_step_' + str(self.step_num) \
-                        #         #     + '_rew_' + str(mean_rewards).replace('[', '_').replace(']', '_')))
-                        #         print('MAX STEPS NUM!')
-                        #         should_exit = True
-
-                        #     update_time = 0
-                        #     #TODO 
-                        #     should_exit = False
-                        #     if should_exit:
-                        #         return self.last_mean_rewards, self.epoch_num
-
 

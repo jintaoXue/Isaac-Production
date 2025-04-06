@@ -53,7 +53,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Step buffers. Refresh tensors. Compute observations and reward. Reset environments."""
         # process actions debug TODO
-        action = None
+        action = None if self.episode_length_buf[0] > 0 else action
         if action is None:
             #generate rule-based action
             action = self.get_rule_based_action()
@@ -96,6 +96,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             else:
                 self.calculate_metrics()
                 obs = self.get_observations()
+                self.task_manager.obs = obs
+                self.get_fatigue_data()
                 break
 
         return obs, self.reward_buf, self.reset_buf, self.extras, action
@@ -1091,7 +1093,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif self.station_state_inner_middle == 4: #welding left
             #moved left and wating for the welder finished
             # target_inner_middle_A, target_inner_middle_B = welding_left_pose_A, welding_left_pose_B
-            a = 1
+            pass
         elif self.station_state_inner_middle == 5: #welded_left
             #finished welding left and waiting for the starion right is prepared well
             # target_inner_middle_A, target_inner_middle_B = welding_left_pose_A, welding_left_pose_B
@@ -1101,7 +1103,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_inner_task = 2
         elif self.station_state_inner_middle == 6: #welding_right
             #welding right waiting for the welder finish
-            a = 1
+            pass
         elif self.station_state_inner_middle == 7: #welded_right
             "post_outer_gripper_step to place the upper tube on cube"
             #change the bending tube pose 
@@ -1507,7 +1509,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif self.station_state_outer_middle == 4: #welding left
             #moved left and wating for the welder finished
             # target_outer_middle_A, target_outer_middle_B = welding_left_pose_A, welding_left_pose_B
-            a = 1
+            pass
         elif self.station_state_outer_middle == 5: #welded_left
             #finished welding left and waiting for the starion right is prepared well
             # target_outer_middle_A, target_outer_middle_B = welding_left_pose_A, welding_left_pose_B
@@ -1517,7 +1519,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_task = 2
         elif self.station_state_outer_middle == 6: #welding_right
             #welding right waiting for the welder finish
-            a = 1
+            pass
         elif self.station_state_outer_middle == 7: #welded_right
             "post_outer_gripper_step to place the upper tube on cube"
             #change the bending tube pose 
@@ -1734,42 +1736,42 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         # obs_dict['tasks_state'] = self.task_manager.task_in_vector
         obs_dict['action_mask'] = self.task_mask
         ####2.hoop
-        obs_dict['state_depot_hoop'] = torch.tensor([self.state_depot_hoop], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['have_raw_hoops'] = torch.tensor([self.materials.hoop_states.count(0) > 0], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['state_depot_hoop'] = torch.tensor([self.state_depot_hoop], dtype=torch.int32)
+        obs_dict['have_raw_hoops'] = torch.tensor([self.materials.hoop_states.count(0) > 0], dtype=torch.int32)
         ####3.bending_tube
-        obs_dict['state_depot_bending_tube'] = torch.tensor([self.state_depot_bending_tube], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['have_raw_bending_tube'] = torch.tensor([self.materials.bending_tube_states.count(0) > 0], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['state_depot_bending_tube'] = torch.tensor([self.state_depot_bending_tube], dtype=torch.int32)
+        obs_dict['have_raw_bending_tube'] = torch.tensor([self.materials.bending_tube_states.count(0) > 0], dtype=torch.int32)
         ####4.station state
-        obs_dict['station_state_inner_left'] = torch.tensor([self.station_state_inner_left+1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['station_state_inner_right'] = torch.tensor([self.station_state_inner_right+1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['station_state_outer_left'] = torch.tensor([self.station_state_outer_left+1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['station_state_outer_right'] = torch.tensor([self.station_state_outer_right+1], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['station_state_inner_left'] = torch.tensor([self.station_state_inner_left+1], dtype=torch.int32)
+        obs_dict['station_state_inner_right'] = torch.tensor([self.station_state_inner_right+1], dtype=torch.int32)
+        obs_dict['station_state_outer_left'] = torch.tensor([self.station_state_outer_left+1], dtype=torch.int32)
+        obs_dict['station_state_outer_right'] = torch.tensor([self.station_state_outer_right+1], dtype=torch.int32)
         ####5.cutting_machine
-        obs_dict['cutting_machine_state'] = torch.tensor([self.cutting_machine_state], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['cutting_machine_state'] = torch.tensor([self.cutting_machine_state], dtype=torch.int32)
         ####6.products
-        obs_dict['is_full_products'] = torch.tensor([self.task_manager.boxs.is_full_products()], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['produce_product_req'] = torch.tensor([self.materials.produce_product_req()], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['is_full_products'] = torch.tensor([self.task_manager.boxs.is_full_products()], dtype=torch.int32)
+        obs_dict['produce_product_req'] = torch.tensor([self.materials.produce_product_req()], dtype=torch.int32)
         ####7.time_step
         # obs_dict['time_step'] = self.episode_length_buf[0].cpu()/(self.dynamic_episode_len - 1)
-        obs_dict['time_step'] = torch.tensor([self.episode_length_buf[0].cpu()/self.max_episode_length], dtype=torch.float32, device = self.cuda_device)
-        obs_dict['max_env_len'] = torch.tensor([self.dynamic_episode_len/self.max_episode_length], dtype=torch.float32, device = self.cuda_device)
+        obs_dict['time_step'] = torch.tensor([self.episode_length_buf[0].cpu()/self.max_episode_length], dtype=torch.float32)
+        obs_dict['max_env_len'] = torch.tensor([self.dynamic_episode_len/self.max_episode_length], dtype=torch.float32)
         # (self.episode_length_buf[0].cpu()/2000).unsqueeze(0)
         
         ####10.progress
-        obs_dict['progress'] = torch.tensor([self.materials.progress()], dtype=torch.float32, device = self.cuda_device)
+        obs_dict['progress'] = torch.tensor([self.materials.progress()], dtype=torch.float32)
         ####11.raw products left, max is 20
-        # obs_dict['raw_products'] = torch.tensor([5], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['raw_products'] = torch.tensor([self.materials.product_states.count(0)], dtype=torch.int32, device = self.cuda_device)
+        # obs_dict['raw_products'] = torch.tensor([5], dtype=torch.int32)
+        obs_dict['raw_products'] = torch.tensor([self.materials.product_states.count(0)], dtype=torch.int32)
 
         ####8.worker agv box state TODO
         max_num = 3
-        agv_mask = torch.zeros([max_num], dtype=bool, device = self.cuda_device)
-        worker_mask = torch.zeros([max_num], dtype=bool, device = self.cuda_device)
-        box_mask = torch.zeros([max_num], dtype=bool, device = self.cuda_device)
+        agv_mask = torch.zeros([max_num], dtype=bool)
+        worker_mask = torch.zeros([max_num], dtype=bool)
+        box_mask = torch.zeros([max_num], dtype=bool)
 
-        obs_dict['worker_pose'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['worker_state'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['worker_task'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['worker_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['worker_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['worker_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
         
         for i in range(max_num):
             if i < self.task_manager.characters.acti_num_charc:
@@ -1782,9 +1784,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['worker_state'][i] = self.task_manager.characters.states[i]
                 obs_dict['worker_task'][i] = self.task_manager.characters.tasks[i]
         
-        obs_dict['agv_pose'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['agv_state'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['agv_task'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['agv_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['agv_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['agv_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
         
         for i in range(max_num):
             if i < self.task_manager.agvs.acti_num_agv:
@@ -1797,9 +1799,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['agv_state'][i] = self.task_manager.agvs.states[i]
                 obs_dict['agv_task'][i] = self.task_manager.agvs.tasks[i]
 
-        obs_dict['box_pose'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['box_state'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
-        obs_dict['box_task'] = torch.zeros([max_num, 1], dtype=torch.int32, device = self.cuda_device)
+        obs_dict['box_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['box_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['box_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
         
         for i in range(max_num):
             if i < self.task_manager.boxs.acti_num_box:
@@ -1812,10 +1814,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['box_state'][i] = self.task_manager.boxs.states[i]
                 obs_dict['box_task'][i] = self.task_manager.boxs.tasks[i]
 
-        other_token_mask = torch.ones([16], dtype=bool, device = self.cuda_device)
+        other_token_mask = torch.ones([16], dtype=bool)
         obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(3), agv_mask.repeat(3), box_mask.repeat(3)])
 
         '''fatigue info'''
+        # human coefficient dict including 10 task， for cost function model
+        # time step, task step
 
         return obs_dict
     
