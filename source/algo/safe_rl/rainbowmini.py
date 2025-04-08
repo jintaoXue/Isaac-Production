@@ -13,7 +13,7 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemory, CostfuncMemory
-from .model import DQN, DQNTrans
+from .model import DQN, DQNTrans, SafeDQNTrans
 from tqdm import trange
 import time
 from omegaconf import DictConfig
@@ -37,6 +37,7 @@ class SafeRainbowAgent():
         self.norm_clip = config.get('norm_clip', 10)
         ###########for agent training
         self.update_frequency = config.get('update_frequency', 200)
+        self.update_frequency_sfl = config.get('update_frequency', 200)
         self.evaluate_interval = config.get('evaluate_interval', 100)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(7e5))
@@ -44,7 +45,7 @@ class SafeRainbowAgent():
         self.batch_size = config.get('batch_size', 512)
         # self.batch_size = config.get('batch_size', 2)
         self.num_warmup_steps = config.get('num_warmup_steps', int(10e4))
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(1024))
+        # self.num_warmup_steps = config.get('num_warmup_steps', int(64))
         self.demonstration_steps = config.get('demonstration_steps', int(0))
         self.num_steps_per_epoch = config.get("num_steps_per_epoch", 100)
         # self.horizon_length = config.get("horizon_length", 1000) # temporary, in future we will use other approach
@@ -56,20 +57,21 @@ class SafeRainbowAgent():
         self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
         ####### net
         self.only_train_cost_net = self.config['only_train_cost']
-        # self.online_net = DQN(config, self.actions_num).to(device=self._device)
-        self.online_net = DQNTrans(config, self.actions_num).to(device=self._device)
+
+        self.online_net = SafeDQNTrans(config, self.actions_num).to(device=self._device)
         if self._test and not self.env_rule_based_exploration:
             weights = torch.load(self.train_dir + self._load_dir + self._load_name, weights_only=True)
             self.online_net.load_state_dict(weights['net'])
         self.online_net.train()
         # self.target_net = DQN(config, self.actions_num).to(device=self._device)
-        self.target_net = DQNTrans(config, self.actions_num).to(device=self._device)
+        self.target_net = SafeDQNTrans(config, self.actions_num).to(device=self._device)
         self.update_target_net()
         self.target_net.train()
         for param in self.target_net.parameters():
             param.requires_grad = False
         #####
-        self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
+        self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
+        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
         if self.use_wandb:
@@ -159,6 +161,7 @@ class SafeRainbowAgent():
     
         # self.min_alpha = torch.tensor(np.log(1)).float().to(self._device)
         self.step_num = 0
+        self.step_num_sfl = 0
         self.epoch_num = 0
         self.episode_num = 0
         self.update_time = 0
@@ -193,8 +196,10 @@ class SafeRainbowAgent():
 
         wandb.define_metric("Train/step")
         wandb.define_metric("Train/buffer_size", step_metric="Train/step")
-        wandb.define_metric("Train/loss", step_metric="Train/step")
-        wandb.define_metric("Train/train_epoch", step_metric="Train/step")
+
+        wandb.define_metric("SuperviseTrain/step")
+        wandb.define_metric("SuperviseTrain/loss", step_metric="SuperviseTrain/step")
+        wandb.define_metric("SuperviseTrain/buffer_size", step_metric="SuperviseTrain/step")
 
         wandb.define_metric("Train/Mrewards", step_metric="Train/step")
         wandb.define_metric("Train/MLen", step_metric="Train/step")
@@ -207,7 +212,11 @@ class SafeRainbowAgent():
         wandb.define_metric("Metrics/EpProgress", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpRetAction", step_metric="Metrics/step_episode")
 
- 
+        wandb.define_metric("Train/step")
+        wandb.define_metric("Train/buffer_size", step_metric="Train/step")
+        wandb.define_metric("Train/loss", step_metric="Train/step")
+        wandb.define_metric("Train/train_epoch", step_metric="Train/step")
+
         total = sum([param.nelement() for param in self.online_net.parameters()])
         # print("Number of parameters: %.2fM" % (total/1e6))
         param_table = wandb.Table(columns=["online_net_size", "num_warm_up_steps"], data=[[total, self.num_warmup_steps]])
@@ -365,6 +374,20 @@ class SafeRainbowAgent():
 
         self.replay_buffer.update_priorities(idxs, loss.detach().cpu().numpy())  # Update priorities of sampled transitions
         return loss
+    
+    def update_cost_func(self):
+        # Sample transitions
+        states = self.costfunc_buffer.sample(self.batch_size)
+        states = data.stack_from_array(states.squeeze(), device=self._device)
+        fatigue_prediction = self.online_net.cost_forward(states)
+        next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1) 
+        loss = self.loss_criterion(fatigue_prediction, next_fatigue).mean()
+        self.online_net.zero_grad()
+        # (weights * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
+        clip_grad_norm_(self.online_net.parameters(), self.norm_clip)  # Clip gradients by L2 norm
+        self.cost_optimiser.step()
+
+        return loss
 
     def cast_obs(self, obs):
         if isinstance(obs, torch.Tensor):
@@ -431,6 +454,8 @@ class SafeRainbowAgent():
         total_time = 0
         step_time = 0.0
         loss = None
+        if self.only_train_cost_net:
+            return step_time, None, total_update_time, total_time, loss
         for j in range(repeat_times):
             for i in range(len(temporary_buffer)):
                 random_exploration = self.step_num < self.num_warmup_steps
@@ -575,6 +600,19 @@ class SafeRainbowAgent():
                 fatigue_data = infos['fatigue_data']
                 for _data in fatigue_data:
                     self.costfunc_buffer.append(_data)
+            self.step_num_sfl += 1
+            if self.step_num_sfl > self.num_warmup_steps:
+                if self.step_num_sfl % self.update_frequency_sfl == 0:
+                    self.set_train()
+                    loss = self.update_cost_func()
+                    if self.use_wandb:
+                        wandb.log({
+                                'SuperviseTrain/step': self.step_num_sfl,
+                                "SuperviseTrain/loss": loss.mean().item(),
+                                "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
+                            })
+                    time_now = datetime.now().strftime("_%d-%H-%M-%S")   
+                    print("time_now:{}".format(time_now) +"cost function sfl traning loss:", loss.mean().item())
             #debug
             # if self.costfunc_buffer.total_num() == 3:
             #     batch_data = self.costfunc_buffer.sample(3)

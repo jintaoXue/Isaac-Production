@@ -27,6 +27,7 @@ parser.add_argument(
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--sigma", type=str, default=None, help="The policy's initial standard deviation.")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--wandb_activate", type=bool, default=False, help="RL Policy training iterations.")
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -82,6 +83,8 @@ from source.isaaclab_tasks.isaaclab_tasks.direct import human_robot_task_allocat
 
 @hydra_task_config(args_cli.task, args_cli.algo)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
+    '''update args'''
+    agent_cfg["params"]["config"]['wandb_activate'] = args_cli.wandb_activate
     """Train with RL-Games agent."""
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs

@@ -60,7 +60,8 @@ test setting的num robot character 不一定对
     1.如果疲劳程度超过1, 工人不管在做什么subtask任务，都会变成休息（会使问题，难度更大
     2.cost function预测的具体是什么，是完成某一个task的fatigue增加量
     3.cost function的loss函数
+        可以分为连续性监督和离散型监督，加上action，一共三个loss函数
     4.cost function的数据收集工作（可以先用仿真器训练一个）
         task_clearing 是收集结束状态， assign_task 是开始状态
     5. 如果是异质的工人，怎么进行训练
-    6. 
+ 6. 

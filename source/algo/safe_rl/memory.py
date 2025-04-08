@@ -11,9 +11,10 @@ blank_state = {'action_mask': torch.tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 
  'time_step': torch.tensor([0.]),'progress': torch.tensor([0.]), 'max_env_len': torch.tensor([0.]),
  'raw_products': torch.tensor([0]),
  'worker_pose':torch.zeros([3,1], dtype=torch.int32), 'worker_state':torch.zeros([3,1], dtype=torch.int32), 'worker_task':torch.zeros([3,1], dtype=torch.int32),
+ 'worker_fatigue_phy': torch.zeros([3,1], dtype=torch.float32), 'worker_fatigue_psy': torch.zeros([3,1], dtype=torch.float32),
  'agv_pose':torch.zeros([3,1], dtype=torch.int32), 'agv_state':torch.zeros([3,1], dtype=torch.int32), 'agv_task':torch.zeros([3,1], dtype=torch.int32),
  'box_pose':torch.zeros([3,1], dtype=torch.int32), 'box_state':torch.zeros([3,1], dtype=torch.int32), 'box_task':torch.zeros([3,1], dtype=torch.int32),
- 'token_mask':torch.zeros([43], dtype=torch.bool)
+ 'token_mask':torch.zeros([43], dtype=torch.bool), 
  }
 
 Transition_dtype = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])

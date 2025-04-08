@@ -71,8 +71,8 @@ class TaskManager(object):
             if charac_idx < 0:
                 a = 1
             self.fatigue_data[task] = copy.deepcopy(self.obs) 
-            self.fatigue_data[task]['phy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].phy_fatigue, dtype=torch.float32) 
-            self.fatigue_data[task]['psy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].psy_fatigue, dtype=torch.float32)
+            self.fatigue_data[task]['phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32)
+            self.fatigue_data[task]['psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
             self.fatigue_data[task]['charac_idx'] = torch.tensor(charac_idx, dtype=torch.int32) 
             self.fatigue_data[task]['task_str'] = task
             self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32) 
@@ -97,8 +97,8 @@ class TaskManager(object):
         charac_idx, agv_idx, box_idx = self.task_in_dic[task]['charac_idx'], self.task_in_dic[task]['agv_idx'], self.task_in_dic[task]['box_idx']
         if task in self.characters.task_range:
             assert charac_idx >=0, "charac idx should >= 0"
-            self.fatigue_data[task]['next_phy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].phy_fatigue, dtype=torch.float32) 
-            self.fatigue_data[task]['next_psy_fatigue'] = torch.tensor(self.characters.fatigue_list[charac_idx].psy_fatigue, dtype=torch.float32)
+            self.fatigue_data[task]['next_phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32) 
+            self.fatigue_data[task]['next_psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
             del self.fatigue_data[task]['task_str']
             self.fatigue_data_list.append(self.fatigue_data[task])
             del self.fatigue_data[task]

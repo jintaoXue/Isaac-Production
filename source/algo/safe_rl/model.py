@@ -52,15 +52,18 @@ class DimState :
     types_worker_state: int = 7
     types_worker_task: int = 11
     types_worker_pose: int = 12
+    worker_fatigue_dim: int = 1
     types_agv_state: int = 4
     types_agv_task: int = 7
     types_agv_pose: int = 10
     types_box_state: int = 3
     types_box_task: int = 4
     
-    #(worker+agv+box)*(state+task+pose)*(max_num=3)
+    #(agv+box)*(state+task+pose)*(max_num_entity=3)
+    #(human)*(state+task+pose+phy fatigue+psy fatigue)*(max_num_entity=3)
     max_num_entity: int = 3
-    src_seq_len: int = 16 + 3*3*max_num_entity
+    src_seq_len: int = 16 + 2*3*max_num_entity + 1*5*max_num_entity
+    cost_seq_len: int = 4
 
 # Factorised NoisyLinear layer with bias
 class NoisyLinear(nn.Module):
@@ -530,9 +533,18 @@ class FeatureEmbeddingBlock(nn.Module):
     self.is_full_products_embedding = nn.Embedding(dimstate.types_is_full_products, hidden_size)
     self.produce_product_req_embedding = nn.Embedding(dimstate.types_produce_product_req, hidden_size)
     self.raw_product_embd= nn.Embedding(dimstate.types_raw_product_embd, hidden_size)
+
     self.worker_state_embd = nn.Embedding(dimstate.types_worker_state, hidden_size)
     self.worker_task_embd = nn.Embedding(dimstate.types_worker_task, hidden_size)
     self.worker_pose_embd = nn.Embedding(dimstate.types_worker_pose, hidden_size)
+    self.worker_phy_fatigue_embd= nn.Sequential(
+        nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
+    self.worker_psy_fatigue_embd= nn.Sequential(
+        nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
     self.agv_state_embd = nn.Embedding(dimstate.types_agv_state, hidden_size)
     self.agv_task_embd = nn.Embedding(dimstate.types_agv_task, hidden_size)
     self.agv_pose_embd = nn.Embedding(dimstate.types_agv_pose, hidden_size)
@@ -562,6 +574,8 @@ class FeatureEmbeddingBlock(nn.Module):
     worker_state = self.worker_state_embd(state['worker_state']).squeeze(2) 
     worker_task = self.worker_task_embd(state['worker_task']).squeeze(2) 
     worker_pose = self.worker_pose_embd(state['worker_pose']).squeeze(2) 
+    worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy']).squeeze(2)
+    worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy']).squeeze(2)
 
     agv_state = self.agv_state_embd(state['agv_state']).squeeze(2) 
     agv_task = self.agv_task_embd(state['agv_task']).squeeze(2) 
@@ -579,7 +593,7 @@ class FeatureEmbeddingBlock(nn.Module):
                           have_raw_bending_tube_embedding, station_state_inner_left_embedding, station_state_inner_right_embedding, 
                           station_state_outer_left_embedding, station_state_outer_right_embedding, cutting_machine_state_embedding, 
                           is_full_products_embedding, produce_product_req_embedding, raw_product_embd, max_env_len_ebd.unsqueeze(1), time_step_embedding.unsqueeze(1), progress.unsqueeze(1), 
-                          worker_state, worker_task, worker_pose, 
+                          worker_state, worker_task, worker_pose, worker_phy_fatigue_embd, worker_psy_fatigue_embd,
                           agv_state, agv_task, agv_pose, 
                           box_state, box_task, box_pose,], dim=1)
     mask = state['token_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
@@ -845,3 +859,197 @@ class DQNTrans(nn.Module):
     for name, module in self.named_children():
       if 'fc' in name:
         module.reset_noise()
+
+################ with cost function net ############################################################################
+################ with cost function net ############################################################################
+################ with cost function net ############################################################################
+################ with cost function net ############################################################################
+
+
+class CostFeatureEmbeddingBlock(nn.Module):
+  def __init__(self, hidden_size, dimstate : DimState):
+    super().__init__()
+    self.dim_state = dimstate
+    self.dtype = torch.float32
+    self.hidden_size = hidden_size
+    self.worker_phy_fatigue_embd= nn.Sequential(
+        nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
+    self.worker_psy_fatigue_embd= nn.Sequential(
+        nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
+    self.action_embedding= nn.Embedding(dimstate.action_mask, hidden_size)
+    self.worker_idx_embedding= nn.Embedding(dimstate.max_num_entity, hidden_size)
+    
+
+  def forward(self, state, **kwargs):
+
+    action_embedding = self.action_embedding(state['action'])
+    worker_idx_embedding = self.worker_idx_embedding(state['charac_idx'])
+    worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['phy_fatigue'])
+    worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['psy_fatigue'])
+
+    ###########################################################################################
+
+    all_embs = torch.cat([worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), action_embedding.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+    return all_embs*math.sqrt(self.hidden_size)
+
+
+class CostTransformer(nn.Module):
+
+    def __init__(self, encoder: Encoder, cost_decoder: Decoder, decoder: Decoder, src_embed: FeatureEmbeddingBlock, cost_tgt_embed: CostFeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
+          src_pos: PositionalEncoding, cost_tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer, cost_projection_layer: ProjectionLayer) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.cost_decoder = cost_decoder
+        self.decoder = decoder
+        self.src_embed = src_embed
+        self.cost_tgt_embed = cost_tgt_embed
+        self.tgt_embed = tgt_embed
+        self.src_pos = src_pos
+        self.cost_tgt_pos = cost_tgt_pos
+        self.projection_layer = projection_layer
+        self.cost_projection_layer = cost_projection_layer
+
+    def encode(self, src, src_mask):
+        # (batch, seq_len, d_model)
+        src = self.src_embed(src)
+        src = self.src_pos(src)
+        return self.encoder(src, src_mask)
+    
+    def decode(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
+        # (batch, seq_len, d_model)
+        tgt = self.tgt_embed(tgt).unsqueeze(1)
+        # tgt = self.tgt_pos(tgt)
+        return self.decoder(tgt, encoder_output, src_mask, tgt_mask)
+    
+    def project(self, x):
+        # (batch, seq_len, vocab_size)
+        return self.projection_layer(x)
+    
+    def forward(self, state):
+        src = self.encode(state, None)
+        tgt = self.decode(src, None, state['action_mask'], None)
+        return self.projection_layer(tgt)
+    
+    def decode_cost(self, encoder_output: torch.Tensor, cost_state: torch.Tensor):
+        cost_tgt = self.cost_tgt_embed(cost_state)
+        cost_tgt = self.cost_tgt_pos(cost_tgt)
+        return self.cost_decoder(cost_tgt, encoder_output, None, None)
+
+
+def build_cost_net(dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=1024) -> CostTransformer:
+    # Create the embedding layers
+    src_embed = FeatureEmbeddingBlock(d_model, dim_state)
+    tgt_embed = nn.Sequential(
+            nn.Linear(dim_state.action_mask, d_model), nn.ReLU(),
+            nn.Linear(d_model, d_model),
+        )
+    cost_tgt_embed = CostFeatureEmbeddingBlock(d_model, dim_state)
+    # Create the positional encoding layers
+    src_pos = PositionalEncoding(d_model, dim_state.src_seq_len, dropout)
+    cost_tgt_pos = PositionalEncoding(d_model, dim_state.cost_seq_len, dropout)
+    
+    # Create the encoder blocks
+    encoder_blocks = []
+    for _ in range(2):
+        encoder_self_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        encoder_block = EncoderBlock(d_model, encoder_self_attention_block, feed_forward_block, dropout)
+        encoder_blocks.append(encoder_block)
+
+    # Create the decoder blocks
+    decoder_blocks = []
+    for _ in range(1):
+        decoder_cross_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        decoder_block = DecoderBlock(d_model, decoder_cross_attention_block, feed_forward_block, dropout)
+        decoder_blocks.append(decoder_block)
+    
+    # Create the cost func decoder blocks
+    costfunc_decoder_blocks = []
+    for _ in range(1):
+        decoder_cross_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        decoder_block = DecoderBlock(d_model, decoder_cross_attention_block, feed_forward_block, dropout)
+        costfunc_decoder_blocks.append(decoder_block)
+    
+    # Create the encoder and decoder
+    encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
+    # decoder = None
+    decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
+    cost_decoder = Decoder(d_model, nn.ModuleList(costfunc_decoder_blocks))
+    
+    # Create the projection layer
+    projection_layer = FeatureMapper(d_model, d_model)
+    cost_projection_layer = FeatureMapper(d_model, 1)
+    # Create the transformer
+    transformer = CostTransformer(encoder, cost_decoder, decoder, src_embed, cost_tgt_embed, tgt_embed, src_pos, cost_tgt_pos, projection_layer, cost_projection_layer)
+    
+    # Initialize the parameters
+    for p in transformer.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
+    
+    return transformer
+
+
+class SafeDQNTrans(nn.Module):
+  def __init__(self, config, action_space):
+    super(SafeDQNTrans, self).__init__()
+    self.action_space = action_space
+    hidden_size = config['hidden_size']
+    self.transformer : CostTransformer = build_cost_net(DimState(), hidden_size) 
+    self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_a = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
+    self.Vmin = config.get('V_min', -20)
+    self.Vmax = config.get('V_max', 20)
+
+    cost_training_dict = {'transformer.encoder', 'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
+    self.trainable_params_sft = []
+    self.trainable_params_rl = []
+    for name, p in self.named_parameters():
+        if any([1 for sub_name in cost_training_dict if sub_name in name]):
+          self.trainable_params_sft.append(p)
+        else:
+          self.trainable_params_rl.append(p)
+    
+  def forward(self, x, log=False):
+    action_mask = x['action_mask']
+    x = self.transformer(x)
+    x = x.squeeze(1) # squeeze the query sequence
+    v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
+    a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
+    q = v + a - a.mean(1, keepdim=True)  # Combine streams
+    # q = torch.nn.functional.normalize(q, dim=1)
+    assert log==False, "rainbowmini only support log False"
+    # if log:  # Use log softmax for numerical stability
+    #   q = F.log_softmax(q, dim=1)  # Log probabilities with action over second dimension
+    # else:
+    q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
+    q = (action_mask-1)*(-self.Vmin) + q*action_mask
+    return q
+  
+  def cost_forward(self, x, log=False):
+    src = self.transformer.encode(x, None)
+    cost = self.transformer.decode_cost(src, cost_state=x)[:,:2]
+    
+    return self.transformer.cost_projection_layer(cost).squeeze(-1)
+  
+#   def forward_together(self, x, log=False):
+#     src = self.transformer.encode(x, None)
+#     tgt = self.transformer.decode(src, None, x['action_mask'], None)
+#     x = self.transformer.projection_layer(tgt)
+#     cost = self.transformer.decode_cost(src, cost_state=x)
+    
+  def reset_noise(self):
+    for name, module in self.named_children():
+      if 'fc' in name:
+        module.reset_noise()
+
+        
+

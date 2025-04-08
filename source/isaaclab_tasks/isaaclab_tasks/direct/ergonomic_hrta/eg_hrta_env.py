@@ -1762,7 +1762,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         obs_dict['raw_products'] = torch.tensor([self.materials.product_states.count(0)], dtype=torch.int32)
 
         ####8.worker agv box state TODO
-        max_num = 3
+        max_num = self.cfg.n_max_human
         agv_mask = torch.zeros([max_num], dtype=bool)
         worker_mask = torch.zeros([max_num], dtype=bool)
         box_mask = torch.zeros([max_num], dtype=bool)
@@ -1770,6 +1770,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         obs_dict['worker_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['worker_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['worker_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
+        obs_dict['worker_fatigue_phy'] = torch.zeros([max_num, 1], dtype=torch.float32)
+        obs_dict['worker_fatigue_psy'] = torch.zeros([max_num, 1], dtype=torch.float32)
         
         for i in range(max_num):
             if i < self.task_manager.characters.acti_num_charc:
@@ -1781,7 +1783,10 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['worker_pose'][i] = wp_num
                 obs_dict['worker_state'][i] = self.task_manager.characters.states[i]
                 obs_dict['worker_task'][i] = self.task_manager.characters.tasks[i]
+                obs_dict['worker_fatigue_phy'][i] = self.task_manager.characters.fatigue_list[i].phy_fatigue
+                obs_dict['worker_fatigue_psy'][i] = self.task_manager.characters.fatigue_list[i].psy_fatigue
         
+        max_num = self.cfg.n_max_robot
         obs_dict['agv_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['agv_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['agv_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
@@ -1813,11 +1818,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['box_task'][i] = self.task_manager.boxs.tasks[i]
 
         other_token_mask = torch.ones([16], dtype=bool)
-        obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(3), agv_mask.repeat(3), box_mask.repeat(3)])
+        obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(5), agv_mask.repeat(3), box_mask.repeat(3)])
 
         '''fatigue info'''
         # human coefficient dict including 10 task， for cost function model
         # time step, task step
+
 
         return obs_dict
     
