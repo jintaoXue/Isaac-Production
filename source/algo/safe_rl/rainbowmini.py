@@ -383,6 +383,7 @@ class SafeRainbowAgent():
         next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1) 
         loss = self.loss_criterion(fatigue_prediction, next_fatigue).mean()
         self.online_net.zero_grad()
+        loss.backward()
         # (weights * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
         clip_grad_norm_(self.online_net.parameters(), self.norm_clip)  # Clip gradients by L2 norm
         self.cost_optimiser.step()

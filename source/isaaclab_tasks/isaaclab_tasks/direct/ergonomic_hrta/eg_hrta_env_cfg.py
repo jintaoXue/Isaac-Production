@@ -58,7 +58,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     decimation = 1
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
-    sim_step_interval = 1000
+    sim_step_interval = 10000
     # viewer
     viewer: HRTaViewerCfg = HRTaViewerCfg()
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500
