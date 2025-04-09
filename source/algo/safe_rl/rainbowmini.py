@@ -37,7 +37,7 @@ class SafeRainbowAgent():
         self.norm_clip = config.get('norm_clip', 10)
         ###########for agent training
         self.update_frequency = config.get('update_frequency', 200)
-        self.update_frequency_sfl = config.get('update_frequency', 200)
+        self.update_frequency_sfl = config.get('update_frequency', 500)
         self.evaluate_interval = config.get('evaluate_interval', 100)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(7e5))
