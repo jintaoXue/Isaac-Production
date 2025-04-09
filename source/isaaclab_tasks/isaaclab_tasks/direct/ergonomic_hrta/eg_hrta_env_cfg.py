@@ -89,8 +89,8 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     human_putting_time = 5
     box_capacity = 4
     #fatigue
-    ftg_thresh_phy = 0.75
-    ftg_thresh_psy = 0.75
+    ftg_thresh_phy = 0.7
+    ftg_thresh_psy = 0.7
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py
