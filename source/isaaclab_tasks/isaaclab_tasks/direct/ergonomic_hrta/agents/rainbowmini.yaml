@@ -42,9 +42,13 @@ params:
     # bounds_loss_coef: 0.0001
     reward_shaper: #no use
       scale_value: 0.1
-    batch_size: 512
+    # batch_size: 512
+    batch_size: 64
+    # num_warmup_steps: 5.0e+4
+    # cost_num_warmup_steps: 1.0e+4
+    # use_cost_num_steps: 50.e+4
     test: False
-    env_rule_based_exploration: True
+    env_rule_based_exploration: False
     test_all_settings: False
 
     max_num_worker: 3
@@ -53,9 +57,9 @@ params:
       acti_agv: 2
       acti_charc: 2
       gantt_chart: False
-    test_times: 10
+    test_times: 1
     test_env_max_length: 2500
-    only_train_cost: True
+    only_train_cost: False
     wandb_activate: False
     # wandb_group: ''
     # wandb_name: ''

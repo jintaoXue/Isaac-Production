@@ -75,7 +75,9 @@ class TaskManager(object):
             self.fatigue_data[task]['psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
             self.fatigue_data[task]['charac_idx'] = torch.tensor(charac_idx, dtype=torch.int32) 
             self.fatigue_data[task]['task_str'] = task
-            self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32) 
+            self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
+            self.fatigue_data[task]['prediction_mask'] = torch.zeros((len(self.task_dic), 2), dtype=torch.float32)
+            self.fatigue_data[task]['prediction_mask'][self.task_dic_inverse[task]+1, :] = 1
         box_idx = self.boxs.assign_task(task, random = False)
         if box_idx >= 0:
             box_xyz, _ = self.boxs.list[box_idx].get_world_poses()

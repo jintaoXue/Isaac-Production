@@ -62,7 +62,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     # viewer
     viewer: HRTaViewerCfg = HRTaViewerCfg()
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500
-    train_env_len_setting = [[1250, 1250, 1250], [1000, 1000, 1000], [1000, 1000, 1000]]
+    train_env_len_setting = [[1300, 1300, 1300], [1000, 1000, 1000], [1000, 1000, 1000]]
     #max_episode_length = max_episode_length_s / (self.cfg.sim.dt * self.cfg.decimation) = 25/(1/120 * 2) = 1500 steps
     episode_length_s = 25.0 
     action_space = 10
@@ -89,8 +89,8 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     human_putting_time = 5
     box_capacity = 4
     #fatigue
-    ftg_thresh_phy = 1.
-    ftg_thresh_psy = 1.
+    ftg_thresh_phy = 0.75
+    ftg_thresh_psy = 0.75
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

@@ -14,7 +14,7 @@ blank_state = {'action_mask': torch.tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 
  'worker_fatigue_phy': torch.zeros([3,1], dtype=torch.float32), 'worker_fatigue_psy': torch.zeros([3,1], dtype=torch.float32),
  'agv_pose':torch.zeros([3,1], dtype=torch.int32), 'agv_state':torch.zeros([3,1], dtype=torch.int32), 'agv_task':torch.zeros([3,1], dtype=torch.int32),
  'box_pose':torch.zeros([3,1], dtype=torch.int32), 'box_state':torch.zeros([3,1], dtype=torch.int32), 'box_task':torch.zeros([3,1], dtype=torch.int32),
- 'token_mask':torch.zeros([43], dtype=torch.bool), 
+ 'token_mask':torch.zeros([49], dtype=torch.bool), 'worker_mask':torch.zeros([3], dtype=torch.int32), 
  }
 
 Transition_dtype = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])
@@ -22,12 +22,13 @@ blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 
 #fatigue
 costfunc_transition_dtype = np.dtype((dict))
-fatigue_blank_state = blank_state
+fatigue_blank_state = blank_state.copy()
 additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
  'charac_idx':torch.tensor([0]), 'action': torch.tensor([0])}
+# additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
+#  'charac_idx':torch.tensor([0]), 'action': torch.zeros((10), dtype=torch.float32)}
 for key, value in additional_state.items():
   fatigue_blank_state[key] = value
-costfunc_blank_trans = fatigue_blank_state
 
 
 
@@ -207,7 +208,7 @@ class CostfuncMemory():
     self.index = 0
     self.size = size
     self.full = False  # Used to track actual capacity
-    self.data = np.array([costfunc_blank_trans] * size, dtype=costfunc_transition_dtype)  # Build structured array
+    self.data = np.array([fatigue_blank_state] * size, dtype=costfunc_transition_dtype)  # Build structured array
 
   def append(self, data):
     self.data[self.index] = data  # Store data in underlying data structure

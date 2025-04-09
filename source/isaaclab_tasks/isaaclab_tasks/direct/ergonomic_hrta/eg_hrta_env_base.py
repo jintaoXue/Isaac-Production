@@ -158,9 +158,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def update_task_mask(self):
         # if self.episode_length_buf[0] >= 700:
         #     a = 1
-        self.fatigue_mask = self.get_fatigue_mask()
+        # self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
-        self.task_mask = self.task_mask * self.fatigue_mask
+        # self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
 
     def get_rule_based_action(self):
@@ -215,6 +215,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         return
     
     def get_fatigue_data(self):
+        self.extras['overwork'] = self.task_manager.characters.have_overwork()
         if len(self.task_manager.fatigue_data_list)>0:
             self.extras['fatigue_data'] = self.task_manager.fatigue_data_list
             self.task_manager.fatigue_data_list = []

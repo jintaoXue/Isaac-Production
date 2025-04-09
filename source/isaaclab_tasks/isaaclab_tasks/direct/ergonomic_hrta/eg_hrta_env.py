@@ -1818,8 +1818,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['box_task'][i] = self.task_manager.boxs.tasks[i]
 
         other_token_mask = torch.ones([16], dtype=bool)
+        obs_dict['worker_mask'] = worker_mask
         obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(5), agv_mask.repeat(3), box_mask.repeat(3)])
-
         '''fatigue info'''
         # human coefficient dict including 10 task， for cost function model
         # time step, task step

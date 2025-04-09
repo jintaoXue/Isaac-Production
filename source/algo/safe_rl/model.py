@@ -63,7 +63,8 @@ class DimState :
     #(human)*(state+task+pose+phy fatigue+psy fatigue)*(max_num_entity=3)
     max_num_entity: int = 3
     src_seq_len: int = 16 + 2*3*max_num_entity + 1*5*max_num_entity
-    cost_seq_len: int = 4
+    cost_seq_len: int = 13
+    device_str = "cuda:0" 
 
 # Factorised NoisyLinear layer with bias
 class NoisyLinear(nn.Module):
@@ -867,7 +868,7 @@ class DQNTrans(nn.Module):
 
 
 class CostFeatureEmbeddingBlock(nn.Module):
-  def __init__(self, hidden_size, dimstate : DimState):
+  def __init__(self, max_num_worker, hidden_size, dimstate : DimState):
     super().__init__()
     self.dim_state = dimstate
     self.dtype = torch.float32
@@ -880,21 +881,40 @@ class CostFeatureEmbeddingBlock(nn.Module):
         nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
     )
+    self.action = torch.arange(dimstate.action_mask, dtype = torch.int32, device=dimstate.device_str).unsqueeze(0)
     self.action_embedding= nn.Embedding(dimstate.action_mask, hidden_size)
     self.worker_idx_embedding= nn.Embedding(dimstate.max_num_entity, hidden_size)
-    
+    self.device = dimstate.device_str
+    self.max_n_human = max_num_worker
 
   def forward(self, state, **kwargs):
-
-    action_embedding = self.action_embedding(state['action'])
+    
     worker_idx_embedding = self.worker_idx_embedding(state['charac_idx'])
+    batch_size = worker_idx_embedding.shape[0]
+    action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
     worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['phy_fatigue'])
     worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['psy_fatigue'])
 
     ###########################################################################################
 
-    all_embs = torch.cat([worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), action_embedding.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+    # all_embs = torch.cat([worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), action_embedding.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+    all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+
     return all_embs*math.sqrt(self.hidden_size)
+  
+  def forward_predict(self, state):
+    batch_size = state['worker_fatigue_phy'].shape[0]
+    worker_mask = state['worker_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
+    action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
+    predict_list = []
+    for i in range(self.max_n_human):
+        worker_idx_embedding = self.worker_idx_embedding(torch.tensor([i], device=self.device).repeat(batch_size))
+        worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy'][:,i])*worker_mask[:,i]
+        worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy'][:,i])*worker_mask[:,i]
+        all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+        _predict = all_embs*math.sqrt(self.hidden_size)
+        predict_list.append(_predict)
+    return predict_list
 
 
 class CostTransformer(nn.Module):
@@ -937,17 +957,30 @@ class CostTransformer(nn.Module):
     def decode_cost(self, encoder_output: torch.Tensor, cost_state: torch.Tensor):
         cost_tgt = self.cost_tgt_embed(cost_state)
         cost_tgt = self.cost_tgt_pos(cost_tgt)
-        return self.cost_decoder(cost_tgt, encoder_output, None, None)
+        cost_tgt = self.cost_decoder(cost_tgt, encoder_output, None, None)[:,:10]
+        return self.cost_projection_layer(cost_tgt)
+    
+    def predict_cost(self, encoder_output: torch.Tensor, cost_state: torch.Tensor):
+        cost_tgt_list = self.cost_tgt_embed.forward_predict(cost_state)
+        _list = []
+        for _predict in cost_tgt_list:
+           _predict = self.cost_tgt_pos(_predict)
+           _predict = self.cost_decoder(_predict, encoder_output, None, None)[:,:10]
+           _predict = self.cost_projection_layer(_predict).squeeze(-1).unsqueeze(-2)
+           _list.append(_predict)
+        return torch.cat(_list, dim=-2)
+           
+        
 
 
-def build_cost_net(dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=1024) -> CostTransformer:
+def build_cost_net(max_num_worker, dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=1024) -> CostTransformer:
     # Create the embedding layers
     src_embed = FeatureEmbeddingBlock(d_model, dim_state)
     tgt_embed = nn.Sequential(
             nn.Linear(dim_state.action_mask, d_model), nn.ReLU(),
             nn.Linear(d_model, d_model),
         )
-    cost_tgt_embed = CostFeatureEmbeddingBlock(d_model, dim_state)
+    cost_tgt_embed = CostFeatureEmbeddingBlock(max_num_worker, d_model, dim_state)
     # Create the positional encoding layers
     src_pos = PositionalEncoding(d_model, dim_state.src_seq_len, dropout)
     cost_tgt_pos = PositionalEncoding(d_model, dim_state.cost_seq_len, dropout)
@@ -984,7 +1017,7 @@ def build_cost_net(dim_state: DimState, d_model: int=512, h: int=8, dropout: flo
     
     # Create the projection layer
     projection_layer = FeatureMapper(d_model, d_model)
-    cost_projection_layer = FeatureMapper(d_model, 1)
+    cost_projection_layer = FeatureMapper(d_model, 2)
     # Create the transformer
     transformer = CostTransformer(encoder, cost_decoder, decoder, src_embed, cost_tgt_embed, tgt_embed, src_pos, cost_tgt_pos, projection_layer, cost_projection_layer)
     
@@ -1001,13 +1034,15 @@ class SafeDQNTrans(nn.Module):
     super(SafeDQNTrans, self).__init__()
     self.action_space = action_space
     hidden_size = config['hidden_size']
-    self.transformer : CostTransformer = build_cost_net(DimState(), hidden_size) 
+    self.transformer : CostTransformer = build_cost_net(config['max_num_worker'], DimState(), hidden_size) 
     self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
     self.fc_z_a = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
     self.Vmin = config.get('V_min', -20)
     self.Vmax = config.get('V_max', 20)
+    self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.7)
+    self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.7)
 
     cost_training_dict = {'transformer.encoder', 'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
     self.trainable_params_sft = []
@@ -1018,8 +1053,17 @@ class SafeDQNTrans(nn.Module):
         else:
           self.trainable_params_rl.append(p)
     
-  def forward(self, x, log=False):
-    action_mask = x['action_mask']
+  def forward(self, x, use_cost_function, log=False):
+    if use_cost_function:
+        cost_predict = self.predict_cost(x)
+        cost_mask = torch.where(cost_predict[..., 0] < self.ftg_thresh_phy, 1, 0)*torch.where(cost_predict[..., 1] < self.ftg_thresh_psy, 1, 0)
+        worker_mask = x['worker_mask'].unsqueeze(1).repeat(1, self.action_space, 1)
+        cost_mask = cost_mask*worker_mask
+        cost_mask = torch.all(cost_mask, dim=2)
+        action_mask = x['action_mask']*cost_mask
+    else:
+       action_mask = x['action_mask']
+    
     x = self.transformer(x)
     x = x.squeeze(1) # squeeze the query sequence
     v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
@@ -1033,12 +1077,15 @@ class SafeDQNTrans(nn.Module):
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
     return q
+    
+  def predict_cost(self, x):
+    with torch.no_grad():
+        src = self.transformer.encode(x, None)
+        return self.transformer.predict_cost(src, x)
   
   def cost_forward(self, x, log=False):
     src = self.transformer.encode(x, None)
-    cost = self.transformer.decode_cost(src, cost_state=x)[:,:2]
-    
-    return self.transformer.cost_projection_layer(cost).squeeze(-1)
+    return self.transformer.decode_cost(src, cost_state=x)
   
 #   def forward_together(self, x, log=False):
 #     src = self.transformer.encode(x, None)
