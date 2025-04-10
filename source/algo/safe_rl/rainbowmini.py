@@ -42,7 +42,7 @@ class SafeRainbowAgent():
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 400)
         self.target_update = config.get('target_update', int(2e3))
-        self.max_steps = config.get("max_steps", int(7e5))
+        self.max_steps = config.get("max_steps", int(15e5))
         self.max_epochs = config.get("max_epochs", int(1e11))
         self.batch_size = config.get('batch_size', 512)
         self.num_warmup_steps = config.get('num_warmup_steps', int(10e4))
@@ -549,7 +549,7 @@ class SafeRainbowAgent():
                         if np.all(success_list):
                             # checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_len_' + str(infos['env_length'].item()) + '_rew_' + "{:.2f}".format(self.evaluate_current_rewards.item())
                             checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
-                            self.save(os.path.join(self.nn_dir, checkpoint_name))
+                            # self.save(os.path.join(self.nn_dir, checkpoint_name))
                             if self.use_wandb:
                                 wandb.log({"Evaluate/Savepth": self.episode_num,
                                 })
