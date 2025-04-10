@@ -35,21 +35,29 @@ class SafeRainbowAgent():
         self.n = config['multi_step']
         self.gamma = config['gamma']
         self.norm_clip = config.get('norm_clip', 10)
-        ###########for agent training
+
+        '''Params for agent training'''
         self.update_frequency = config.get('update_frequency', 200)
-        self.update_frequency_sfl = config.get('update_frequency', 400)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 400)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 400)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(7e5))
         self.max_epochs = config.get("max_epochs", int(1e11))
         self.batch_size = config.get('batch_size', 512)
-
         self.num_warmup_steps = config.get('num_warmup_steps', int(10e4))
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e4))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(20e4))
-        self.demonstration_steps = config.get('demonstration_steps', int(0))
+        #########debug
+        # self.update_frequency = config.get('update_frequency', 100)
+        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        # self.evaluate_interval = config.get('evaluate_interval', 20)
+        # self.num_warmup_steps = config.get('num_warmup_steps', int(100))
+        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(100))
+        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(100))
+        '''End of agent training'''
 
+        self.demonstration_steps = config.get('demonstration_steps', int(0))
         self.num_steps_per_epoch = config.get("num_steps_per_epoch", 100)
         # self.horizon_length = config.get("horizon_length", 1000) # temporary, in future we will use other approach
         print(self.batch_size, self.num_actors, self.num_agents)
@@ -522,8 +530,8 @@ class SafeRainbowAgent():
                             "Metrics/EpRetAction": self.current_rewards_action,
                         })
                     # next_obs = self.env_reset()   
-                    # if not random_exploration and self.episode_num % self.evaluate_interval == 0:
-                    if True:
+                    if not random_exploration and self.episode_num % self.evaluate_interval == 0:
+                    # if True:
                         #TODO debug
                         # pass
                         success_list= []
@@ -732,12 +740,6 @@ class SafeRainbowAgent():
             if infos['overwork']:
                 self.current_overworks += 1                 
             if dones_flag[0]:
-                with torch.no_grad():
-                    fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
-                    fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
-                    next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
-                    _size = len(fatigue_prediction)
-                    Eploss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -748,9 +750,18 @@ class SafeRainbowAgent():
                         "Evaluate/EpTime": self.evaluate_current_ep_time,
                         "Evaluate/EpProgress": infos['progress'],
                         "Evaluate/EpRetAction": self.evaluate_current_rewards_action,
-                        "Evaluate/EpOverCost": self.current_overworks,
-                        "Evaluate/EpPredictLoss": Eploss,
-                    })   
+                    })                
+                    if len(fatigue_data_list)>0:
+                        with torch.no_grad():
+                            fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
+                            fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
+                            next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
+                            _size = len(fatigue_prediction)
+                            Eploss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
+                            wandb.log({
+                                "Evaluate/EpOverCost": self.current_overworks,
+                                "Evaluate/EpPredictLoss": Eploss, 
+                            })
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
