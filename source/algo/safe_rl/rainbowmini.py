@@ -39,7 +39,7 @@ class SafeRainbowAgent():
         self.update_frequency = config.get('update_frequency', 200)
         self.update_frequency_sfl = config.get('update_frequency', 400)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
-        self.evaluate_interval = config.get('evaluate_interval', 100)
+        self.evaluate_interval = config.get('evaluate_interval', 400)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(7e5))
         self.max_epochs = config.get("max_epochs", int(1e11))
@@ -204,7 +204,7 @@ class SafeRainbowAgent():
         wandb.define_metric("SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/loss", step_metric="SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/buffer_size", step_metric="SuperviseTrain/step")
-        wandb.define_metric("SuperviseTrain/EpOverworks", step_metric="SuperviseTrain/step")
+        wandb.define_metric("SuperviseTrain/EpOverCost", step_metric="SuperviseTrain/step")
         
 
         wandb.define_metric("Train/Mrewards", step_metric="Train/step")
@@ -239,6 +239,9 @@ class SafeRainbowAgent():
         wandb.define_metric("Evaluate/EpProgress", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpRetAction", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/Savepth", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
+
         for i in range(0, self.config['max_num_worker']):
             for j in range(0, self.config['max_num_robot']):
                 wandb.define_metric(f'Avg/{i+1}_{j+1}', step_metric="Evaluate/step")
@@ -389,7 +392,8 @@ class SafeRainbowAgent():
         # Sample transitions
         states = self.costfunc_buffer.sample(self.batch_size)
         states = data.stack_from_array(states.squeeze(), device=self._device)
-        fatigue_prediction = self.online_net.cost_forward(states)*states['prediction_mask']
+        # fatigue_prediction = self.online_net.cost_forward(states)*states['prediction_mask']
+        fatigue_prediction = self.online_net.cost_forward(states)
         next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1)
         loss = self.loss_criterion(fatigue_prediction[torch.arange(self.batch_size), states['action']], next_fatigue).mean()
         self.online_net.zero_grad()
@@ -519,7 +523,7 @@ class SafeRainbowAgent():
                         })
                     # next_obs = self.env_reset()   
                     # if not random_exploration and self.episode_num % self.evaluate_interval == 0:
-                    if False:
+                    if True:
                         #TODO debug
                         # pass
                         success_list= []
@@ -656,7 +660,7 @@ class SafeRainbowAgent():
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
-                            "SuperviseTrain/EpOverworks": self.current_overworks,
+                            "SuperviseTrain/EpOverCost": self.current_overworks,
                         })
             not_dones = 1.0 - done_flag.float()
             self.temp_current_lengths = self.temp_current_lengths * not_dones
@@ -686,6 +690,7 @@ class SafeRainbowAgent():
         total_time = 0
         step_time = 0.0
         action_info_list = []
+        fatigue_data_list = []
         task_success = False
         if test:
             time_step_list = []
@@ -716,11 +721,23 @@ class SafeRainbowAgent():
             self.evaluate_current_ep_time += (step_end - step_start)
             total_time += (step_end - step_start)
             step_time += (step_end - step_start)
-
             # no_timeouts = self.evaluate_current_lengths != self.horizon_length
             # dones = dones * no_timeouts
-            not_dones = 1.0 - dones.float()            
-            if dones[0]: 
+            not_dones = 1.0 - dones.float()
+            dones_flag = copy.deepcopy(dones)
+            if 'fatigue_data' in infos:
+                fatigue_data = infos['fatigue_data']
+                for _data in fatigue_data:
+                    fatigue_data_list.append(_data)
+            if infos['overwork']:
+                self.current_overworks += 1                 
+            if dones_flag[0]:
+                with torch.no_grad():
+                    fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
+                    fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
+                    next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
+                    _size = len(fatigue_prediction)
+                    Eploss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -731,6 +748,8 @@ class SafeRainbowAgent():
                         "Evaluate/EpTime": self.evaluate_current_ep_time,
                         "Evaluate/EpProgress": infos['progress'],
                         "Evaluate/EpRetAction": self.evaluate_current_rewards_action,
+                        "Evaluate/EpOverCost": self.current_overworks,
+                        "Evaluate/EpPredictLoss": Eploss,
                     })   
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True
@@ -752,8 +771,9 @@ class SafeRainbowAgent():
             self.evaluate_current_lengths = self.evaluate_current_lengths * not_dones
             self.evaluate_current_ep_time = self.evaluate_current_ep_time * not_dones
             self.evaluate_current_rewards_action = self.evaluate_current_rewards_action * not_dones
+            self.current_overworks = self.current_overworks * not_dones
             self.obs = next_obs.copy()
-            if dones[0]:
+            if dones_flag[0]:
                 self.evaluate_episode_num += 1  
                 break
 
