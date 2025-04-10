@@ -64,4 +64,5 @@ test setting的num robot character 不一定对
     4.cost function的数据收集工作（可以先用仿真器训练一个）
         task_clearing 是收集结束状态， assign_task 是开始状态
     5. 如果是异质的工人，怎么进行训练
- 6. 
+ 6. code evaluation epoch的加入
+ 7. fatigue的值验证
