@@ -1041,8 +1041,8 @@ class SafeDQNTrans(nn.Module):
     self.fc_z_a = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
     self.Vmin = config.get('V_min', -20)
     self.Vmax = config.get('V_max', 20)
-    self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.6)
-    self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.6)
+    self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.8)
+    self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.8)
 
     cost_training_dict = {'transformer.encoder', 'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
     self.trainable_params_sft = []

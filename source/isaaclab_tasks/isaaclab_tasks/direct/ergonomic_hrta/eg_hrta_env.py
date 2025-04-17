@@ -90,7 +90,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 # self.scene.update(dt=self.physics_dt)
 
             if (self.task_mask[1:].count_nonzero() == 0 and self.reset_buf[0] == 0):
-                self.post_task_manager_step(actions=self.get_rule_based_action())
+                # self.get_rule_based_action()
+                self.post_task_manager_step(actions=torch.zeros([1], dtype=torch.int32))
             else:
                 self.calculate_metrics()
                 obs = self.get_observations()

@@ -252,8 +252,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 'placing_product' not in self.task_manager.task_in_dic.keys() and self.gripper_inner_task not in range (4, 8):
             task_mask[9] = 1
 
-        if task_mask.count_nonzero() == 0:
-            task_mask[0] = 1
+        # if task_mask.count_nonzero() == 0:
+        task_mask[0] = 1
 
         return task_mask
 

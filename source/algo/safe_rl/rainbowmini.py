@@ -45,9 +45,9 @@ class SafeRainbowAgent():
         self.max_steps = config.get("max_steps", int(5e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
         self.batch_size = config.get('batch_size', 512)
-        self.num_warmup_steps = config.get('num_warmup_steps', int(10e4))
-        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e4))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(20e4))
+        self.num_warmup_steps = config.get('num_warmup_steps', int(1e4))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(1e3))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e3))
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
@@ -617,7 +617,7 @@ class SafeRainbowAgent():
             else:
                 with torch.no_grad():
                     action = self.act(obs).unsqueeze(0)
-
+            
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)
             if 'fatigue_data' in infos:
@@ -679,14 +679,16 @@ class SafeRainbowAgent():
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
-                if goal_finished:
-                    reward_extra = 0.4*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
+                if self.current_overworks > 0:
+                    reward_extra -= -0.03
+                if goal_finished and self.step_num_sfl > self.use_cost_num_steps:
+                    reward_extra += 0.4*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
                     repeat_times = 5
                 else:
-                    if len(temporary_buffer) < 100:
-                        reward_extra = -0.05
-                    else:
-                        reward_extra = -0.001
+                    reward_extra -= -0.05
+                    if len(temporary_buffer) > 100:
+                        reward_extra *= 0.2
+
                 # print("reward_extra:{}, env_len:{}".format(reward_extra, _infos['env_length']))
                 if not random_exploration or goal_finished:
                     #when doing random exploration, when want find solution for each setting
