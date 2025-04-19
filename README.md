@@ -67,3 +67,6 @@ test setting的num robot character 不一定对
  6. code evaluation epoch的加入
  7. fatigue的值验证
  8. fatigue 的曲线调整，以及训练的reward设计，env length调整
+
+
+num worker:1, num agv&box:3, env_length:1501, max_env_len:1700, task_finished:True

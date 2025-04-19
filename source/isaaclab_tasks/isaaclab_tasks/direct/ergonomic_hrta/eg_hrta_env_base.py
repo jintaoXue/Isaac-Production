@@ -158,9 +158,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def update_task_mask(self):
         # if self.episode_length_buf[0] >= 700:
         #     a = 1
-        # self.fatigue_mask = self.get_fatigue_mask()
+        self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
-        # self.task_mask = self.task_mask * self.fatigue_mask
+        self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
 
     def get_rule_based_action(self):
@@ -252,6 +252,13 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 'placing_product' not in self.task_manager.task_in_dic.keys() and self.gripper_inner_task not in range (4, 8):
             task_mask[9] = 1
 
+        # if self.materials.cube_states.count(0)
+        is_last_hoop = sum([_state<=2 and _state >= -1 for _state in self.materials.hoop_states]) == 1
+        if is_last_hoop and (task_mask[3] or task_mask[5]):
+            if self.materials.outer_cube_processing_index == len(self.materials.cube_list) - 1:
+                task_mask[3] = 0
+            elif self.materials.inner_cube_processing_index == len(self.materials.cube_list) - 1:
+                task_mask[5] = 0
         # if task_mask.count_nonzero() == 0:
         task_mask[0] = 1
 

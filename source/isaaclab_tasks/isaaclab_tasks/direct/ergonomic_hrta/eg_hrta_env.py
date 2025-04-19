@@ -738,7 +738,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 next_pos_inner, delta_pos, move_done = self.get_gripper_moving_pose(gripper_pose_inner[0], target_pose[0], 'place')
                 if move_done:
                     "a product is produced and placed on the robot, then do resetting"
-                    self.materials.cube_states[self.materials.inner_cube_processing_index] = -1
+                    self.materials.cube_states[self.materials.inner_cube_processing_index] = -2
                     self.gripper_inner_state = 0
                     self.materials.product_states[self.materials.inner_cube_processing_index] = 1 # product is collected
                     collecting_box_idx = self.task_manager.task_in_dic['collect_product']['box_idx'] 
@@ -755,7 +755,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 next_pos_inner, delta_pos, move_done = self.get_gripper_moving_pose(gripper_pose_inner[0], target_pose[0], 'place')
                 if move_done:
                     "a product is produced and placed on the robot, then do resetting"
-                    self.materials.cube_states[self.materials.outer_cube_processing_index] = -1
+                    self.materials.cube_states[self.materials.outer_cube_processing_index] = -2
                     self.gripper_inner_state = 0
                     self.materials.product_states[self.materials.outer_cube_processing_index] = 1 # product is collected
                     collecting_box_idx = self.task_manager.task_in_dic['collect_product']['box_idx'] 
@@ -1228,7 +1228,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_inner_state = 3 
                 self.station_state_inner_left = 5 #welded
                 self.station_state_inner_middle = 5 #welded_left
-                self.materials.hoop_states[self.materials.inner_hoop_processing_index] = -1
+                self.materials.hoop_states[self.materials.inner_hoop_processing_index] = -2
                 # self.station_state_inner_right = 3 #moving right
                 # cube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/cube_" + "{}".format(self.materials.inner_cube_processing_index))
                 # hoop_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/hoop_" + "{}".format(self.materials.inner_hoop_processing_index))
@@ -1639,7 +1639,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_state = 3 
                 self.station_state_outer_left = 5 #welded
                 self.station_state_outer_middle = 5 #welded_left
-                self.materials.hoop_states[self.materials.outer_hoop_processing_index] = -1
+                self.materials.hoop_states[self.materials.outer_hoop_processing_index] = -2
                 # self.station_state_outer_right = 3 #moving right
         elif self.welder_outer_state == 3: #welded_left
             target = welding_left_pose

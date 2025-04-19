@@ -38,15 +38,15 @@ class Fatigue(object):
         self.phy_free_state_dic = {"free", "waiting_box", "approaching"}
         self.psy_free_state_dic = {"free", "waiting_box", "approaching"}
         #coefficient dic: combine all the subtask and state
-        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
-                        'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.15, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
-                        'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
+        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.04, "put_bending_tube_into_box": 0.06, 
+                        'put_hoop_on_table': 0.04, 'put_bending_tube_on_table': 0.06, 'hoop_loading_inner': 0.12, "hoop_loading_outer": 0.12, 'bending_tube_loading_inner': 0.15, 
+                        'bending_tube_loading_outer': 0.15, "cutting_cube": 0.01, "placing_product": 0.15}
         self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.15, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
         self.phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
         self.psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
-        scale_phy = 0.1
+        scale_phy = 0.3
         scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
         self.ftg_thresh_phy = self.cfg.ftg_thresh_phy
@@ -55,7 +55,7 @@ class Fatigue(object):
         
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy, self.phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
-        self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy, self.phy_recovery_ce_dic)
+        self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.psy_recovery_ce_dic)
         
         # self.device = cuda_device
@@ -133,8 +133,8 @@ class Fatigue(object):
                     time = self.cfg.human_loading_time * self.ONE_STEP_TIME
                 elif subtask == 'cutting_cube':
                     time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME
-                self.task_phy_prediction_dic[key] += self.step_helper_phy(0., subtask, subtask, time)
-                self.task_psy_prediction_dic[key] += self.step_helper_psy(0., subtask, subtask, time)
+                self.task_phy_prediction_dic[key] = self.step_helper_phy(self.task_phy_prediction_dic[key], subtask, subtask, time)
+                self.task_psy_prediction_dic[key] = self.step_helper_psy(self.task_psy_prediction_dic[key], subtask, subtask, time)
 
         return
 
