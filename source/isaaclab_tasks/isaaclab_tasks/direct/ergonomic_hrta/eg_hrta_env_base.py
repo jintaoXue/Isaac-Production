@@ -40,7 +40,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def __init__(self, cfg: HRTaskAllocEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
 
-        self.reward_buf = torch.zeros(self.num_envs, dtype=torch.bool, device=self.sim.device)
+        self.reward_buf = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
         self.env_rule_based_exploration = cfg.train_cfg['params']['config']['env_rule_based_exploration']
         
     def _setup_scene(self):
