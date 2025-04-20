@@ -1055,7 +1055,7 @@ class SafeDQNTrans(nn.Module):
     
   def forward(self, x, use_cost_function, log=False):
     if use_cost_function:
-        print('use_cost function')
+        # print('use_cost function')
         cost_predict = self.predict_cost(x)
         cost_mask = torch.where(cost_predict[..., 0] < self.ftg_thresh_phy, 1, 0)*torch.where(cost_predict[..., 1] < self.ftg_thresh_psy, 1, 0)
         worker_mask = x['worker_mask'].unsqueeze(1).repeat(1, self.action_space, 1)
