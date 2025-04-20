@@ -680,12 +680,13 @@ class SafeRainbowAgent():
                 _,_,_,_,_infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
                 if self.current_overworks > 0:
-                    reward_extra -= -0.03
-                if goal_finished and self.step_num_sfl > self.use_cost_num_steps:
-                    reward_extra += 0.4*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
-                    repeat_times = 5
+                    reward_extra += -0.03
+                if goal_finished:
+                    if self.step_num_sfl > self.use_cost_num_steps:
+                        reward_extra += 0.4*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
+                        repeat_times = 5
                 else:
-                    reward_extra -= -0.05
+                    reward_extra += -0.05
                     if len(temporary_buffer) > 100:
                         reward_extra *= 0.2
 
@@ -820,6 +821,7 @@ class SafeRainbowAgent():
                 for w in range(self.config["max_num_worker"]):
                     for r in range(self.config["max_num_robot"]):
                         step_time, play_time, update_time, epoch_total_time, loss = self.train_epoch(w+1,r+1)
+                        # step_time, play_time, update_time, epoch_total_time, loss = self.train_epoch(3,3)
 
                         # total_time += epoch_total_time
                         # self.step_num += self.num_steps_per_epoch

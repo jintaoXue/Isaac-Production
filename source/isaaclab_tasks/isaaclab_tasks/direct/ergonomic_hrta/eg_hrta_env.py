@@ -1285,7 +1285,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 7 
                 self.station_state_inner_middle = 7 #welded_right
-                self.materials.bending_tube_states[self.materials.inner_bending_tube_processing_index] = -1
+                self.materials.bending_tube_states[self.materials.inner_bending_tube_processing_index] = -2
                 # self.station_state_inner_right = -1 #welded_right
                 # cube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/cube_" + "{}".format(self.materials.inner_cube_processing_index))
                 # bending_tube_prim = self._stage.GetPrimAtPath(f"/World/envs/env_0" + "/obj/Materials/bending_tube_" + "{}".format(self.materials.inner_bending_tube_processing_index))
@@ -1668,7 +1668,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 7 
                 self.station_state_outer_middle = 7 #welded_right
-                self.materials.bending_tube_states[self.materials.outer_bending_tube_processing_index] = -1
+                self.materials.bending_tube_states[self.materials.outer_bending_tube_processing_index] = -2
         elif self.welder_outer_state == 7: #welded_right
             target= welding_middle_pose
             if torch.abs(welder_outer_pose[0] - target) <= THRESHOLD and self.welder_outer_task == 3:
@@ -1763,7 +1763,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         obs_dict['raw_products'] = torch.tensor([self.materials.product_states.count(0)], dtype=torch.int32)
 
         ####8.worker agv box state TODO
-        max_num = self.cfg.n_max_human
+        max_num = 3
         agv_mask = torch.zeros([max_num], dtype=bool)
         worker_mask = torch.zeros([max_num], dtype=bool)
         box_mask = torch.zeros([max_num], dtype=bool)

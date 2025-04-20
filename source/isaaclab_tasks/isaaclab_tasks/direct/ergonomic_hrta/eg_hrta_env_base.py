@@ -252,14 +252,23 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 'placing_product' not in self.task_manager.task_in_dic.keys() and self.gripper_inner_task not in range (4, 8):
             task_mask[9] = 1
 
-        # if self.materials.cube_states.count(0)
+        
         is_last_hoop = sum([_state<=2 and _state >= -1 for _state in self.materials.hoop_states]) == 1
+        #make sure the last one hoop is loaded in the same station including the cube waiting for welding
         if is_last_hoop and (task_mask[3] or task_mask[5]):
-            if self.materials.outer_cube_processing_index == len(self.materials.cube_list) - 1:
-                task_mask[3] = 0
-            elif self.materials.inner_cube_processing_index == len(self.materials.cube_list) - 1:
+            if self.materials.outer_cube_processing_index == -1 or self.materials.cube_states[self.materials.outer_cube_processing_index] in range(9, 14):
                 task_mask[5] = 0
-        # if task_mask.count_nonzero() == 0:
+            if self.materials.inner_cube_processing_index == -1 or self.materials.cube_states[self.materials.inner_cube_processing_index] in range(9, 14):
+                task_mask[3] = 0
+        
+        is_last_bending_tube = sum([_state<=2 and _state >= -1 for _state in self.materials.bending_tube_states]) == 1
+        #make sure the last one bending tube is loaded in the same station including the cube waiting for welding
+        if is_last_bending_tube and (task_mask[4] or task_mask[6]):
+            if self.materials.outer_cube_processing_index == -1 or self.materials.cube_states[self.materials.outer_cube_processing_index] in range(10, 14):
+                task_mask[6] = 0
+            if self.materials.inner_cube_processing_index == -1 or self.materials.cube_states[self.materials.inner_cube_processing_index] in range(10, 14):
+                task_mask[4] = 0
+
         task_mask[0] = 1
 
         return task_mask

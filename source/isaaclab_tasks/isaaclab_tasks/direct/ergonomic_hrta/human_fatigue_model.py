@@ -81,8 +81,8 @@ class Fatigue(object):
         return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
     
     def reset(self):
-        if self.time_step is not None and self.time_step > 100:
-            self.plot_curve()
+        # if self.time_step is not None and self.time_step > 100:
+        #     self.plot_curve()
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0

@@ -68,8 +68,8 @@ class TaskManager(object):
         charac_idx = self.characters.assign_task(task, random = False)
         if task in self.characters.task_range:
             # assert charac_idx >= 0, "charac idx should >= 0"
-            if charac_idx < 0:
-                a = 1
+            # if charac_idx < 0:
+            #     a = 1
             self.fatigue_data[task] = copy.deepcopy(self.obs) 
             self.fatigue_data[task]['phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32)
             self.fatigue_data[task]['psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
