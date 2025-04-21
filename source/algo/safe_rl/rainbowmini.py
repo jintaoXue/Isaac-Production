@@ -496,7 +496,7 @@ class SafeRainbowAgent():
                 assert self.num_agents == 1, ('only support num_agents == 1')
                 self.step_num += self.num_actors * 1
                 self.current_rewards += rewards+reward_extra
-                print("rewards: {}, reward_extra: {}, current_rewards: {}".format(rewards, reward_extra, self.current_rewards))
+                # print("rewards: {}, reward_extra: {}, current_rewards: {}".format(rewards, reward_extra, self.current_rewards))
                 self.current_rewards_action += infos["rew_action"]
                 self.current_lengths += 1
                 self.current_ep_time += (step_end - step_start)
