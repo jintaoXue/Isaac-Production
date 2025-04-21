@@ -496,6 +496,7 @@ class SafeRainbowAgent():
                 assert self.num_agents == 1, ('only support num_agents == 1')
                 self.step_num += self.num_actors * 1
                 self.current_rewards += rewards+reward_extra
+                print("rewards: {}, reward_extra: {}, current_rewards: {}".format(rewards, reward_extra, self.current_rewards))
                 self.current_rewards_action += infos["rew_action"]
                 self.current_lengths += 1
                 self.current_ep_time += (step_end - step_start)
@@ -674,7 +675,7 @@ class SafeRainbowAgent():
             self.temp_current_lengths = self.temp_current_lengths * not_dones
             self.current_overworks = self.current_overworks * not_dones
             self.obs = next_obs.copy()
-            reward_extra = 0.
+            reward_extra = -0.01
             repeat_times = 1
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
@@ -683,7 +684,7 @@ class SafeRainbowAgent():
                     reward_extra += -0.03
                 if goal_finished:
                     if self.step_num_sfl > self.use_cost_num_steps:
-                        reward_extra += 0.4*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
+                        reward_extra += 0.05*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
                         repeat_times = 5
                 else:
                     reward_extra += -0.05
