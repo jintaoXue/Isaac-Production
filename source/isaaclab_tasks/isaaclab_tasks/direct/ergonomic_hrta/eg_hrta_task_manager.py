@@ -66,7 +66,7 @@ class TaskManager(object):
     def assign_task(self, task):
         
         charac_idx = self.characters.assign_task(task, random = False)
-        if task in self.characters.task_range:
+        if task in self.characters.task_range and charac_idx != -1:
             # assert charac_idx >= 0, "charac idx should >= 0"
             # if charac_idx < 0:
             #     a = 1

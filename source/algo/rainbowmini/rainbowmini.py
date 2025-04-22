@@ -248,9 +248,10 @@ class RainbowminiAgent():
     
     def act_random(self, state):
         action_mask = state['action_mask']
-        indexs = action_mask.nonzero()
-        index = torch.randint(low=0, high = len(indexs), size = (1,), device=self._device) 
-        action = indexs[index]
+        # indexs = action_mask.nonzero()
+        # index = torch.randint(low=0, high = len(indexs), size = (1,), device=self._device)
+        # action = indexs[index]
+        action = torch.randint(low=0, high = len(action_mask), size = (1,), device=self._device)
         return action
 
     def update_target_net(self):
