@@ -40,7 +40,7 @@ class SafeRainbowAgent():
         self.update_frequency = config.get('update_frequency', 200)
         self.update_frequency_sfl = config.get('update_frequency_sfl', 400)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
-        self.evaluate_interval = config.get('evaluate_interval', 400)
+        self.evaluate_interval = config.get('evaluate_interval', 200)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(5e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
