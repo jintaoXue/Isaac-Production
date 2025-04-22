@@ -754,6 +754,7 @@ class SafeRainbowAgent():
                         "Evaluate/EpTime": self.evaluate_current_ep_time,
                         "Evaluate/EpProgress": infos['progress'],
                         "Evaluate/EpRetAction": self.evaluate_current_rewards_action,
+                        "Evaluate/EpOverCost": self.current_overworks,
                     })                
                     if len(fatigue_data_list)>0:
                         with torch.no_grad():
@@ -763,7 +764,6 @@ class SafeRainbowAgent():
                             _size = len(fatigue_prediction)
                             Eploss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
                             wandb.log({
-                                "Evaluate/EpOverCost": self.current_overworks,
                                 "Evaluate/EpPredictLoss": Eploss, 
                             })
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
