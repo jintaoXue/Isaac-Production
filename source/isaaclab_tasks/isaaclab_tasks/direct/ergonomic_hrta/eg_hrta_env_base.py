@@ -270,7 +270,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 task_mask[4] = 0
 
         task_mask[0] = 1
-
+        task_mask = torch.ones(len(self.task_manager.task_dic))
         return task_mask
 
     def get_fatigue_mask(self):
