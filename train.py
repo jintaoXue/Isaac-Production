@@ -11,6 +11,7 @@ import argparse
 import sys
 
 from isaaclab.app import AppLauncher
+import setproctitle
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RL-Games.")
@@ -83,6 +84,9 @@ from source.isaaclab_tasks.isaaclab_tasks.direct import human_robot_task_allocat
 
 @hydra_task_config(args_cli.task, args_cli.algo)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
+
+    '''process name'''
+    setproctitle.setproctitle("Xjt_SafeHRTA")
     '''update args'''
     agent_cfg["params"]["config"]['wandb_activate'] = args_cli.wandb_activate
     """Train with RL-Games agent."""
