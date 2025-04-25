@@ -9,7 +9,6 @@ from dataclasses import dataclass
 @dataclass
 class DimState :
     action_mask: int = 10
-
     # state_depot_hoop: int = 1
     types_state_depot_hoop: int = 3
 
@@ -53,17 +52,19 @@ class DimState :
     types_worker_task: int = 11
     types_worker_pose: int = 12
     worker_fatigue_dim: int = 1
+    fatigue_coe_dim: int = 1 #the number of coefficients is 10, each coefficient's dim is 1
     types_agv_state: int = 4
     types_agv_task: int = 7
     types_agv_pose: int = 10
     types_box_state: int = 3
     types_box_task: int = 4
     
-    #(agv+box)*(state+task+pose)*(max_num_entity=3)
-    #(human)*(state+task+pose+phy fatigue+psy fatigue)*(max_num_entity=3)
+    #2*3*max_num_entity = (agv+box)*(state+task+pose)*(max_num_entity=3)
+    #1*5*max_num_entity = (human)*(state+task+pose+phy_fatigue+psy_fatigue+phy_fatigue_coe)*(max_num_entity=3)
     max_num_entity: int = 3
-    src_seq_len: int = 16 + 2*3*max_num_entity + 1*5*max_num_entity
-    cost_seq_len: int = 13
+    src_seq_len: int = 16 + 2*3*max_num_entity + 1*(5+10)*max_num_entity
+    #action_embedding 10 + phy 1 + psy 1 + idx 1 + coefficients 10
+    cost_seq_len: int = 23
     device_str = "cuda:0" 
 
 # Factorised NoisyLinear layer with bias
@@ -522,6 +523,10 @@ class FeatureEmbeddingBlock(nn.Module):
         nn.Linear(dimstate.progress, hidden_size), nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
     )
+    # self.phy_recover_coe_embedding= nn.Sequential(
+    #     nn.Linear(dimstate.action_mask, hidden_size), nn.ReLU(),
+    #     nn.Linear(hidden_size, hidden_size),
+    # )
     self.state_depot_hoop_embedding = nn.Embedding(dimstate.types_state_depot_hoop, hidden_size)
     self.have_raw_hoops_embedding = nn.Embedding(dimstate.types_have_raw_hoops, hidden_size)
     self.state_depot_bending_tube_embedding= nn.Embedding(dimstate.types_state_depot_bending_tube, hidden_size)
@@ -544,6 +549,10 @@ class FeatureEmbeddingBlock(nn.Module):
     )
     self.worker_psy_fatigue_embd= nn.Sequential(
         nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
+    self.phy_fatigue_coe_embedding= nn.Sequential(
+        nn.Linear(dimstate.fatigue_coe_dim, hidden_size), nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
     )
     self.agv_state_embd = nn.Embedding(dimstate.types_agv_state, hidden_size)
@@ -577,6 +586,8 @@ class FeatureEmbeddingBlock(nn.Module):
     worker_pose = self.worker_pose_embd(state['worker_pose']).squeeze(2) 
     worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy']).squeeze(2)
     worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy']).squeeze(2)
+    #we embedding each fatigue fatigue coefficient to hidden_size (batch_size, num_worker, dim) -> (batch_size, num_worker*dim, 1) -> (batch_size, num_worker*dim, hidden_size)
+    worker_phy_fatigue_coe = self.phy_fatigue_coe_embedding(state['phy_fatigue_coe'].unsqueeze(-1))
 
     agv_state = self.agv_state_embd(state['agv_state']).squeeze(2) 
     agv_task = self.agv_task_embd(state['agv_task']).squeeze(2) 
@@ -589,12 +600,12 @@ class FeatureEmbeddingBlock(nn.Module):
 
     ###########################################################################################
     ###########################################################################################
-
+    _shape = worker_phy_fatigue_coe.shape
     all_embs = torch.cat([action_mask_embedding.unsqueeze(1), state_depot_hoop_embedding, have_raw_hoops_embedding, state_depot_bending_tube_embedding, 
                           have_raw_bending_tube_embedding, station_state_inner_left_embedding, station_state_inner_right_embedding, 
                           station_state_outer_left_embedding, station_state_outer_right_embedding, cutting_machine_state_embedding, 
                           is_full_products_embedding, produce_product_req_embedding, raw_product_embd, max_env_len_ebd.unsqueeze(1), time_step_embedding.unsqueeze(1), progress.unsqueeze(1), 
-                          worker_state, worker_task, worker_pose, worker_phy_fatigue_embd, worker_psy_fatigue_embd,
+                          worker_state, worker_task, worker_pose, worker_phy_fatigue_embd, worker_psy_fatigue_embd, worker_phy_fatigue_coe.view(_shape[0], _shape[1]*_shape[2], _shape[3]),
                           agv_state, agv_task, agv_pose, 
                           box_state, box_task, box_pose,], dim=1)
     mask = state['token_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
@@ -884,6 +895,10 @@ class CostFeatureEmbeddingBlock(nn.Module):
     self.action = torch.arange(dimstate.action_mask, dtype = torch.int32, device=dimstate.device_str).unsqueeze(0)
     self.action_embedding= nn.Embedding(dimstate.action_mask, hidden_size)
     self.worker_idx_embedding= nn.Embedding(dimstate.max_num_entity, hidden_size)
+    self.phy_fatigue_coe_embedding= nn.Sequential(
+        nn.Linear(dimstate.fatigue_coe_dim, hidden_size), nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+    )
     self.device = dimstate.device_str
     self.max_n_human = max_num_worker
 
@@ -894,11 +909,15 @@ class CostFeatureEmbeddingBlock(nn.Module):
     action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
     worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['phy_fatigue'])
     worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['psy_fatigue'])
-
+    (state['phy_fatigue_coe'].unsqueeze(-1))
+    # torch.index_select(state['phy_fatigue_coe'], 1, state['charac_idx'])
+    _shape = state['phy_fatigue_coe'].shape
+    fatigue_coe = state['phy_fatigue_coe'].gather(1, state['charac_idx'].unsqueeze(-1).unsqueeze(-1).repeat(1,1,_shape[-1])).squeeze()
+    fatigue_coe_embedding = self.phy_fatigue_coe_embedding(fatigue_coe.unsqueeze(-1))
     ###########################################################################################
 
     # all_embs = torch.cat([worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), action_embedding.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
-    all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+    all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1), fatigue_coe_embedding], dim=1)
 
     return all_embs*math.sqrt(self.hidden_size)
   

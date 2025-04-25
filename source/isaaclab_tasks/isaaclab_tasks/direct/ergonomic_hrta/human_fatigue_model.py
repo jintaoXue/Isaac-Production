@@ -6,7 +6,7 @@ import torch
 import math
 from ...utils import quaternion
 from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic
-
+import random
 
 
 ######### for human fatigue #####
@@ -46,6 +46,8 @@ class Fatigue(object):
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
         self.phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
         self.psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
+        self.human_type = human_type
+        self.human_type_coe_dic = {"strong": 0.7, "normal": 0.85, "weak": 1.0}
         scale_phy = 0.3
         scale_psy = 0.05
         self.ONE_STEP_TIME = 1.0
@@ -53,7 +55,7 @@ class Fatigue(object):
         self.ftg_thresh_psy = self.cfg.ftg_thresh_psy
         self.ftg_task_mask = None
         
-        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy, self.phy_fatigue_ce_dic)
+        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[self.human_type], self.phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
         self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.psy_recovery_ce_dic)
@@ -79,10 +81,14 @@ class Fatigue(object):
 
     def scale_coefficient(self, scale, dic : dict):
         return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
+
+    def get_phy_fatigue_coe(self):
+        
+        return list(self.phy_fatigue_ce_dic.values())[3:]
     
     def reset(self):
-        if self.time_step is not None and self.time_step > 100:
-            self.plot_curve()
+        # if self.time_step is not None and self.time_step > 100:
+        #     self.plot_curve()
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
@@ -176,7 +182,7 @@ class Fatigue(object):
         # gs = fig.add_gridspec(1,4) 
         ax = plt.subplot(111)
         # ax_2 = plt.subplot(212)
-        ax.set_title('Fatigue curve', fontsize=20)
+        ax.set_title('Fatigue curve, Human type:' + self.human_type, fontsize=20)
         ax.set_xlabel('time step', fontsize=15)
         ax.tick_params(axis='both', which='both', labelsize=15)
         line_labels = ['Physiological fatigue', 'Psychological fatigue']
@@ -247,8 +253,9 @@ class Characters(object):
         
         self.n_max_human = _cfg.n_max_human
         self.fatigue_list : list[Fatigue] = []
+        self.human_types = ["strong", "normal", "weak"]
         for i in range(0,len(self.character_list)):
-            self.fatigue_list.append(Fatigue(i, 'human_type_0'))
+            self.fatigue_list.append(Fatigue(i, random.choice(self.human_types)))
         self.fatigue_task_masks = None
 
         return

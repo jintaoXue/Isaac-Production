@@ -1767,16 +1767,20 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         agv_mask = torch.zeros([max_num], dtype=bool)
         worker_mask = torch.zeros([max_num], dtype=bool)
         box_mask = torch.zeros([max_num], dtype=bool)
-
+        dim_phy_fatigue_coe = len(self.task_manager.characters.fatigue_list[0].get_phy_fatigue_coe())
+        worker_state_len = 5+dim_phy_fatigue_coe
+        worker_token_mask = torch.zeros([max_num*worker_state_len], dtype=bool)
         obs_dict['worker_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['worker_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['worker_task'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['worker_fatigue_phy'] = torch.zeros([max_num, 1], dtype=torch.float32)
         obs_dict['worker_fatigue_psy'] = torch.zeros([max_num, 1], dtype=torch.float32)
+        obs_dict['phy_fatigue_coe'] = torch.zeros([max_num, dim_phy_fatigue_coe], dtype=torch.float32)
         
         for i in range(max_num):
             if i < self.task_manager.characters.acti_num_charc:
                 worker_mask[i] = 1
+                worker_token_mask[i*worker_state_len:(i+1)*worker_state_len] = 1
                 worker_position = self.task_manager.characters.list[i].get_world_poses()
                 wp = world_pose_to_navigation_pose(worker_position)
                 wp_str = self.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=wp, in_dis=1000.)
@@ -1786,7 +1790,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 obs_dict['worker_task'][i] = self.task_manager.characters.tasks[i]
                 obs_dict['worker_fatigue_phy'][i] = self.task_manager.characters.fatigue_list[i].phy_fatigue
                 obs_dict['worker_fatigue_psy'][i] = self.task_manager.characters.fatigue_list[i].psy_fatigue
-        
+                obs_dict['phy_fatigue_coe'][i] = torch.tensor(self.task_manager.characters.fatigue_list[i].get_phy_fatigue_coe(), dtype=torch.float32)
+
         max_num = self.cfg.n_max_robot
         obs_dict['agv_pose'] = torch.zeros([max_num, 1], dtype=torch.int32)
         obs_dict['agv_state'] = torch.zeros([max_num, 1], dtype=torch.int32)
@@ -1820,7 +1825,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
 
         other_token_mask = torch.ones([16], dtype=bool)
         obs_dict['worker_mask'] = worker_mask
-        obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_mask.repeat(5), agv_mask.repeat(3), box_mask.repeat(3)])
+        obs_dict['token_mask'] = torch.concatenate([other_token_mask, worker_token_mask, agv_mask.repeat(3), box_mask.repeat(3)])
         '''fatigue info'''
         # human coefficient dict including 10 task， for cost function model
         # time step, task step
