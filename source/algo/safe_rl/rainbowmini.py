@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(1e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e3))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -211,6 +211,7 @@ class SafeRainbowAgent():
 
         wandb.define_metric("SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/loss", step_metric="SuperviseTrain/step")
+        wandb.define_metric("SuperviseTrain/loss_compare", step_metric="SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/buffer_size", step_metric="SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/EpOverCost", step_metric="SuperviseTrain/step")
         
@@ -249,6 +250,7 @@ class SafeRainbowAgent():
         wandb.define_metric("Evaluate/Savepth", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
 
         for i in range(0, self.config['max_num_worker']):
             for j in range(0, self.config['max_num_robot']):
@@ -406,11 +408,15 @@ class SafeRainbowAgent():
         loss = self.loss_criterion(fatigue_prediction[torch.arange(self.batch_size), states['action']], next_fatigue).mean()
         self.online_net.zero_grad()
         loss.backward()
+        self.cost_optimiser.step()
         # (weights * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
         clip_grad_norm_(self.online_net.parameters(), self.norm_clip)  # Clip gradients by L2 norm
-        self.cost_optimiser.step()
+        with torch.no_grad():
+            delta_fatigue = torch.cat((states['next_phy_fatigue']- states['phy_fatigue'], states['next_psy_fatigue'] - states['psy_fatigue']), dim=1)
+            delta_fatigue_compare = torch.cat((states['phy_delta_predict'], states['psy_delta_predict']), dim=1)
+            loss_compare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
 
-        return loss
+        return loss, loss_compare
 
     def cast_obs(self, obs):
         if isinstance(obs, torch.Tensor):
@@ -630,11 +636,12 @@ class SafeRainbowAgent():
             if self.step_num_sfl > self.cost_num_warmup_steps:
                 if self.step_num_sfl % self.update_frequency_sfl == 0:
                     self.set_train()
-                    loss = self.update_cost_func()
+                    loss, loss_compare = self.update_cost_func()
                     if self.use_wandb:
                         wandb.log({
                                 'SuperviseTrain/step': self.step_num_sfl,
                                 "SuperviseTrain/loss": loss.mean().item(),
+                                "SuperviseTrain/loss_compare": loss_compare.mean().item(),
                                 "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                             })
                     time_now = datetime.now().strftime("_%d-%H-%M-%S")   
@@ -762,9 +769,13 @@ class SafeRainbowAgent():
                             fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
                             next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
                             _size = len(fatigue_prediction)
-                            Eploss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
+                            EpLoss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
+                            delta_fatigue = torch.cat((fatigue_datas['next_phy_fatigue']- fatigue_datas['phy_fatigue'], fatigue_datas['next_psy_fatigue'] - fatigue_datas['psy_fatigue']), dim=1)
+                            delta_fatigue_compare = torch.cat((fatigue_datas['phy_delta_predict'], fatigue_datas['psy_delta_predict']), dim=1)
+                            EpLossCompare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
                             wandb.log({
-                                "Evaluate/EpPredictLoss": Eploss, 
+                                "Evaluate/EpPredictLoss": EpLoss, 
+                                "Evaluate/EpPredictLossCompare": EpLossCompare, 
                             })
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True

@@ -103,6 +103,7 @@ class TaskManager(object):
             self.fatigue_data[task]['next_phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32) 
             self.fatigue_data[task]['next_psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
             self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
+            self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32) 
             del self.fatigue_data[task]['task_str']
             self.fatigue_data_list.append(self.fatigue_data[task])
             del self.fatigue_data[task]

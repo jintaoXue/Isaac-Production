@@ -67,7 +67,7 @@ test setting的num robot character 不一定对
  6. code evaluation epoch的加入
  7. fatigue的值验证
  8. fatigue 的曲线调整，以及训练的reward设计，env length调整
-
+ 9. worker 要改成异质的，首先就是要把疲劳参数和step函数做一个修改，然后是网络参数的输入要改，异质worker的初始化方式也要修改，奖励函数和环境的长度也要做修改
 
 num worker:1, num agv&box:1, env_length:2539, max_env_len:5000, task_finished:True
 num worker:1, num agv&box:1, env_length:2932, max_env_len:5000, task_finished:True
