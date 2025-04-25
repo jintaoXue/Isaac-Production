@@ -1,6 +1,6 @@
 
 
-
+import random
 import numpy as np
 import torch
 import math
@@ -22,7 +22,7 @@ def random_zero_index(data : np.ndarray):
 
 class Fatigue(object):
 
-    def __init__(self, human_idx, human_type) -> None:
+    def __init__(self, human_idx, human_types) -> None:
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
         self.cfg = HRTaskAllocEnvCfg()
@@ -38,33 +38,27 @@ class Fatigue(object):
         self.phy_free_state_dic = {"free", "waiting_box", "approaching"}
         self.psy_free_state_dic = {"free", "waiting_box", "approaching"}
         #coefficient dic: combine all the subtask and state
-        self.phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.04, "put_bending_tube_into_box": 0.06, 
+        self.raw_phy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.04, "put_bending_tube_into_box": 0.06, 
                         'put_hoop_on_table': 0.04, 'put_bending_tube_on_table': 0.06, 'hoop_loading_inner': 0.12, "hoop_loading_outer": 0.12, 'bending_tube_loading_inner': 0.15, 
                         'bending_tube_loading_outer': 0.15, "cutting_cube": 0.01, "placing_product": 0.15}
-        self.psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
+        self.raw_psy_fatigue_ce_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": 0.1, "put_bending_tube_into_box": 0.15, 
                         'put_hoop_on_table': 0.1, 'put_bending_tube_on_table': 0.15, 'hoop_loading_inner': 0.05, "hoop_loading_outer": 0.05, 'bending_tube_loading_inner': 0.1, 
                         'bending_tube_loading_outer': 0.1, "cutting_cube": 0.01, "placing_product": 0.3}
-        self.phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
-        self.psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
-        self.human_type = human_type
+        self.raw_phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
+        self.raw_psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
+        self.human_types = human_types
         self.human_type_coe_dic = {"strong": 0.7, "normal": 0.85, "weak": 1.0}
-        scale_phy = 0.3
-        scale_psy = 0.05
+
         self.ONE_STEP_TIME = 1.0
         self.ftg_thresh_phy = self.cfg.ftg_thresh_phy
         self.ftg_thresh_psy = self.cfg.ftg_thresh_psy
         self.ftg_task_mask = None
         
-        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[self.human_type], self.phy_fatigue_ce_dic)
-        self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.psy_fatigue_ce_dic)
-        self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.phy_recovery_ce_dic)
-        self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.psy_recovery_ce_dic)
-        
         # self.device = cuda_device
         self.idx = human_idx
         # self.phy_recovery_coefficient = self.phy_recovery_ce_dic[human_type]
         # self.psy_recovery_coefficient = self.psy_recovery_ce_dic[human_type]
-        self.update_predict_dic()
+        
         self.phy_fatigue = None
         self.psy_fatigue = None
         self.time_step = None
@@ -98,6 +92,13 @@ class Fatigue(object):
         self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         self.update_ftg_mask()
+        scale_phy = 0.3
+        scale_psy = 0.05
+        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[random.choice(self.human_types)], self.raw_phy_fatigue_ce_dic)
+        self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_fatigue_ce_dic)
+        self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.raw_phy_recovery_ce_dic)
+        self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
+        self.update_predict_dic()
         return
     
     def step(self, state_type, subtask, task, ftg_prediction = None):
@@ -256,7 +257,7 @@ class Characters(object):
         self.fatigue_list : list[Fatigue] = []
         self.human_types = ["strong", "normal", "weak"]
         for i in range(0,len(self.character_list)):
-            self.fatigue_list.append(Fatigue(i, random.choice(self.human_types)))
+            self.fatigue_list.append(Fatigue(i, self.human_types))
         self.fatigue_task_masks = None
 
         return
