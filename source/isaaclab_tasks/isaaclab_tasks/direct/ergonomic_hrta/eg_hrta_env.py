@@ -297,7 +297,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.agvs.tasks[corresp_agv_idx] = 4
                     self.task_manager.agvs.states[corresp_agv_idx] = 2
             elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
-                self.reset_random_time()
+                self.reset_worker_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 self.task_manager.boxs.counts[corresp_box_idx] += 1
                 if task == 1:
@@ -322,7 +322,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 elif task == 10: 
                     self.task_manager.task_clearing(task='placing_product')
             elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
-                self.reset_random_time()
+                self.reset_worker_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 self.task_manager.boxs.counts[corresp_box_idx] -= 1
                 if task == 3:
@@ -343,7 +343,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif state == 5: #loading 
             target_position, target_orientation = current_pose
             if self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.LOADING_TIME + self.temp_random_time:
-                self.reset_random_time()
+                self.reset_worker_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 if task == 5: 
                     self.depot_hoop_set.remove(self.materials.inner_hoop_processing_index)
@@ -592,18 +592,18 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 dof_pos_10 = (end_pose - initial_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + initial_pose
                 self.materials.cube_states[cube_cut_index] = 4
             elif self.c_machine_oper_time == self.c_machine_oper_len:
-                self.reset_random_time()
+                self.reset_worker_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 2
                 dof_pos_10 = end_pose
                 #sending picking flag to gripper
         elif self.cutting_machine_state == 2:
             '''reseting machine'''
-            if self.c_machine_oper_time < self.c_machine_oper_len:
+            if self.c_machine_oper_time < self.c_machine_oper_len + self.temp_random_time:
                 self.c_machine_oper_time += 1
                 dof_pos_10 = (initial_pose - end_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + end_pose
             elif self.c_machine_oper_time >= self.c_machine_oper_len:
-                self.reset_random_time()
+                self.reset_worker_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 0
                 dof_pos_10 = initial_pose
@@ -1227,7 +1227,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             target = welding_left_pose
             self.welder_inner_oper_time += 1
             self.materials.cube_states[self.materials.inner_cube_processing_index] = 9
-            if self.welder_inner_oper_time > self.welding_once_time:
+            if self.welder_inner_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 3 
@@ -1253,7 +1254,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.materials.cube_states[self.materials.inner_cube_processing_index] = 10
             target = welding_right_pose
             self.welder_inner_oper_time += 1
-            if self.welder_inner_oper_time > self.welding_once_time:
+            if self.welder_inner_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 6 
@@ -1285,7 +1287,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             # self.materials.bending_tube_list[raw_bending_tube_index].set_world_poses(torch.tensor([[-23.4193,   4.5691,   1.4]], device=self.cuda_device) ,
             #                                                                           orientations=torch.tensor([[ 0.0051,  0.0026, -0.7029,  0.7113]], device=self.cuda_device))
             # self.materials.bending_tube_list[raw_bending_tube_index].set_velocities(torch.zeros((1,6), device=self.cuda_device))
-            if self.welder_inner_oper_time > 5:
+            if self.welder_inner_oper_time > 5 + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_inner_oper_time = 0
                 self.welder_inner_state = 7 
@@ -1309,7 +1312,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             assert bending_tube_index >= 0
             target = welding_middle_pose
             self.welder_inner_oper_time += 1
-            if self.welder_inner_oper_time > self.welding_once_time:
+            if self.welder_inner_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.materials.cube_states[self.materials.inner_cube_processing_index] = 12
                 self.welder_inner_oper_time = 0
@@ -1638,7 +1642,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.materials.cube_states[self.materials.outer_cube_processing_index] = 9
             target = welding_left_pose
             self.welder_outer_oper_time += 1
-            if self.welder_outer_oper_time > self.welding_once_time:
+            if self.welder_outer_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 3 
@@ -1659,7 +1664,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             self.materials.cube_states[self.materials.outer_cube_processing_index] = 10
             target = welding_right_pose
             self.welder_outer_oper_time += 1
-            if self.welder_outer_oper_time > self.welding_once_time:
+            if self.welder_outer_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 6 
@@ -1668,7 +1674,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif self.welder_outer_state == 6: #rotate_and_welding
             target = welding_right_pose
             self.welder_outer_oper_time += 1
-            if self.welder_outer_oper_time > 5:
+            if self.welder_outer_oper_time > 5 + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.welder_outer_oper_time = 0
                 self.welder_outer_state = 7 
@@ -1686,7 +1693,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             assert bending_tube_index >= 0
             target = welding_middle_pose
             self.welder_outer_oper_time += 1
-            if self.welder_outer_oper_time > self.welding_once_time:
+            if self.welder_outer_oper_time > self.welding_once_time + self.machine_random_time:
+                self.reset_machine_random_time()
                 #task finished
                 self.materials.cube_states[self.materials.outer_cube_processing_index] = 12
                 self.welder_outer_oper_time = 0

@@ -125,7 +125,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             # assert acti_num_char is None, "wrong training setting"
             self.task_manager.reset(acti_num_char, acti_num_robot)
             self.dynamic_episode_len = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
-            
+        
+        self.reset_worker_random_time()
+        self.reset_machine_random_time()
         self.materials.reset()
         self.reset_machine_state()
         self.update_task_mask()
@@ -334,14 +336,16 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             self.gantt_charc = []
             self.gantt_agv = []
     
-    def reset_random_time(self):
+    def reset_worker_random_time(self):
         self.temp_random_time = np.random.uniform(0,self.cfg.human_time_random)
+    
+    def reset_machine_random_time(self):
+        self.machine_random_time = np.random.uniform(0,self.cfg.machine_time_random)
     
     def reset_machine_state(self):
         # conveyor
         #0 free 1 working
         self.convey_state = 0
-        self.machine_random_time = self.cfg.machine_time_random
         #cutting machine
         #to do 
         self.cutting_state_dic = {0:"free", 1:"work", 2:"reseting"}
