@@ -24,7 +24,7 @@ blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 costfunc_transition_dtype = np.dtype((dict))
 fatigue_blank_state = blank_state.copy()
 additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
- 'charac_idx':torch.tensor([0], dtype=torch.int64), 'action': torch.tensor([0])}
+                    'phy_delta_predict': torch.tensor([0.]), 'charac_idx':torch.tensor([0], dtype=torch.int64), 'action': torch.tensor([0])}
 # additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
 #  'charac_idx':torch.tensor([0]), 'action': torch.zeros((10), dtype=torch.float32)}
 for key, value in additional_state.items():
