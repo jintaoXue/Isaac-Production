@@ -87,10 +87,13 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     welding_once_time = 20
     human_loading_time = 8
     human_putting_time = 5
+    machine_time_random = 2
+    human_time_random = 2.5
     box_capacity = 4
     #fatigue
     ftg_thresh_phy = 0.95
     ftg_thresh_psy = 0.8
+    
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

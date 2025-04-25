@@ -296,7 +296,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.characters.tasks[idx] = 4 #put_bending_tube_on_table
                     self.task_manager.agvs.tasks[corresp_agv_idx] = 4
                     self.task_manager.agvs.states[corresp_agv_idx] = 2
-            elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME:
+            elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
+                self.reset_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 self.task_manager.boxs.counts[corresp_box_idx] += 1
                 if task == 1:
@@ -320,7 +321,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.task_clearing(task='bending_tube_preparing')
                 elif task == 10: 
                     self.task_manager.task_clearing(task='placing_product')
-            elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME:
+            elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
+                self.reset_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 self.task_manager.boxs.counts[corresp_box_idx] -= 1
                 if task == 3:
@@ -340,7 +342,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         
         elif state == 5: #loading 
             target_position, target_orientation = current_pose
-            if self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.LOADING_TIME:
+            if self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.LOADING_TIME + self.temp_random_time:
+                self.reset_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0
                 if task == 5: 
                     self.depot_hoop_set.remove(self.materials.inner_hoop_processing_index)
@@ -584,11 +587,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.cutting_machine_state = 1
         elif self.cutting_machine_state == 1:
             '''cutting cube'''
-            if self.c_machine_oper_time < self.c_machine_oper_len:
+            if self.c_machine_oper_time < self.c_machine_oper_len + self.temp_random_time:
                 # self.c_machine_oper_time += 1 by human worker
-                dof_pos_10 = (end_pose - initial_pose)*self.c_machine_oper_time/self.c_machine_oper_len + initial_pose
+                dof_pos_10 = (end_pose - initial_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + initial_pose
                 self.materials.cube_states[cube_cut_index] = 4
             elif self.c_machine_oper_time == self.c_machine_oper_len:
+                self.reset_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 2
                 dof_pos_10 = end_pose
@@ -597,8 +601,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             '''reseting machine'''
             if self.c_machine_oper_time < self.c_machine_oper_len:
                 self.c_machine_oper_time += 1
-                dof_pos_10 = (initial_pose - end_pose)*self.c_machine_oper_time/self.c_machine_oper_len + end_pose
+                dof_pos_10 = (initial_pose - end_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + end_pose
             elif self.c_machine_oper_time >= self.c_machine_oper_len:
+                self.reset_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 0
                 dof_pos_10 = initial_pose

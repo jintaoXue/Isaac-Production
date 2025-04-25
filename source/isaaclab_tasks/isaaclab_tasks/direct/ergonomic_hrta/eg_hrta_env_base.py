@@ -33,6 +33,7 @@ from isaacsim.core.api.world import World
 from .eg_hrta_task_manager import Materials, TaskManager
 from .eg_hrta_map_route import MapRoute
 from abc import abstractmethod
+import numpy as np
 
 class HRTaskAllocEnvBase(DirectRLEnv):
     cfg: HRTaskAllocEnvCfg
@@ -332,11 +333,15 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             self.time_frames = []
             self.gantt_charc = []
             self.gantt_agv = []
-
+    
+    def reset_random_time(self):
+        self.temp_random_time = np.random.uniform(0,self.cfg.human_time_random)
+    
     def reset_machine_state(self):
         # conveyor
         #0 free 1 working
         self.convey_state = 0
+        self.machine_random_time = self.cfg.machine_time_random
         #cutting machine
         #to do 
         self.cutting_state_dic = {0:"free", 1:"work", 2:"reseting"}

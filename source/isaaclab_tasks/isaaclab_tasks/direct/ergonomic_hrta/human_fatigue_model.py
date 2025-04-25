@@ -250,7 +250,8 @@ class Characters(object):
         self.PUTTING_TIME = _cfg.human_putting_time
         self.LOADING_TIME = _cfg.human_loading_time
         self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
-        
+        self.RANDOM_TIME = _cfg.human_time_random
+
         self.n_max_human = _cfg.n_max_human
         self.fatigue_list : list[Fatigue] = []
         self.human_types = ["strong", "normal", "weak"]
