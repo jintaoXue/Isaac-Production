@@ -591,7 +591,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 # self.c_machine_oper_time += 1 by human worker
                 dof_pos_10 = (end_pose - initial_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + initial_pose
                 self.materials.cube_states[cube_cut_index] = 4
-            elif self.c_machine_oper_time == self.c_machine_oper_len:
+            elif self.c_machine_oper_time >= self.c_machine_oper_len + self.temp_random_time:
                 self.reset_worker_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 2
@@ -602,7 +602,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             if self.c_machine_oper_time < self.c_machine_oper_len + self.temp_random_time:
                 self.c_machine_oper_time += 1
                 dof_pos_10 = (initial_pose - end_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + end_pose
-            elif self.c_machine_oper_time >= self.c_machine_oper_len:
+            elif self.c_machine_oper_time >= self.c_machine_oper_len + self.temp_random_time:
                 self.reset_worker_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 0
