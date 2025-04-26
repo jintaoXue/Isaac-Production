@@ -32,8 +32,6 @@ class Fatigue(object):
             'hoop_loading_inner': ['hoop_loading_inner'], 'bending_tube_loading_inner': ['bending_tube_loading_inner'], 
             'hoop_loading_outer': ['hoop_loading_outer'], 'bending_tube_loading_outer':['bending_tube_loading_outer'], 
             'cutting_cube':['cutting_cube'], 'collect_product':['free'], 'placing_product':['placing_product']*box_capacity}
-        self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
-        self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         
         self.phy_free_state_dic = {"free", "waiting_box", "approaching"}
         self.psy_free_state_dic = {"free", "waiting_box", "approaching"}
@@ -94,10 +92,13 @@ class Fatigue(object):
         
         scale_phy = 0.3
         scale_psy = 0.05
-        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[random.choice(self.human_types)], self.raw_phy_fatigue_ce_dic)
+        self.human_type = random.choice(self.human_types)
+        self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[self.human_type], self.raw_phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_fatigue_ce_dic)
         self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.raw_phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
+        self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
+        self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.update_predict_dic()
         self.update_ftg_mask()
         return
