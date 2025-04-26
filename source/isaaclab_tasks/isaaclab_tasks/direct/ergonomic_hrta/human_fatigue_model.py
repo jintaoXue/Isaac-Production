@@ -91,7 +91,7 @@ class Fatigue(object):
         self.psy_history = [(0, self.time_step)]
         self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
-        self.update_ftg_mask()
+        
         scale_phy = 0.3
         scale_psy = 0.05
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[random.choice(self.human_types)], self.raw_phy_fatigue_ce_dic)
@@ -99,6 +99,7 @@ class Fatigue(object):
         self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.raw_phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
         self.update_predict_dic()
+        self.update_ftg_mask()
         return
     
     def step(self, state_type, subtask, task, ftg_prediction = None):
