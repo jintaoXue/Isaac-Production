@@ -640,8 +640,8 @@ class SafeRainbowAgent():
                     if self.use_wandb:
                         wandb.log({
                                 'SuperviseTrain/step': self.step_num_sfl,
-                                "SuperviseTrain/loss": loss.mean().item(),
-                                "SuperviseTrain/loss_compare": loss_compare.mean().item(),
+                                "SuperviseTrain/loss": torch.sqrt(loss).item(),
+                                "SuperviseTrain/loss_compare": torch.sqrt(loss_compare).item(),
                                 "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                             })
                     time_now = datetime.now().strftime("_%d-%H-%M-%S")   
