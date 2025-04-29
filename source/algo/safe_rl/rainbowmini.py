@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(1e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e3))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -421,16 +421,20 @@ class SafeRainbowAgent():
         states = data.stack_from_array(states.squeeze(), device=self._device)
         # fatigue_prediction = self.online_net.cost_forward(states)*states['prediction_mask']
         fatigue_prediction = self.online_net.cost_forward(states)
-        next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1)
-        loss = self.loss_criterion(fatigue_prediction[torch.arange(self.batch_size), states['action']], next_fatigue).mean()
+        # next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1)
+        # loss = self.loss_criterion(fatigue_prediction[torch.arange(self.batch_size), states['action']], next_fatigue).mean()
+        next_fatigue = states['next_phy_fatigue']
+        loss = self.loss_criterion(fatigue_prediction[:,:,[0]][torch.arange(self.batch_size), states['action']], next_fatigue).mean()
         self.online_net.zero_grad()
         loss.backward()
         self.cost_optimiser.step()
         # (weights * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
         clip_grad_norm_(self.online_net.parameters(), self.norm_clip)  # Clip gradients by L2 norm
         with torch.no_grad():
-            delta_fatigue = torch.cat((states['next_phy_fatigue']- states['phy_fatigue'], states['next_psy_fatigue'] - states['psy_fatigue']), dim=1)
-            delta_fatigue_compare = torch.cat((states['phy_delta_predict'], states['psy_delta_predict']), dim=1)
+            # delta_fatigue = torch.cat((states['next_phy_fatigue']- states['phy_fatigue'], states['next_psy_fatigue'] - states['psy_fatigue']), dim=1)
+            # delta_fatigue_compare = torch.cat((states['phy_delta_predict'], states['psy_delta_predict']), dim=1)
+            delta_fatigue = states['next_phy_fatigue']- states['phy_fatigue']
+            delta_fatigue_compare = states['phy_delta_predict']
             loss_compare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
 
         return loss, loss_compare

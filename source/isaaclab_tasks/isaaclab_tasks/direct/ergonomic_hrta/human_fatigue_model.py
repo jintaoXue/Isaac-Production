@@ -391,7 +391,7 @@ class Characters(object):
     
     def step_processing(self, idx):
         fatigue : Fatigue = self.fatigue_list[idx]
-        step_time = 1/(1+math.log(1+fatigue)) 
+        step_time = 1/(1+math.log(1+fatigue.phy_fatigue)) 
         return step_time
 
     def step_fatigue(self, idx, state, subtask, task, ftg_prediction = None):
