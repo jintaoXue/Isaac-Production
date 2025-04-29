@@ -62,7 +62,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     # viewer
     viewer: HRTaViewerCfg = HRTaViewerCfg()
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500
-    train_env_len_setting = [[3000, 3000, 3000], [1300, 1300, 1300], [1100, 1100, 1100]]
+    train_env_len_setting = [[4000, 4000, 4000], [1800, 1800, 1800], [1500, 1500, 1500]]
     #max_episode_length = max_episode_length_s / (self.cfg.sim.dt * self.cfg.decimation) = 25/(1/120 * 2) = 1500 steps
     episode_length_s = 25.0 
     action_space = 10
@@ -83,19 +83,19 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     cuda_device_str = "cuda:0"
     #train_cfg will be update when running train.py
     train_cfg = None
-    cutting_machine_oper_len = 15
-    welding_once_time = 20
+    cutting_machine_oper_len = 25
+    welding_once_time = 25
     human_loading_time = 8
     human_putting_time = 5
-    # machine_time_random = 2
-    # human_time_random = 2.5
-    machine_time_random = 0
-    human_time_random = 0
+    machine_time_random = 2
+    human_time_random = 2
+    # machine_time_random = 0
+    # human_time_random = 0
     box_capacity = 4
     #fatigue
     ftg_thresh_phy = 0.95
     ftg_thresh_psy = 0.8
-    
+    hyper_param_time = 0.3
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

@@ -909,7 +909,6 @@ class CostFeatureEmbeddingBlock(nn.Module):
     action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
     worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['phy_fatigue'])
     worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['psy_fatigue'])
-    (state['phy_fatigue_coe'].unsqueeze(-1))
     # torch.index_select(state['phy_fatigue_coe'], 1, state['charac_idx'])
     _shape = state['phy_fatigue_coe'].shape
     fatigue_coe = state['phy_fatigue_coe'].gather(1, state['charac_idx'].unsqueeze(-1).unsqueeze(-1).repeat(1,1,_shape[-1])).squeeze(-2)

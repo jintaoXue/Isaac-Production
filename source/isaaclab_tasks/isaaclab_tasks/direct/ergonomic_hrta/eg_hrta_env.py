@@ -298,7 +298,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.agvs.states[corresp_agv_idx] = 2
             elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
                 self.reset_worker_random_time()
-                self.task_manager.characters.loading_operation_time_steps[idx] = 0
+                self.task_manager.characters.loading_operation_time_steps[idx] = 0.
                 self.task_manager.boxs.counts[corresp_box_idx] += 1
                 if task == 1:
                     hoop_idx = self.materials.hoop_states.index(0)
@@ -309,7 +309,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.bending_tube_states[bending_tube_idx] = 1
                     self.task_manager.boxs.bending_tube_idx_sets[corresp_box_idx].add(bending_tube_idx)
             else:
-                self.task_manager.characters.loading_operation_time_steps[idx] += 1
+                self.task_manager.characters.loading_operation_time_steps[idx] += self.task_manager.characters.step_processing(idx)
         elif state == 4: #putting materails
             target_position, target_orientation = current_pose
             if self.task_manager.boxs.counts[corresp_box_idx] == 0: #finished 
@@ -323,7 +323,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.task_manager.task_clearing(task='placing_product')
             elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
                 self.reset_worker_random_time()
-                self.task_manager.characters.loading_operation_time_steps[idx] = 0
+                self.task_manager.characters.loading_operation_time_steps[idx] = 0.
                 self.task_manager.boxs.counts[corresp_box_idx] -= 1
                 if task == 3:
                     hoop_idx = self.task_manager.boxs.hoop_idx_list[corresp_box_idx].pop()
@@ -338,13 +338,13 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.product_states[product_index] = 2
                     self.depot_product_set.add(product_index)
             else:
-                self.task_manager.characters.loading_operation_time_steps[idx] += 1
+                self.task_manager.characters.loading_operation_time_steps[idx] += self.task_manager.characters.step_processing(idx)
         
         elif state == 5: #loading 
             target_position, target_orientation = current_pose
             if self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.LOADING_TIME + self.temp_random_time:
                 self.reset_worker_random_time()
-                self.task_manager.characters.loading_operation_time_steps[idx] = 0
+                self.task_manager.characters.loading_operation_time_steps[idx] = 0.
                 if task == 5: 
                     self.depot_hoop_set.remove(self.materials.inner_hoop_processing_index)
                     self.station_state_inner_left = 2
@@ -366,10 +366,10 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.bending_tube_states[self.materials.outer_bending_tube_loading_index] = 5
                     self.task_manager.task_clearing(task='bending_tube_loading_outer')
             else:
-                self.task_manager.characters.loading_operation_time_steps[idx] += 1
+                self.task_manager.characters.loading_operation_time_steps[idx] += self.task_manager.characters.step_processing(idx)
         elif state == 6: #cutting machine
             target_position, target_orientation = current_pose
-            self.c_machine_oper_time += 1
+            self.c_machine_oper_time += self.task_manager.characters.step_processing(idx)
             if self.cutting_machine_state == 2: #is resetting
                 self.task_manager.task_clearing(task='cutting_cube')
             
@@ -603,7 +603,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.c_machine_oper_time += 1
                 dof_pos_10 = (initial_pose - end_pose)*self.c_machine_oper_time/(self.c_machine_oper_len + self.temp_random_time) + end_pose
             elif self.c_machine_oper_time >= self.c_machine_oper_len + self.temp_random_time:
-                self.reset_worker_random_time()
+                self.reset_machine_random_time()
                 self.c_machine_oper_time = 0
                 self.cutting_machine_state = 0
                 dof_pos_10 = initial_pose

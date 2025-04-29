@@ -254,6 +254,7 @@ class Characters(object):
         self.LOADING_TIME = _cfg.human_loading_time
         self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
         self.RANDOM_TIME = _cfg.human_time_random
+        self.hyper_param_time = _cfg.hyper_param_time
 
         self.n_max_human = _cfg.n_max_human
         self.fatigue_list : list[Fatigue] = []
@@ -287,7 +288,7 @@ class Characters(object):
             self.list[i].set_velocities(torch.zeros((1,6)))
             self.reset_idx(i)
             self.reset_path(i)
-        self.loading_operation_time_steps = [0 for i in range(acti_num_charc)]
+        self.loading_operation_time_steps = [0. for i in range(acti_num_charc)]
         
         #1 is avaiable, 0 means worker is over fatigue threshold
         self.fatigue_task_masks = torch.zeros((self.n_max_human, len(high_level_task_dic)), dtype=torch.int32)
@@ -388,6 +389,11 @@ class Characters(object):
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
         return position, orientation, reaching_flag
     
+    def step_processing(self, idx):
+        fatigue : Fatigue = self.fatigue_list[idx]
+        step_time = 1/(1+math.log(1+fatigue)) 
+        return step_time
+
     def step_fatigue(self, idx, state, subtask, task, ftg_prediction = None):
         
         state_type = self.state_character_dic[state]
