@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(1e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e3))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -161,15 +161,26 @@ class SafeRainbowAgent():
         self.game_lengths = torch_ext.AverageMeter(1, self.games_to_track).to(self._device)
         # self.game_overworks = torch_ext.AverageMeter(1, self.games_to_track).to(self._device)
         # self.train_avgs = []
-        self.eval_avgs = []
+
+        self.eval_progress_avgs = []
+        self.eval_env_len_avgs = []
+        self.progress_avgs = []
+        self.env_len_avgs = []
         for i in range(0, self.config['max_num_worker']):
             list_a = []
             list_b = []
+            list_c = []
+            list_d = []
             for j in range(0, self.config['max_num_robot']):
                 list_a.append(torch_ext.AverageMeter(1, self.games_to_track).to(self._device))
                 list_b.append(torch_ext.AverageMeter(1, self.games_to_track).to(self._device))
+                list_c.append(torch_ext.AverageMeter(1, self.games_to_track).to(self._device))
+                list_d.append(torch_ext.AverageMeter(1, self.games_to_track).to(self._device))
             # self.train_avgs.append(list_a)
-            self.eval_avgs.append(list_b)
+            self.eval_progress_avgs.append(list_a)
+            self.eval_env_len_avgs.append(list_b)
+            self.progress_avgs.append(list_c)
+            self.env_len_avgs.append(list_d)
     
         # self.min_alpha = torch.tensor(np.log(1)).float().to(self._device)
         self.step_num = 0
@@ -231,7 +242,12 @@ class SafeRainbowAgent():
         wandb.define_metric("Train/buffer_size", step_metric="Train/step")
         wandb.define_metric("Train/loss", step_metric="Train/step")
         wandb.define_metric("Train/train_epoch", step_metric="Train/step")
-
+        
+        for i in range(0, self.config['max_num_worker']):
+            for j in range(0, self.config['max_num_robot']):
+                wandb.define_metric(f'Avg_progress/{i+1}_{j+1}', step_metric="Train/step")
+                wandb.define_metric(f'Avg_env_len/{i+1}_{j+1}', step_metric="Train/step")
+        
         total = sum([param.nelement() for param in self.online_net.parameters()])
         # print("Number of parameters: %.2fM" % (total/1e6))
         param_table = wandb.Table(columns=["online_net_size", "num_warm_up_steps", "cost_num_warmup_steps", "use_cost_num_steps"], 
@@ -254,7 +270,8 @@ class SafeRainbowAgent():
 
         for i in range(0, self.config['max_num_worker']):
             for j in range(0, self.config['max_num_robot']):
-                wandb.define_metric(f'Avg/{i+1}_{j+1}', step_metric="Evaluate/step")
+                wandb.define_metric(f'Eval_avg_progress/{i+1}_{j+1}', step_metric="Evaluate/step")
+                wandb.define_metric(f'Eval_avg_env_len/{i+1}_{j+1}', step_metric="Evaluate/step")
         # self.evaluate_table = wandb.Table(columns=["env_length", "action_seq", "progress"])
 
         #test
@@ -515,13 +532,13 @@ class SafeRainbowAgent():
                 self.game_lengths.update(self.current_lengths[done_indices])
 
                 not_dones = 1.0 - dones.float()
-                # obs_cpu = {}
-                # for key, value in obs.items():
-                #     obs_cpu[key] = value.cpu()
+                obs_cpu = {}
+                for key, value in obs.items():
+                    obs_cpu[key] = value.cpu()
                 action_cpu = action.squeeze().cpu()
                 rewards_cpu = rewards.squeeze().cpu()
                 dones_cpu = dones.squeeze().cpu()
-                self.replay_buffer.append(obs, action_cpu, rewards_cpu+reward_extra, dones_cpu)
+                self.replay_buffer.append(obs_cpu, action_cpu, rewards_cpu+reward_extra, dones_cpu)
 
                 if dones[0]:
                     self.episode_num += 1
@@ -672,12 +689,21 @@ class SafeRainbowAgent():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
-                next_obs = self.env_reset(num_worker=num_worker, num_robot=num_robot)
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
                             "SuperviseTrain/EpOverCost": self.current_overworks,
                         })
+                    _num_worker, _num_robot = infos['num_worker'], infos['num_robot']
+                    if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
+                        task_success = True
+                    else: 
+                        task_success = False
+                    self.progress_avgs[_num_worker-1][_num_robot-1].update(torch.tensor([task_success], dtype=torch.float32, device=self._device))
+                    self.env_len_avgs[_num_worker-1][_num_robot-1].update(torch.tensor([infos['env_length']], dtype=torch.float32, device=self._device))
+                    wandb.log({f'Avg_progress/{_num_worker}_{_num_robot}': self.progress_avgs[_num_worker-1][_num_robot-1].get_mean()})
+                    wandb.log({f'Avg_env_len/{_num_worker}_{_num_robot}': self.env_len_avgs[_num_worker-1][_num_robot-1].get_mean()})
+                next_obs = self.env_reset(num_worker=num_worker, num_robot=num_robot)
             not_dones = 1.0 - done_flag.float()
             self.temp_current_lengths = self.temp_current_lengths * not_dones
             self.current_overworks = self.current_overworks * not_dones
@@ -691,8 +717,10 @@ class SafeRainbowAgent():
                     reward_extra += -0.03
                 if goal_finished:
                     if self.step_num_sfl > self.use_cost_num_steps:
-                        reward_extra += 0.05*(_infos['max_env_len']-1 - _infos['env_length'])/_infos['env_length']
-                        repeat_times = 5
+                        num_worker, num_robot = infos['num_worker'], infos['num_robot']
+                        if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
+                            reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
+                            repeat_times = 5
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:
@@ -774,14 +802,16 @@ class SafeRainbowAgent():
                             delta_fatigue_compare = torch.cat((fatigue_datas['phy_delta_predict'], fatigue_datas['psy_delta_predict']), dim=1)
                             EpLossCompare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
                             wandb.log({
-                                "Evaluate/EpPredictLoss": EpLoss, 
-                                "Evaluate/EpPredictLossCompare": EpLossCompare, 
+                                "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(), 
+                                "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                             })
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
-                    self.eval_avgs[num_worker-1][num_robot-1].update(torch.tensor([task_success], dtype=torch.float32, device=self._device))
-                    wandb.log({f'Avg/{num_worker}_{num_robot}': self.eval_avgs[num_worker-1][num_robot-1].get_mean()}) 
+                    self.eval_progress_avgs[num_worker-1][num_robot-1].update(torch.tensor([task_success], dtype=torch.float32, device=self._device))
+                    self.eval_env_len_avgs[num_worker-1][num_robot-1].update(torch.tensor([infos['env_length']], dtype=torch.float32, device=self._device))
+                    wandb.log({f'Eval_avg_progress/{num_worker}_{num_robot}': self.eval_progress_avgs[num_worker-1][num_robot-1].get_mean()})
+                    wandb.log({f'Eval_avg_env_len/{num_worker}_{num_robot}': self.eval_env_len_avgs[num_worker-1][num_robot-1].get_mean()})
                         # self.evaluate_table.add_data(infos['env_length'], ' '.join(action_info_list), infos['progress'])
                         # wandb.log({"Action": self.evaluate_table}) 
                         # if not test:

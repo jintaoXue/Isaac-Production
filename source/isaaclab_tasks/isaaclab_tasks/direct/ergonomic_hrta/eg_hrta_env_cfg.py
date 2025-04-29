@@ -62,7 +62,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     # viewer
     viewer: HRTaViewerCfg = HRTaViewerCfg()
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500
-    train_env_len_setting = [[2650, 2650, 2650], [1100, 1100, 1100], [1000, 950, 900]]
+    train_env_len_setting = [[3000, 3000, 3000], [1300, 1300, 1300], [1100, 1100, 1100]]
     #max_episode_length = max_episode_length_s / (self.cfg.sim.dt * self.cfg.decimation) = 25/(1/120 * 2) = 1500 steps
     episode_length_s = 25.0 
     action_space = 10
@@ -87,8 +87,10 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     welding_once_time = 20
     human_loading_time = 8
     human_putting_time = 5
-    machine_time_random = 2
-    human_time_random = 2.5
+    # machine_time_random = 2
+    # human_time_random = 2.5
+    machine_time_random = 0
+    human_time_random = 0
     box_capacity = 4
     #fatigue
     ftg_thresh_phy = 0.95

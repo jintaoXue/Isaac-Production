@@ -209,7 +209,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.materials.pre_progress = progress
         self.extras['progress'] = progress
         self.extras['rew_action'] = self.reward_action
-        self.extras['env_length'] = self.episode_length_buf[0].clone()
+        self.extras['env_length'] = self.episode_length_buf[0].clone().cpu().item()
         self.extras['max_env_len'] = self.dynamic_episode_len
         self.extras['time_step'] = f"{self.episode_length_buf[0].cpu()}"
         self.extras['num_worker'] = self.task_manager.characters.acti_num_charc
