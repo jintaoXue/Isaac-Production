@@ -87,8 +87,8 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     welding_once_time = 25
     human_loading_time = 8
     human_putting_time = 5
-    machine_time_random = 2
-    human_time_random = 2
+    machine_time_random = 0
+    human_time_random = 0
     # machine_time_random = 0
     # human_time_random = 0
     box_capacity = 4
