@@ -191,7 +191,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         task_finished = self.materials.done()
         is_last_step = self.episode_length_buf[0] >= self.dynamic_episode_len - 1
         """Compute reward at current timestep."""
-        reward_time = (self.episode_length_buf[0] - self.pre_progress_step)*-0.001
+        reward_time = (self.episode_length_buf[0] - self.pre_progress_step)*-0.002
         progress = self.materials.progress()
         if is_last_step: 
             if task_finished:

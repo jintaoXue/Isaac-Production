@@ -45,9 +45,9 @@ class SafeRainbowAgent():
         self.max_steps = config.get("max_steps", int(5e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
         self.batch_size = config.get('batch_size', 512)
-        self.num_warmup_steps = config.get('num_warmup_steps', int(1e4))
-        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(1e3))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e3))
+        self.num_warmup_steps = config.get('num_warmup_steps', int(5e4))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(6e4))
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
@@ -717,8 +717,8 @@ class SafeRainbowAgent():
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
-                if self.current_overworks > 0:
-                    reward_extra += -0.03
+                # if self.current_overworks > 0:
+                #     reward_extra += -0.03
                 if goal_finished:
                     if self.step_num_sfl > self.use_cost_num_steps:
                         num_worker, num_robot = infos['num_worker'], infos['num_robot']
