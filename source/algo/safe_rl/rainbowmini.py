@@ -38,7 +38,7 @@ class SafeRainbowAgent():
 
         '''Params for agent training'''
         self.update_frequency = config.get('update_frequency', 200)
-        self.update_frequency_sfl = config.get('update_frequency_sfl', 400)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 800)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 200)
         self.target_update = config.get('target_update', int(2e3))
