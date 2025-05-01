@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import math
 from ...utils import quaternion
+from .ekf_filter import EkfFatigue, EKfRecover
+from .pf_filter import ParticleFilter, RecParticleFilter
 from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic
 import random
 
@@ -47,7 +49,7 @@ class Fatigue(object):
         self.human_types = human_types
         self.human_type_coe_dic = {"strong": 0.7, "normal": 0.85, "weak": 1.0}
 
-        self.ONE_STEP_TIME = 1.0
+        self.ONE_STEP_TIME = 0.1
         self.ftg_thresh_phy = self.cfg.ftg_thresh_phy
         self.ftg_thresh_psy = self.cfg.ftg_thresh_psy
         self.ftg_task_mask = None
@@ -73,14 +75,26 @@ class Fatigue(object):
 
     def scale_coefficient(self, scale, dic : dict):
         return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
+    
+    def add_coefficient_randomness(self, scale, dic : dict):
+        _dict = {}
+        for (key, v) in dic.items():
+            
+            _dict[key] = (v + v*np.random.uniform(-scale, scale)) if v is not None else None
+
+        return _dict
 
     def get_phy_fatigue_coe(self):
         
         return list(self.phy_fatigue_ce_dic.values())[3:]
     
     def reset(self):
-        # if self.time_step is not None and self.time_step > 100:
-        #     self.plot_curve()
+        if self.time_step is not None and self.time_step > 100:
+            self.plot_curve()
+        #     filter : ParticleFilter = self.pfs_phy_fat['put_hoop_into_box']
+        #     filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue')
+        #     R_filter : RecParticleFilter = self.pfs_phy_rec['free']
+        #     R_filter.plot_results(R_filter.times, R_filter.F_estimates, R_filter.lambda_estimates, name='recover')
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
@@ -90,20 +104,40 @@ class Fatigue(object):
         self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         
-        scale_phy = 0.3
-        scale_psy = 0.05
+        scale_phy = 3
+        scale_psy = 0.5
+        scale_phy_recover= 0.4
         self.human_type = random.choice(self.human_types)
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[self.human_type], self.raw_phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_fatigue_ce_dic)
-        self.phy_recovery_ce_dic = self.scale_coefficient(0.04, self.raw_phy_recovery_ce_dic)
+        self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy_recover, self.raw_phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
+
+        random_percent = 0.2
+        self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
+        self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
+        self.pfs_phy_fat = {}
+        self.pfs_phy_rec = {}
+
+        for (key, v) in self.phy_fatigue_ce_dic.items():
+            if v is not None:
+                # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
+        
+        for (key, v) in self.phy_recovery_ce_dic.items():
+            if v is not None:
+                # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-2, sigma_v=1e-3, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
+
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.update_predict_dic()
         self.update_ftg_mask()
+
         return
-    
+
     def step(self, state_type, subtask, task, ftg_prediction = None):
+        # self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
@@ -117,6 +151,25 @@ class Fatigue(object):
             self.state_task_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
         self.update_ftg_mask(ftg_prediction)
         return
+
+    def step_pfs(self, F, state_type, subtask, step_time):
+    
+        if state_type in self.phy_free_state_dic:
+            _filter : ParticleFilter = self.pfs_phy_rec[state_type]
+            # _filter : EKfRecover = self.pfs_phy_rec[state_type]
+            # if self.time_step != _filter.prev_time_step + 1:
+            #     _filter.reinit(self.time_step, F, self.pfs_phy_rec_ce_dic[state_type])
+            # else:
+            #     _filter.step(F, F, self.time_step)
+            F = F*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
+        else:
+            assert subtask in self.phy_fatigue_ce_dic.keys()
+            _filter : ParticleFilter = self.pfs_phy_fat[subtask]
+            _lambda = -self.phy_fatigue_ce_dic[subtask]
+            F = F + (1-F)*(1-math.exp(_lambda*step_time))
+        _filter.step(F, F, self.time_step)
+        return 
+
     
     def update_ftg_mask(self, prediction=None):
         if prediction is None:

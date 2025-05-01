@@ -220,3 +220,6 @@ num worker:3, num agv&box:3, env_length:952, max_env_len:5000, task_finished:Tru
 num worker:3, num agv&box:3, env_length:822, max_env_len:5000, task_finished:True
 num worker:3, num agv&box:3, env_length:986, max_env_len:5000, task_finished:True
 num worker:3, num agv&box:3, env_length:985, max_env_len:5000, task_finished:True
+
+
+# 问题，supervise traning 存在过拟合

@@ -82,7 +82,7 @@ class SafeRainbowAgent():
             param.requires_grad = False
         #####
         self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
-        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate'], eps=config['adam_eps'])
+        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
         if self.use_wandb:
