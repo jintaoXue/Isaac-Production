@@ -21,7 +21,7 @@ params:
     gamma: 0.99
     tau: 0.95
     learning_rate: 1.0e-4
-    learning_rate_sft: 1.0e-5
+    learning_rate_sft: 0.5e-5
     lr_schedule: adaptive
     schedule_type: standard
     kl_threshold: 0.016
@@ -43,8 +43,8 @@ params:
     # bounds_loss_coef: 0.0001
     reward_shaper: #no use
       scale_value: 0.1
-    # batch_size: 512
-    batch_size: 64
+    batch_size: 512
+    # batch_size: 64
     # num_warmup_steps: 5.0e+4
     # cost_num_warmup_steps: 1.0e+4
     # use_cost_num_steps: 50.e+4

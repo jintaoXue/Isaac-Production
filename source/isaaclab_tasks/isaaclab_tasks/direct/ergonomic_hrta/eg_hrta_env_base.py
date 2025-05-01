@@ -91,28 +91,28 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
-    def reset(self, num_worker=None, num_robot=None):
+    def reset(self, num_worker=None, num_robot=None, evaluate=False):
         """Resets the task and applies default zero actions to recompute observations and states."""
         # now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # print(f"[{now}] Running RL reset")
 
         self.reset_buf[0] = 1
-        self.reset_step(num_worker=num_worker, num_robot=num_robot)
+        self.reset_step(num_worker=num_worker, num_robot=num_robot, evaluate=evaluate)
         actions = torch.zeros((self.num_envs, 1), device=self.cuda_device)
         obs_dict, _, _, _, _ = self.step(actions)
 
         return obs_dict
     
-    def reset_step(self, num_worker=None, num_robot=None):
+    def reset_step(self, num_worker=None, num_robot=None, evaluate=False):
         env_id = 0
         if self.reset_buf[env_id] == 1:
             self.reset_buf[env_id] = 0
             self.episode_length_buf[env_id] = 0
-            self.reset_step_helper(acti_num_char=num_worker, acti_num_robot=num_robot)
+            self.reset_step_helper(acti_num_char=num_worker, acti_num_robot=num_robot, evaluate=evaluate)
         return
 
 
-    def reset_step_helper(self, acti_num_char=None, acti_num_robot=None) -> None:
+    def reset_step_helper(self, acti_num_char=None, acti_num_robot=None, evaluate=False) -> None:
         #TODO
         if self._test:
             if self._test_all_settings:
@@ -125,7 +125,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             # assert acti_num_char is None, "wrong training setting"
             self.task_manager.reset(acti_num_char, acti_num_robot)
             self.dynamic_episode_len = self.train_env_len_settings[self.task_manager.characters.acti_num_charc-1][self.task_manager.agvs.acti_num_agv-1]
-        
+        self.evaluate = evaluate
+        self.have_over_work = False
         self.reset_worker_random_time()
         self.reset_machine_random_time()
         self.materials.reset()
@@ -151,8 +152,11 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             if self._test and self.generate_gantt_chart:
                 self.save_gantt_chart() 
             '''end'''
-            print("num worker:{}, num agv&box:{}, env_length:{}, max_env_len:{}, task_finished:{}".format(self.task_manager.characters.acti_num_charc, 
-                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished))
+            name = 'traning ' if not self.evaluate else 'evaluate '
+            if self.env_rule_based_exploration:
+                name = 'rule_based' + name
+            print(name+" worker:{}, agv&box:{}, env_len:{}, max_env_len:{}, finished:{}, over_work:{}".format(self.task_manager.characters.acti_num_charc, 
+                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished, self.have_over_work))
         else:
             pass
     
@@ -161,7 +165,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def update_task_mask(self):
         # if self.episode_length_buf[0] >= 700:
         #     a = 1
-        self.fatigue_mask = self.get_fatigue_mask()
+        # self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
         # self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
@@ -223,6 +227,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     
     def get_fatigue_data(self):
         self.extras['overwork'] = self.task_manager.characters.have_overwork()
+        if self.extras['overwork']:
+            self.have_over_work = True
         if len(self.task_manager.fatigue_data_list)>0:
             self.extras['fatigue_data'] = self.task_manager.fatigue_data_list
             self.task_manager.fatigue_data_list = []

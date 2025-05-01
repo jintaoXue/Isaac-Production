@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(6e4))
         #########debug
-        self.update_frequency = config.get('update_frequency', 100)
-        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        self.evaluate_interval = config.get('evaluate_interval', 20)
-        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        # self.update_frequency = config.get('update_frequency', 100)
+        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        # self.evaluate_interval = config.get('evaluate_interval', 20)
+        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -484,9 +484,9 @@ class SafeRainbowAgent():
         return self.obs_to_tensors(obs), rewards.to(self._device), dones.to(self._device), infos, actions
 
 
-    def env_reset(self, num_worker=None, num_robot=None):
+    def env_reset(self, num_worker=None, num_robot=None, evaluate=False):
         with torch.no_grad():
-            obs = self.vec_env.reset(num_worker, num_robot)
+            obs = self.vec_env.reset(num_worker, num_robot, evaluate)
 
         obs = self.obs_to_tensors(obs)
 
@@ -666,7 +666,7 @@ class SafeRainbowAgent():
                                 "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                             })
                     time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                    print("time_now:{}".format(time_now) +" supervise traning loss:", loss.mean().item())
+                    # print("time_now:{}".format(time_now) +" supervise traning loss:", loss.mean().item())
             #debug
             # if self.costfunc_buffer.total_num() == 3:
             #     batch_data = self.costfunc_buffer.sample(3)
