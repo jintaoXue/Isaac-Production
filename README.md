@@ -223,3 +223,7 @@ num worker:3, num agv&box:3, env_length:985, max_env_len:5000, task_finished:Tru
 
 
 # 问题，supervise traning 存在过拟合
+
+fix bug
+神经网络修正
+fatigue action

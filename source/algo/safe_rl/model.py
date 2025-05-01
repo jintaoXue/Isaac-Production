@@ -1082,7 +1082,7 @@ class SafeDQNTrans(nn.Module):
         action_mask = x['action_mask']*cost_mask
     else:
         action_mask = x['action_mask']
-    
+
     x = self.transformer(x)
     x = x.squeeze(1) # squeeze the query sequence
     v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
