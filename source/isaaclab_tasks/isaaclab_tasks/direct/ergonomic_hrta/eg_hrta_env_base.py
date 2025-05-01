@@ -161,7 +161,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def update_task_mask(self):
         # if self.episode_length_buf[0] >= 700:
         #     a = 1
-        # self.fatigue_mask = self.get_fatigue_mask()
+        self.fatigue_mask = self.get_fatigue_mask()
         self.task_mask = self.get_task_mask()
         # self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)

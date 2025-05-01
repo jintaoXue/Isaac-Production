@@ -463,7 +463,7 @@ class VectorizedEmbedding(nn.Module):
             indices[:, 21].fill_(self.state_types["agv_task_0"])
             indices[:, 22].fill_(self.state_types["agv_pose_0"])
             indices[:, 23].fill_(self.state_types["agv_state_1"])
-            indices[:, 24].fill_(self.state_types["agv_task_1"])
+            indices[:, 24].fill_(selfCostProjectionLayer.state_types["agv_task_1"])
             indices[:, 25].fill_(self.state_types["agv_pose_1"])
             indices[:, 26].fill_(self.state_types["box_state_0"])
             indices[:, 27].fill_(self.state_types["box_task_0"])
@@ -486,7 +486,17 @@ class FeatureMapper(nn.Module):
         self.dim_output = dim_output
     def forward(self, x):
         return self.fm(x)
-
+    
+class CostFeatureMapper(nn.Module):
+    def __init__(self, dim_input, dim_output):
+        super().__init__()
+        self.fm = nn.Sequential(
+            nn.Linear(dim_input, 512), nn.ReLU(),
+            nn.Linear(512, dim_output),
+        )
+        self.dim_output = dim_output
+    def forward(self, x):
+        return self.fm(x)
 
 class MultiheadAttentionGlobalHead(nn.Module):
     def __init__(self, d_model, nhead=8, dropout=0.1):
@@ -761,6 +771,16 @@ class ProjectionLayer(nn.Module):
         # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
         return self.proj(x)
     
+class CostProjectionLayer(nn.Module):
+
+    def __init__(self, d_model, vocab_size) -> None:
+        super().__init__()
+        self.proj = nn.Linear(d_model, vocab_size)
+
+    def forward(self, x) -> None:
+        # (batch, seq_len, d_model) --> (batch, seq_len, vocab_size)
+        return self.proj(x)
+    
 class Transformer(nn.Module):
 
     def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: FeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
@@ -938,7 +958,7 @@ class CostFeatureEmbeddingBlock(nn.Module):
 class CostTransformer(nn.Module):
 
     def __init__(self, encoder: Encoder, cost_decoder: Decoder, decoder: Decoder, src_embed: FeatureEmbeddingBlock, cost_tgt_embed: CostFeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
-          src_pos: PositionalEncoding, cost_tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer, cost_projection_layer: ProjectionLayer) -> None:
+          src_pos: PositionalEncoding, cost_tgt_pos: PositionalEncoding, projection_layer: ProjectionLayer, cost_projection_layer: CostProjectionLayer) -> None:
         super().__init__()
         self.encoder = encoder
         self.cost_decoder = cost_decoder
@@ -1035,7 +1055,7 @@ def build_cost_net(max_num_worker, dim_state: DimState, d_model: int=512, h: int
     
     # Create the projection layer
     projection_layer = FeatureMapper(d_model, d_model)
-    cost_projection_layer = FeatureMapper(d_model, 2)
+    cost_projection_layer = CostFeatureMapper(d_model, 2)
     # Create the transformer
     transformer = CostTransformer(encoder, cost_decoder, decoder, src_embed, cost_tgt_embed, tgt_embed, src_pos, cost_tgt_pos, projection_layer, cost_projection_layer)
     

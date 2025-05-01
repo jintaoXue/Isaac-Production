@@ -226,4 +226,4 @@ num worker:3, num agv&box:3, env_length:985, max_env_len:5000, task_finished:Tru
 
 fix bug
 神经网络修正
-fatigue action
+对于None action的选择

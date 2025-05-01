@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(6e4))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
