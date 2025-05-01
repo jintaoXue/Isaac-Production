@@ -89,8 +89,8 @@ class Fatigue(object):
         return list(self.phy_fatigue_ce_dic.values())[3:]
     
     def reset(self):
-        if self.time_step is not None and self.time_step > 100:
-            self.plot_curve()
+        # if self.time_step is not None and self.time_step > 100:
+        #     self.plot_curve()
         #     filter : ParticleFilter = self.pfs_phy_fat['put_hoop_into_box']
         #     filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue')
         #     R_filter : RecParticleFilter = self.pfs_phy_rec['free']
