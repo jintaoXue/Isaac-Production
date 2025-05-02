@@ -64,7 +64,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     #dynamic env len settings, for human 1-3 x robot 1-3, <= 1500
     train_env_len_setting = [[4000, 4000, 4000], [1800, 1800, 1800], [1500, 1500, 1500]]
     #max_episode_length = max_episode_length_s / (self.cfg.sim.dt * self.cfg.decimation) = 25/(1/120 * 2) = 1500 steps
-    episode_length_s = 25.0 
+    episode_length_s = 80.0 
     action_space = 10
     #The real state/observation_space is complicated, settiing 2 is only for initializing gym Env
     observation_space = 2

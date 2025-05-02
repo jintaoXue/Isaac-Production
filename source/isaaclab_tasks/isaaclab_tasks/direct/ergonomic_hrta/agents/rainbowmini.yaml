@@ -21,7 +21,7 @@ params:
     gamma: 0.99
     tau: 0.95
     learning_rate: 1.0e-4
-    learning_rate_sft: 0.5e-5
+    learning_rate_sft: 1.0e-3
     lr_schedule: adaptive
     schedule_type: standard
     kl_threshold: 0.016

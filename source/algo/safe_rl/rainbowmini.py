@@ -423,8 +423,8 @@ class SafeRainbowAgent():
         fatigue_prediction = self.online_net.cost_forward(states)
         # next_fatigue = torch.cat((states['next_phy_fatigue'], states['next_psy_fatigue']), dim=1)
         # loss = self.loss_criterion(fatigue_prediction[torch.arange(self.batch_size), states['action']], next_fatigue).mean()
-        next_fatigue = states['next_phy_fatigue']
-        loss = self.loss_criterion(fatigue_prediction[:,:,[0]][torch.arange(self.batch_size), states['action']], next_fatigue).mean()
+        delta_fatigue = states['next_phy_fatigue']- states['phy_fatigue']
+        loss = self.loss_criterion(fatigue_prediction[:,:,[0]][torch.arange(self.batch_size), states['action']], delta_fatigue).mean()
         self.online_net.zero_grad()
         loss.backward()
         self.cost_optimiser.step()
@@ -433,7 +433,6 @@ class SafeRainbowAgent():
         with torch.no_grad():
             # delta_fatigue = torch.cat((states['next_phy_fatigue']- states['phy_fatigue'], states['next_psy_fatigue'] - states['psy_fatigue']), dim=1)
             # delta_fatigue_compare = torch.cat((states['phy_delta_predict'], states['psy_delta_predict']), dim=1)
-            delta_fatigue = states['next_phy_fatigue']- states['phy_fatigue']
             delta_fatigue_compare = states['phy_delta_predict']
             loss_compare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
 
