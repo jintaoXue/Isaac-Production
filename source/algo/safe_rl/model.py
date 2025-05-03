@@ -942,7 +942,7 @@ class CostFeatureEmbeddingBlock(nn.Module):
   
   def forward_predict(self, state):
     batch_size = state['worker_fatigue_phy'].shape[0]
-    worker_mask = state['worker_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
+    # worker_mask = state['worker_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
     action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
     predict_list = []
     
@@ -954,7 +954,7 @@ class CostFeatureEmbeddingBlock(nn.Module):
         fatigue_coe_embedding = self.phy_fatigue_coe_embedding(fatigue_coe.unsqueeze(-1))
         all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1), fatigue_coe_embedding], dim=1)
         # all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
-        _predict = all_embs*math.sqrt(self.hidden_size)*(worker_mask[:,[i]].repeat(1,DimState.cost_seq_len,1))
+        _predict = all_embs*math.sqrt(self.hidden_size)
         predict_list.append(_predict)
     return predict_list
 
