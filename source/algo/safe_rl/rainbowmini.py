@@ -563,7 +563,7 @@ class SafeRainbowAgent():
                         # pass
                         success_list= []
                         w, r = 1, 1
-                        self.obs = self.env_reset(1,1)
+                        self.obs = self.env_reset(1,1, evaluate=True)
                         for _i in range(self.config["max_num_worker"]):
                             for _j in range(self.config["max_num_robot"]):
                                 r += 1
