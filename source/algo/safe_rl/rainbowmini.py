@@ -38,7 +38,7 @@ class SafeRainbowAgent():
 
         '''Params for agent training'''
         self.update_frequency = config.get('update_frequency', 200)
-        self.update_frequency_sfl = config.get('update_frequency_sfl', 800)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 1000)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 200)
         self.target_update = config.get('target_update', int(2e3))
@@ -47,7 +47,7 @@ class SafeRainbowAgent():
         self.batch_size = config.get('batch_size', 512)
         self.num_warmup_steps = config.get('num_warmup_steps', int(5e4))
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(6e4))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
