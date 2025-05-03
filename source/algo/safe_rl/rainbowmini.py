@@ -49,12 +49,12 @@ class SafeRainbowAgent():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(6e4))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -665,7 +665,7 @@ class SafeRainbowAgent():
                                 "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                             })
                     time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                    # print("time_now:{}".format(time_now) +" supervise traning loss:", loss.mean().item())
+                    print("time_now:{}".format(time_now) +" supervise traning loss:", loss.mean().item())
             #debug
             # if self.costfunc_buffer.total_num() == 3:
             #     batch_data = self.costfunc_buffer.sample(3)
@@ -798,12 +798,13 @@ class SafeRainbowAgent():
                         with torch.no_grad():
                             fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
                             fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
-                            next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
+                            # next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
+                            delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
                             _size = len(fatigue_prediction)
-                            EpLoss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']], next_fatigue).mean()
-                            delta_fatigue = torch.cat((fatigue_datas['next_phy_fatigue']- fatigue_datas['phy_fatigue'], fatigue_datas['next_psy_fatigue'] - fatigue_datas['psy_fatigue']), dim=1)
-                            delta_fatigue_compare = torch.cat((fatigue_datas['phy_delta_predict'], fatigue_datas['psy_delta_predict']), dim=1)
-                            EpLossCompare = self.loss_criterion(delta_fatigue, delta_fatigue_compare).mean()
+                            EpLoss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']][...,[0]], delta_fatigue).mean()
+                            # delta_fatigue = torch.cat((fatigue_datas['next_phy_fatigue']- fatigue_datas['phy_fatigue'], fatigue_datas['next_psy_fatigue'] - fatigue_datas['psy_fatigue']), dim=1)
+                            # delta_fatigue_compare = torch.cat((fatigue_datas['phy_delta_predict'], fatigue_datas['psy_delta_predict']), dim=1)
+                            EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
                             wandb.log({
                                 "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(), 
                                 "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 

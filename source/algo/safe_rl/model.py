@@ -945,12 +945,16 @@ class CostFeatureEmbeddingBlock(nn.Module):
     worker_mask = state['worker_mask'].unsqueeze(-1).repeat(1,1,self.hidden_size)
     action_embedding = self.action_embedding(self.action.repeat([batch_size, 1]))
     predict_list = []
+    
     for i in range(self.max_n_human):
         worker_idx_embedding = self.worker_idx_embedding(torch.tensor([i], device=self.device).repeat(batch_size))
-        worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy'][:,i])*worker_mask[:,i]
-        worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy'][:,i])*worker_mask[:,i]
-        all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
-        _predict = all_embs*math.sqrt(self.hidden_size)
+        worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy'][:,i])
+        worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy'][:,i])
+        fatigue_coe = state['phy_fatigue_coe'][:,i]
+        fatigue_coe_embedding = self.phy_fatigue_coe_embedding(fatigue_coe.unsqueeze(-1))
+        all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1), fatigue_coe_embedding], dim=1)
+        # all_embs = torch.cat([action_embedding, worker_phy_fatigue_embd.unsqueeze(1), worker_psy_fatigue_embd.unsqueeze(1), worker_idx_embedding.unsqueeze(1)], dim=1)
+        _predict = all_embs*math.sqrt(self.hidden_size)*(worker_mask[:,[i]].repeat(1,DimState.cost_seq_len,1))
         predict_list.append(_predict)
     return predict_list
 
@@ -972,7 +976,7 @@ class CostTransformer(nn.Module):
         self.cost_projection_layer = cost_projection_layer
 
     def encode(self, src, src_mask):
-        # (batch, seq_len, d_model)
+        # (batch, seq_len, d_model)self.cost_decoder(cost_tgt, encoder_output, None, None)
         src = self.src_embed(src)
         src = self.src_pos(src)
         return self.encoder(src, src_mask)
@@ -995,7 +999,7 @@ class CostTransformer(nn.Module):
     def decode_cost(self, encoder_output: torch.Tensor, cost_state: torch.Tensor):
         cost_tgt = self.cost_tgt_embed(cost_state)
         cost_tgt = self.cost_tgt_pos(cost_tgt)
-        cost_tgt = self.cost_decoder(cost_tgt, encoder_output, None, None)[:,:10]
+        cost_tgt = self.cost_decoder(cost_tgt, encoder_output, None, None)[:,:DimState.action_mask]
         return self.cost_projection_layer(cost_tgt)
     
     def predict_cost(self, encoder_output: torch.Tensor, cost_state: torch.Tensor):
@@ -1003,7 +1007,7 @@ class CostTransformer(nn.Module):
         _list = []
         for _predict in cost_tgt_list:
            _predict = self.cost_tgt_pos(_predict)
-           _predict = self.cost_decoder(_predict, encoder_output, None, None)[:,:10]
+           _predict = self.cost_decoder(_predict, encoder_output, None, None)[:,:DimState.action_mask] 
            _predict = self.cost_projection_layer(_predict).squeeze(-1).unsqueeze(-2)
            _list.append(_predict)
         return torch.cat(_list, dim=-2)
@@ -1094,11 +1098,13 @@ class SafeDQNTrans(nn.Module):
   def forward(self, x, use_cost_function, log=False):
     if use_cost_function:
         # print('use_cost function')
-        cost_predict = self.predict_cost(x)
-        cost_mask = torch.where(cost_predict[..., 0] < self.ftg_thresh_phy, 1, 0)*torch.where(cost_predict[..., 1] < self.ftg_thresh_psy, 1, 0)
+        delta_predict = self.predict_cost(x)
+        # cost_mask = torch.where(cost_predict[..., 0] < self.ftg_thresh_phy, 1, 0)*torch.where(cost_predict[..., 1] < self.ftg_thresh_psy, 1, 0)
+        predict = delta_predict[..., 0] + x['worker_fatigue_phy'][..., 0].unsqueeze(1).repeat(1, self.action_space, 1)
+        cost_mask = torch.where(predict < self.ftg_thresh_phy, 1, 0)
         worker_mask = x['worker_mask'].unsqueeze(1).repeat(1, self.action_space, 1)
         cost_mask = cost_mask*worker_mask
-        cost_mask = torch.any(cost_mask, dim=2)
+        cost_mask = torch.any(cost_mask, dim=-1)
         action_mask = x['action_mask']*cost_mask
     else:
         action_mask = x['action_mask']
