@@ -28,6 +28,7 @@ class Fatigue(object):
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
         self.cfg = HRTaskAllocEnvCfg()
+        self.hyper_param_time = self.cfg.hyper_param_time
         box_capacity = self.cfg.box_capacity
         self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*box_capacity, 
             'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*box_capacity, 
@@ -185,16 +186,18 @@ class Fatigue(object):
         return
 
     def update_predict_dic(self):
+        step_time_scale = (1+self.hyper_param_time*math.log(1+self.phy_fatigue))
+        self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         for key, v in self.task_phy_prediction_dic.items():
             subtask_seq = self.task_human_subtasks_dic[key]
             for subtask in subtask_seq:
                 time = self.ONE_STEP_TIME
                 if 'put' in subtask or subtask == 'placing_product':
-                    time = self.cfg.human_putting_time * self.ONE_STEP_TIME
+                    time = self.cfg.human_putting_time * self.ONE_STEP_TIME * step_time_scale
                 elif 'loading' in subtask:
-                    time = self.cfg.human_loading_time * self.ONE_STEP_TIME
+                    time = self.cfg.human_loading_time * self.ONE_STEP_TIME * step_time_scale
                 elif subtask == 'cutting_cube':
-                    time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME
+                    time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
                 self.task_phy_prediction_dic[key] = self.step_helper_phy(self.task_phy_prediction_dic[key], subtask, subtask, time)
                 self.task_psy_prediction_dic[key] = self.step_helper_psy(self.task_psy_prediction_dic[key], subtask, subtask, time)
 
@@ -447,7 +450,7 @@ class Characters(object):
     
     def step_processing(self, idx):
         fatigue : Fatigue = self.fatigue_list[idx]
-        step_time = 1/(1+math.log(1+fatigue.phy_fatigue)) 
+        step_time = 1/(1+self.hyper_param_time*math.log(1+fatigue.phy_fatigue)) 
         return step_time
 
     def step_fatigue(self, idx, state, subtask, task, ftg_prediction = None):
