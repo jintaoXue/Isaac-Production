@@ -49,13 +49,13 @@ MAX_FLOAT = 3.40282347e38
 
 class HRTaskAllocEnv(HRTaskAllocEnvBase):
             
-    def step(self, action: torch.Tensor | None
+    def step(self, action: torch.Tensor | None, action_extra = None
         ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Step buffers. Refresh tensors. Compute observations and reward. Reset environments."""
         # process actions debug TODO
         if self.env_rule_based_exploration:
             action = self.get_rule_based_action() if self.episode_length_buf[0] > 0 else action
-        self.post_task_manager_step(action)
+        self.post_task_manager_step(action, action_extra)
         self._pre_physics_step(action)
         ###TODO only support single env training
         # action_mask
@@ -108,7 +108,11 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         self.caculate_metric_action(actions)
         return actions
 
-    def post_task_manager_step(self, actions):
+    def post_task_manager_step(self, actions, action_extra=None):
+        if action_extra is not None and 'cost_mask' in action_extra.keys():
+            self.task_manager.characters.cost_mask_from_net = action_extra['cost_mask']
+        else:
+            self.task_manager.characters.cost_mask_from_net = None
         #TODO only support single action, not actions
         task_id = -1 #default as none
         assert actions is not None, "action is None"

@@ -315,7 +315,6 @@ class Characters(object):
         for i in range(0,len(self.character_list)):
             self.fatigue_list.append(Fatigue(i, self.human_types))
         self.fatigue_task_masks = None
-
         return
     
     def reset(self, acti_num_charc = None, random = None):
@@ -349,7 +348,7 @@ class Characters(object):
             fatigue : Fatigue = self.fatigue_list[i]
             fatigue.reset()
             self.fatigue_task_masks[i] = fatigue.ftg_task_mask
-        
+        self.cost_mask_from_net = None
         return initial_pose_str
 
     # def get_fatigue_task_masks(self):
@@ -368,18 +367,22 @@ class Characters(object):
         #todo 
         if high_level_task not in self.task_range:
             return -2
-        
-        _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
-        _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx]
+
+        # _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx]
         #task == 0 means the human doing no task, is free
-        np_task = np.array(self.tasks)
-        np_task = np.where(_fatigue_mask, np_task, -1)
-        
+        # np_task = np.array(self.tasks)
+        # np_task = np.where(_fatigue_mask, np_task, -1)
+        worker_tasks = self.tasks
+        if self.cost_mask_from_net is not None:
+            assert len(self.cost_mask_from_net) == 1, "error cost mask shape from cost function"
+            _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
+            _fatigue_mask = self.cost_mask_from_net[0, _fatigue_mask_idx, :]
+            _fatigue_mask[self.acti_num_charc:] = 0
+            worker_tasks = [ self.tasks[i] if _fatigue_mask[i].item() else -1 for i in range(len(_fatigue_mask))]
         if random:
-            idx = random_zero_index(self.tasks)
-        else: 
-            # idx = self.find_available_charac(np_task.tolist())
-            idx = self.find_available_charac(self.tasks)
+            idx = random_zero_index(worker_tasks)
+        else:
+            idx = self.find_available_charac(worker_tasks)
             
         if idx == -1:
             return idx
@@ -404,7 +407,7 @@ class Characters(object):
             else:
                 for _idx in range(0, len(self.list)):
                     xyz, _ = self.list[_idx].get_world_poses()
-                    if self.tasks[_idx] == 0 and xyz[0][0] < -22:
+                    if worker_tasks[_idx] == 0 and xyz[0][0] < -22:
                         self.tasks[_idx] = 9
                         return _idx
                 self.tasks[idx] = 9

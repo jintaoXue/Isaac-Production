@@ -357,8 +357,8 @@ class RlGamesVecEnvWrapperHRTA(RlGamesVecEnvWrapper):
         # process observations and states
         return obs_dict
     
-    def step(self, actions):  # noqa: D102
-        return self.env.step(actions)
+    def step(self, actions, action_extra = None):  # noqa: D102
+        return self.env.step(actions, action_extra)
 
 class RlGamesGpuEnvHRTA(RlGamesGpuEnv):
 
@@ -368,3 +368,7 @@ class RlGamesGpuEnvHRTA(RlGamesGpuEnv):
         # print(f"[{now}] Running RL reset")
         # self.env : HRTaskAllocEnv
         return self.env.reset(num_worker=num_worker, num_robot=num_robot, evaluate=evaluate)
+    
+    def step(self, action, action_extra = None):  # noqa: D102
+        return self.env.step(action, action_extra)
+    

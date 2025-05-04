@@ -1096,6 +1096,7 @@ class SafeDQNTrans(nn.Module):
           self.trainable_params_rl.append(p)
     
   def forward(self, x, use_cost_function, log=False):
+
     if use_cost_function:
         # print('use_cost function')
         delta_predict = self.predict_cost(x)
@@ -1104,10 +1105,10 @@ class SafeDQNTrans(nn.Module):
         cost_mask = torch.where(predict < self.ftg_thresh_phy, 1, 0)
         worker_mask = x['worker_mask'].unsqueeze(1).repeat(1, self.action_space, 1)
         cost_mask = cost_mask*worker_mask
-        cost_mask = torch.any(cost_mask, dim=-1)
-        action_mask = x['action_mask']*cost_mask
+        action_mask = x['action_mask']*torch.any(cost_mask, dim=-1)
     else:
         action_mask = x['action_mask']
+        worker_mask = None
 
     x = self.transformer(x)
     x = x.squeeze(1) # squeeze the query sequence
@@ -1121,7 +1122,7 @@ class SafeDQNTrans(nn.Module):
     # else:
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
-    return q
+    return q, cost_mask
     
   def predict_cost(self, x):
     with torch.no_grad():

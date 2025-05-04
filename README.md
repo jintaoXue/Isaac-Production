@@ -232,3 +232,17 @@ fix bug
 
 # 5.4
 wandb上数据的关键变化点可以记录在table里面
+
+action的返回值里面再包括额外的信息
+obs的extra也应该要包含返回的额外信息
+
+# debug一下为什么单个worker的decision这么差
+self.task_manager.characters.acti_num_charc
+1
+self.task_mask[1:]
+tensor([1., 1., 0., 0., 0., 0., 1., 0., 0.])
+q
+tensor([[ -6.2242,  -6.2513,  -6.4300, -20.0000, -20.0000, -20.0000, -20.0000,
+          -6.5274, -20.0000, -20.0000]], device='cuda:0')
+action_mask
+tensor([[1., 1., 1., 0., 0., 0., 0., 1., 0., 0.]], device='cuda:0')

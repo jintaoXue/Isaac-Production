@@ -155,8 +155,11 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             name = 'traning ' if not self.evaluate else 'evaluate '
             if self.env_rule_based_exploration:
                 name = 'rule_based' + name
-            print(name+" worker:{}, agv&box:{}, env_len:{}, max_env_len:{}, finished:{}, over_work:{}".format(self.task_manager.characters.acti_num_charc, 
-                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished, self.have_over_work))
+            name += " worker:{}, agv&box:{}, env_len:{}, max_env_len:{}, finished:{}, over_work:{}".format(self.task_manager.characters.acti_num_charc, 
+                                                    self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished, self.have_over_work)
+            self.extras['print_info'] = name
+            # print(name+" worker:{}, agv&box:{}, env_len:{}, max_env_len:{}, finished:{}, over_work:{}".format(self.task_manager.characters.acti_num_charc, 
+            #                                         self.task_manager.agvs.acti_num_agv, self.episode_length_buf[0], self.dynamic_episode_len, task_finished, self.have_over_work))
         else:
             pass
     
@@ -184,8 +187,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         if task not in self.available_task_dic.keys():
             self.reward_action = -0.1
         elif task == 'none':
-            if len(self.available_task_dic.keys()) > 1:
-                self.reward_action = -0.05
+            if self.task_mask[1:].count_nonzero() > 0:
+                self.reward_action = -0.1
             else:
                 self.reward_action = 0.
         else:

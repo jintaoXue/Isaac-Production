@@ -47,14 +47,14 @@ class SafeRainbowAgent():
         self.batch_size = config.get('batch_size', 512)
         self.num_warmup_steps = config.get('num_warmup_steps', int(5e4))
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(2e5))
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 20)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(300))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -193,6 +193,7 @@ class SafeRainbowAgent():
         
         self.evaluate_step_num = 0
         self.evaluate_episode_num = 0
+        self.evaluate_use_cost_step = -1
 
         self.train_dir = config.get('train_dir', 'runs')
         # a folder inside of train_dir containing everything related to a particular experiment
@@ -287,7 +288,8 @@ class SafeRainbowAgent():
     # Acts based on single state (no batch)
     def act(self, state):
         with torch.no_grad():
-            return (self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>self.use_cost_num_steps)).argmax(1)
+            action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
+            return action.argmax(1).unsqueeze(0), cost_mask 
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
 
     # Acts with an ε-greedy policy (used for evaluation only)
@@ -307,7 +309,7 @@ class SafeRainbowAgent():
     # Evaluates Q-value based on single state (no batch)
     def evaluate_q(self, state):
         with torch.no_grad():
-            return (self.online_net(state.unsqueeze(0), self.step_num_sfl>self.use_cost_num_steps) * self.support).sum(2).max(1)[0].item()
+            return (self.online_net(state.unsqueeze(0), self.step_num_sfl>=self.use_cost_num_steps) * self.support).sum(2).max(1)[0].item()
 
     def set_train(self):
         self.online_net.train()
@@ -394,15 +396,15 @@ class SafeRainbowAgent():
         # Calculate current state probabilities (online network noise already sampled)
         # log_ps = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
         # log_ps_a = log_ps[range(self.batch_size), actions]  # log p(s_t, a_t; θonline)
-        q = self.online_net(states, use_cost_function)  # probabilities log p(s_t, ·; θonline)
+        q, _ = self.online_net(states, use_cost_function)  # probabilities log p(s_t, ·; θonline)
         q_a = q[range(self.batch_size), actions]  # p(s_t, a_t; θonline)
         
         with torch.no_grad():
             # Calculate nth next state probabilities
-            qns = self.online_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θonline)
+            qns, _ = self.online_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θonline)
             argmax_indices_ns = qns.argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θonline))]
             self.target_net.reset_noise()  # Sample new target net noise
-            qns = self.target_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θtarget)
+            qns, _ = self.target_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θtarget)
             qns_a = qns[range(self.batch_size), argmax_indices_ns]  # Double-Q probabilities p(s_t+n, argmax_a[(z, p(s_t+n, a; θonline))]; θtarget)
             y = returns + self.gamma*qns_a*nonterminals.squeeze() 
             
@@ -476,9 +478,9 @@ class SafeRainbowAgent():
 
         return actions
 
-    def env_step(self, actions):
+    def env_step(self, actions, action_extra = None):
         # actions = self.preprocess_actions(actions)
-        obs, rewards, dones, infos, actions = self.vec_env.step(actions) # (obs_space) -> (n, obs_space)
+        obs, rewards, dones, infos, actions = self.vec_env.step(actions, action_extra) # (obs_space) -> (n, obs_space)
 
         return self.obs_to_tensors(obs), rewards.to(self._device), dones.to(self._device), infos, actions
 
@@ -616,7 +618,7 @@ class SafeRainbowAgent():
                                     "Train/loss": loss.mean().item(),
                                 })
                         time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                        print("time_now:{}".format(time_now) +" RL traning loss:", loss.mean().item())
+                        print("RL traning loss:{}".format(loss.mean().item()) + "time_now:{}".format(time_now))
 
                 # Update target network
                 if self.step_num % self.target_update == 0:
@@ -636,6 +638,7 @@ class SafeRainbowAgent():
             obs : dict = self.obs
             random_exploration = self.step_num < self.num_warmup_steps
             self.set_train()
+            action_extra = {}
             if random_exploration:
                 if self.step_num < self.demonstration_steps:
                     action = None
@@ -643,17 +646,16 @@ class SafeRainbowAgent():
                     action = self.act_random(obs)
             else:
                 with torch.no_grad():
-                    action = self.act(obs).unsqueeze(0)
-            
+                    action, cost_mask = self.act(obs)
+                    action_extra['cost_mask'] = cost_mask
             with torch.no_grad():
-                next_obs, rewards, dones, infos, action = self.env_step(action)
+                next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
             if 'fatigue_data' in infos:
                 fatigue_data = infos['fatigue_data']
                 for _data in fatigue_data:
                     self.costfunc_buffer.append(_data)
 
-            self.step_num_sfl += 1
-            if self.step_num_sfl > self.cost_num_warmup_steps:
+            if self.step_num_sfl >= self.cost_num_warmup_steps:
                 if self.step_num_sfl % self.update_frequency_sfl == 0:
                     self.set_train()
                     loss, loss_compare = self.update_cost_func()
@@ -665,7 +667,8 @@ class SafeRainbowAgent():
                                 "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                             })
                     time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                    print("time_now:{}".format(time_now) +" supervise traning loss:", loss.mean().item())
+                    print("supervise traning loss:{}，".format(loss.mean().item()) + " time_now:{}".format(time_now))
+            self.step_num_sfl += 1
             #debug
             # if self.costfunc_buffer.total_num() == 3:
             #     batch_data = self.costfunc_buffer.sample(3)
@@ -692,6 +695,8 @@ class SafeRainbowAgent():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
+                print_info = infos['print_info']
+                print(print_info + "| warm_up:{},".format(random_exploration) + " sfl_warm_up:{}".format(self.cost_num_warmup_steps>self.step_num_sfl))
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -751,8 +756,7 @@ class SafeRainbowAgent():
                 action = None
             else:
                 with torch.no_grad():
-                    action = self.act(obs).unsqueeze(0)
-
+                    action, cost_mask = self.act(obs)
             step_start = time.time()
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)
@@ -780,8 +784,13 @@ class SafeRainbowAgent():
                 for _data in fatigue_data:
                     fatigue_data_list.append(_data)
             if infos['overwork']:
-                self.current_overworks += 1                 
+                self.current_overworks += 1
+            if self.evaluate_use_cost_step < 0 and self.cost_num_warmup_steps <= self.step_num_sfl:
+                self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
+                
+                print_info = infos['print_info']
+                print(print_info + " sfl_warm_up:{},".format(self.cost_num_warmup_steps>self.step_num_sfl) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
