@@ -696,7 +696,7 @@ class SafeRainbowAgent():
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
                 print_info = infos['print_info']
-                print(print_info + "| warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
+                print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
