@@ -696,7 +696,7 @@ class SafeRainbowAgent():
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
                 print_info = infos['print_info']
-                print(print_info + "| warm_up:{},".format(random_exploration) + " sfl_warm_up:{}".format(self.cost_num_warmup_steps>self.step_num_sfl))
+                print(print_info + "| warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -785,12 +785,13 @@ class SafeRainbowAgent():
                     fatigue_data_list.append(_data)
             if infos['overwork']:
                 self.current_overworks += 1
-            if self.evaluate_use_cost_step < 0 and self.cost_num_warmup_steps <= self.step_num_sfl:
+            use_cost_func = self.step_num_sfl > self.use_cost_num_steps
+            if self.evaluate_use_cost_step < 0 and use_cost_func:
                 self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
                 
                 print_info = infos['print_info']
-                print(print_info + " sfl_warm_up:{},".format(self.cost_num_warmup_steps>self.step_num_sfl) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
+                print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
