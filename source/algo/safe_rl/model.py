@@ -1108,7 +1108,7 @@ class SafeDQNTrans(nn.Module):
         action_mask = x['action_mask']*torch.any(cost_mask, dim=-1)
     else:
         action_mask = x['action_mask']
-        worker_mask = None
+        cost_mask = None
 
     x = self.transformer(x)
     x = x.squeeze(1) # squeeze the query sequence
