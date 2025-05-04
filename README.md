@@ -229,3 +229,6 @@ fix bug
 对于None action的选择
 
 把预测值改成预测delta
+
+# 5.4
+wandb上数据的关键变化点可以记录在table里面
