@@ -200,6 +200,8 @@ class Fatigue(object):
                     time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
                 self.task_phy_prediction_dic[key] = self.step_helper_phy(self.task_phy_prediction_dic[key], subtask, subtask, time)
                 self.task_psy_prediction_dic[key] = self.step_helper_psy(self.task_psy_prediction_dic[key], subtask, subtask, time)
+            self.task_phy_prediction_dic[key] -= self.phy_fatigue
+            self.task_psy_prediction_dic[key] -= self.psy_fatigue
 
         return
 
