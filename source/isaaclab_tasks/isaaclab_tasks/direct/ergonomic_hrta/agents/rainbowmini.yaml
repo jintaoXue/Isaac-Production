@@ -43,8 +43,8 @@ params:
     # bounds_loss_coef: 0.0001
     reward_shaper: #no use
       scale_value: 0.1
-    # batch_size: 512
-    batch_size: 64
+    batch_size: 512
+    # batch_size: 64
     # num_warmup_steps: 5.0e+4
     # cost_num_warmup_steps: 1.0e+4
     # use_cost_num_steps: 50.e+4

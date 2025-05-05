@@ -66,22 +66,26 @@ class TaskManager(object):
     def assign_task(self, task):
         
         charac_idx = self.characters.assign_task(task, random = False)
-        if task in self.characters.task_range and charac_idx != -1:
+        if task in self.characters.task_range:
+            if charac_idx != -1:
             # assert charac_idx >= 0, "charac idx should >= 0"
             # if charac_idx < 0:
             #     a = 1
-            self.fatigue_data[task] = copy.deepcopy(self.obs) 
-            self.fatigue_data[task]['phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32)
-            self.fatigue_data[task]['psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
-            self.fatigue_data[task]['charac_idx'] = torch.tensor(charac_idx, dtype=torch.int64) 
-            self.fatigue_data[task]['task_str'] = task
-            self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
-            self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
-            self.characters.fatigue_list[charac_idx].update_predict_dic()
-            self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
-            self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32) 
+                self.fatigue_data[task] = copy.deepcopy(self.obs) 
+                self.fatigue_data[task]['phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32)
+                self.fatigue_data[task]['psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
+                self.fatigue_data[task]['charac_idx'] = torch.tensor(charac_idx, dtype=torch.int64) 
+                self.fatigue_data[task]['task_str'] = task
+                self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
+                self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
+                self.characters.fatigue_list[charac_idx].update_predict_dic()
+                self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
+                self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32)
+            else:
+                return False
             # self.fatigue_data[task]['prediction_mask'] = torch.zeros((len(self.task_dic), 2), dtype=torch.float32)
             # self.fatigue_data[task]['prediction_mask'][self.task_dic_inverse[task]+1, :] = 1
+        
         box_idx = self.boxs.assign_task(task, random = False)
         if box_idx >= 0:
             box_xyz, _ = self.boxs.list[box_idx].get_world_poses()

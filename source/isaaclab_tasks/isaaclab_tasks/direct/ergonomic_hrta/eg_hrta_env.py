@@ -139,10 +139,9 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.state_depot_bending_tube = 1
             elif task == 'placing_product':
                 self.task_manager.task_clearing(task='collect_product')
-                self.task_manager.assign_task(task='placing_product')
-                self.task_manager.boxs.product_collecting_idx = -1 #collecting box
-            else:
-                self.task_manager.assign_task(task)
+                if self.task_manager.assign_task(task='placing_product'):
+                    self.task_manager.boxs.product_collecting_idx = -1 #collecting box
+            elif self.task_manager.assign_task(task):
                 if task == 'hoop_loading_inner':
                     hoop_index = self.materials.find_next_raw_hoop_index()
                     self.materials.hoop_states[hoop_index] = 3
