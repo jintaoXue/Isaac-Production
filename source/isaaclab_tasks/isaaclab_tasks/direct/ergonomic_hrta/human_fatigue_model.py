@@ -187,7 +187,7 @@ class Fatigue(object):
 
     def update_predict_dic(self):
         step_time_scale = (1+self.hyper_param_time*math.log(1+self.phy_fatigue))
-        self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
+        self.task_phy_prediction_dic = {task: self.phy_fatigue  for (key, task) in high_level_task_dic.items()} 
         for key, v in self.task_phy_prediction_dic.items():
             subtask_seq = self.task_human_subtasks_dic[key]
             for subtask in subtask_seq:
