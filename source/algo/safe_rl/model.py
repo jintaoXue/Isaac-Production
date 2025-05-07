@@ -1095,7 +1095,7 @@ class SafeDQNTrans(nn.Module):
         else:
           self.trainable_params_rl.append(p)
     
-  def forward(self, x, use_cost_function, log=False):
+  def forward(self, x, use_cost_function=False, log=False):
 
     if use_cost_function:
         # print('use_cost function')
