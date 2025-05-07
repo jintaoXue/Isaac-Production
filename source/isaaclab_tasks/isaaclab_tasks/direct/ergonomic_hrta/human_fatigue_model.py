@@ -138,7 +138,8 @@ class Fatigue(object):
         return
 
     def step(self, state_type, subtask, task, ftg_prediction = None):
-        # self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
+        if self.cfg.use_partial_filter == True:
+            self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
@@ -161,14 +162,17 @@ class Fatigue(object):
             # if self.time_step != _filter.prev_time_step + 1:
             #     _filter.reinit(self.time_step, F, self.pfs_phy_rec_ce_dic[state_type])
             # else:
-            #     _filter.step(F, F, self.time_step)
+                # _filter.step(F, F, self.time_step)
             F = F*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
+            _filter.step(F, F, self.time_step)
+            self.pfs_phy_fat_ce_dic[state_type] = _filter.lambda_estimates[-1]
         else:
             assert subtask in self.phy_fatigue_ce_dic.keys()
             _filter : ParticleFilter = self.pfs_phy_fat[subtask]
             _lambda = -self.phy_fatigue_ce_dic[subtask]
             F = F + (1-F)*(1-math.exp(_lambda*step_time))
-        _filter.step(F, F, self.time_step)
+            _filter.step(F, F, self.time_step)
+            self.pfs_phy_rec_ce_dic[subtask] = _filter.lambda_estimates 
         return 
 
     
