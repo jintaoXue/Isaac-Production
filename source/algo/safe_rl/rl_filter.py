@@ -82,7 +82,7 @@ class SafeRlFilterAgent():
         for param in self.target_net.parameters():
             param.requires_grad = False
         #####
-        self.optimiser = optim.Adam(self.online_net, lr=config['learning_rate'], eps=config['adam_eps'])
+        self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
         # self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
         # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
@@ -237,7 +237,7 @@ class SafeRlFilterAgent():
         wandb.define_metric("Metrics/EpLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpEnvLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpFilterPredictLoss", step_metric="Metrics/step_episode")
-        wandb.define_metric("Metrics/EpFilterRecoverPredictLoss", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterRecoverCoeLoss", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpPredictLossCompare", step_metric="Metrics/step_episode")
 
         wandb.define_metric("Metrics/EpTime", step_metric="Metrics/step_episode")
@@ -273,7 +273,7 @@ class SafeRlFilterAgent():
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpFilterRecoverPredictLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterRecoverCoeLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
 
         for i in range(0, self.config['max_num_worker']):
@@ -575,13 +575,11 @@ class SafeRlFilterAgent():
                             "Metrics/EpRetAction": self.current_rewards_action,
                         })
                     if len(fatigue_data_list)>0:
-                        fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
-                        delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
-                        EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
-                        EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
-                        wandb.log({
+                        EpLossCompare, EpFilterPredictLoss, FilterRecoverCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                        if self.use_wandb:
+                            wandb.log({
                             "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                            "Metrics/EpFilterRecoverPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
+                            "Metrics/EpFilterRecoverCoeLoss": torch.sqrt(FilterRecoverCoeLoss).item(),
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                         })
@@ -661,6 +659,7 @@ class SafeRlFilterAgent():
     
     def play_steps(self, num_worker=None, num_robot=None):
         temporary_buffer = []
+        fatigue_data_list = []
         while True:
             obs : dict = self.obs
             random_exploration = self.step_num < self.num_warmup_steps
@@ -678,6 +677,11 @@ class SafeRlFilterAgent():
                     action_extra['cost_mask'] = cost_mask
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
+
+            if 'fatigue_data' in infos:
+                fatigue_data = infos['fatigue_data']
+                for _data in fatigue_data:
+                    fatigue_data_list.append(_data)
 
             if self.use_prediction_net:
                 if self.step_num_sfl >= self.cost_num_warmup_steps:
@@ -720,9 +724,11 @@ class SafeRlFilterAgent():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
+                EpLossCompare, EpFilterPredictLoss, FilterRecoverCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                 print_info = infos['print_info']
                 # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
-                print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(True))
+                print(print_info + " | warm_up:{},".format(random_exploration) + " Predict_loss:{:.3}".format(EpLossCompare) + \
+                      " Filter_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Recover_coe_loss:{:.3}".format(FilterRecoverCoeLoss))
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -837,10 +843,10 @@ class SafeRlFilterAgent():
                             delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
                             EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
                             EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
-
+                            FilterRecoverCoeLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_rec_coe_accuracy']).mean()
                             wandb.log({
                                 "Evaluate/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                                "Evaluate/EpFilterRecoverPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
+                                "Evaluate/EpFilterRecoverCoeLoss": torch.sqrt(FilterRecoverCoeLoss).item(),
                                 # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                                 "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                             })
@@ -927,3 +933,10 @@ class SafeRlFilterAgent():
                         wandb.finish()
                     break
 
+    def get_fatigue_related_predtion_loss(self, fatigue_data_list):
+        fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
+        delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
+        EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
+        EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
+        FilterRecoverCoeLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_rec_coe_accuracy']).mean()
+        return EpLossCompare, EpFilterPredictLoss, FilterRecoverCoeLoss

@@ -78,7 +78,11 @@ class TaskManager(object):
                 self.fatigue_data[task]['task_str'] = task
                 self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
                 self.fatigue_data[task]['action'] = torch.tensor(self.task_dic_inverse[task]+1, dtype=torch.int32)
-                self.characters.fatigue_list[charac_idx].update_predict_dic()
+                # self.characters.fatigue_list[charac_idx].update_predict_dic()
+                # self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
+                # self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32)
+                self.fatigue_data[task]['filter_phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_filter_phy_prediction_dic[task]], dtype=torch.float32) 
+                self.fatigue_data[task]['filter_phy_rec_coe_accuracy'] = torch.tensor([self.characters.fatigue_list[charac_idx].get_filter_recover_coe_accuracy()], dtype=torch.float32) 
                 self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
                 self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32)
             else:

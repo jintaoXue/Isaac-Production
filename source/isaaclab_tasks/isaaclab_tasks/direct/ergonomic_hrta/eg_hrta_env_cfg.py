@@ -96,7 +96,8 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     ftg_thresh_phy = 0.95
     ftg_thresh_psy = 0.8
     hyper_param_time = 0.3
-    use_partial_filter = True
+    # if not use fatigue mask, set False
+    use_partial_filter = False
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

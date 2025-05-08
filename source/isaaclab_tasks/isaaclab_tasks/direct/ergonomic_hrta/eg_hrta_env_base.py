@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2025, The Isaac Lab Project Developers.
+    # Copyright (c) 2022-2025, The Isaac Lab Project Developers.
 # All rights reserved.
 #
 # SPDX-License-Identifier: BSD-3-Clause
@@ -286,7 +286,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 if self.materials.inner_cube_processing_index == -1 or self.materials.cube_states[self.materials.inner_cube_processing_index] in range(10, 14):
                     task_mask[4] = 0
 
-        task_mask[0] = 1
+        task_mask[0] = 0
         return task_mask
 
     def get_fatigue_mask(self):

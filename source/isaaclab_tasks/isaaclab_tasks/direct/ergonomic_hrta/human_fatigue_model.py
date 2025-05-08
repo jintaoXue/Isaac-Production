@@ -48,7 +48,7 @@ class Fatigue(object):
         self.raw_phy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
         self.raw_psy_recovery_ce_dic = {"free": 0.05, "waiting_box": 0.05, "approaching": 0.02}
         self.human_types = human_types
-        self.human_type_coe_dic = {"strong": 0.7, "normal": 0.85, "weak": 1.0}
+        self.human_type_coe_dic = {"strong": 0.8, "normal": 1.0, "weak": 1.2}
 
         self.ONE_STEP_TIME = 0.1
         self.ftg_thresh_phy = self.cfg.ftg_thresh_phy
@@ -86,7 +86,8 @@ class Fatigue(object):
         return _dict
 
     def get_phy_fatigue_coe(self):
-        
+        if self.cfg.use_partial_filter:
+            return list(self.pfs_phy_fat_ce_dic.values())[3:]
         return list(self.phy_fatigue_ce_dic.values())[3:]
     
     def reset(self):
@@ -114,7 +115,7 @@ class Fatigue(object):
         self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy_recover, self.raw_phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
 
-        random_percent = 0.2
+        random_percent = 0.4
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
         self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
         self.pfs_phy_fat = {}
@@ -123,25 +124,28 @@ class Fatigue(object):
         for (key, v) in self.phy_fatigue_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
         
         for (key, v) in self.phy_recovery_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
-                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-2, sigma_v=1e-3, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-2, sigma_v=1e-3, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
 
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
-        self.update_predict_dic()
+        self.task_phy_prediction_dic = self.update_predict_dic()
+        self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
         self.update_ftg_mask()
+        self.ftg_task_mask = torch.ones(len(high_level_task_dic))
 
         return
 
     def step(self, state_type, subtask, task, ftg_prediction = None):
         if self.cfg.use_partial_filter == True:
             self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
-        self.phy_fatigue = self.step_helper_phy(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
-        self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
+            recover_coe_accuracy = self.get_filter_recover_coe_accuracy()
+        self.phy_fatigue = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME,  self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
+        # self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
         self.phy_history.append((self.phy_fatigue, self.time_step))
         self.psy_history.append((self.psy_fatigue, self.time_step))
@@ -151,11 +155,18 @@ class Fatigue(object):
         _, pre_task, _ , _, _= self.state_task_history[-1]
         if pre_task != task:
             self.state_task_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
-        self.update_ftg_mask(ftg_prediction)
+        
+        self.task_phy_prediction_dic = self.update_predict_dic()
+        self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
+        if self.cfg.use_partial_filter == True:
+            self.update_ftg_mask(self.task_filter_phy_prediction_dic)
+        else:
+            self.update_ftg_mask(ftg_prediction)
+
         return
 
     def step_pfs(self, F, state_type, subtask, step_time):
-    
+        
         if state_type in self.phy_free_state_dic:
             _filter : ParticleFilter = self.pfs_phy_rec[state_type]
             # _filter : EKfRecover = self.pfs_phy_rec[state_type]
@@ -165,34 +176,72 @@ class Fatigue(object):
                 # _filter.step(F, F, self.time_step)
             F = F*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
             _filter.step(F, F, self.time_step)
-            self.pfs_phy_fat_ce_dic[state_type] = _filter.lambda_estimates[-1]
+            self.pfs_phy_rec_ce_dic[state_type] = _filter.lambda_estimates[-1]
         else:
             assert subtask in self.phy_fatigue_ce_dic.keys()
             _filter : ParticleFilter = self.pfs_phy_fat[subtask]
             _lambda = -self.phy_fatigue_ce_dic[subtask]
             F = F + (1-F)*(1-math.exp(_lambda*step_time))
             _filter.step(F, F, self.time_step)
-            self.pfs_phy_rec_ce_dic[subtask] = _filter.lambda_estimates 
-        return 
+            self.pfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
 
+        return
+     
+    def get_filter_recover_coe_accuracy(self):
+        true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
+        filter_prediction = np.array(list(self.pfs_phy_rec_ce_dic.values()))
+        return np.sqrt(np.square(true_coe - filter_prediction).mean())
     
-    def update_ftg_mask(self, prediction=None):
-        if prediction is None:
+    def get_filter_fatigue_coe_accuracy(self):
+        true_coe = np.array(list(self.phy_fatigue_ce_dic.values()))
+        filter_prediction = np.array(list(self.pfs_phy_fat_ce_dic.values))
+        return np.sqrt(np.square(true_coe - filter_prediction).mean())
+    
+    def update_ftg_mask(self, prediction : dict = None):
+
+        if prediction is not None:
             #adopt rule based mask
-            _fatigue = np.array(list(self.task_phy_prediction_dic.values())) + self.phy_fatigue
+            _fatigue = np.array(list(prediction.values())) + self.phy_fatigue
             _mask = np.where(_fatigue < self.ftg_thresh_phy, 1, 0)
             self.ftg_task_mask = torch.from_numpy(_mask) 
             self.ftg_task_mask[0] = 1
         else:
-            #adopt cost function prediction based
             pass
         
         return
 
     def update_predict_dic(self):
+        # step_time_scale = (1+self.hyper_param_time*math.log(1+self.phy_fatigue))
+        # self.task_phy_prediction_dic = {task: self.phy_fatigue  for (key, task) in high_level_task_dic.items()} 
+        # self.task_psy_prediction_dic = {task: self.psy_fatigue  for (key, task) in high_level_task_dic.items()} 
+        # for key, v in self.task_phy_prediction_dic.items():
+        #     subtask_seq = self.task_human_subtasks_dic[key]
+        #     for subtask in subtask_seq:
+        #         time = self.ONE_STEP_TIME
+        #         if 'put' in subtask or subtask == 'placing_product':
+        #             time = self.cfg.human_putting_time * self.ONE_STEP_TIME * step_time_scale
+        #         elif 'loading' in subtask:
+        #             time = self.cfg.human_loading_time * self.ONE_STEP_TIME * step_time_scale
+        #         elif subtask == 'cutting_cube':
+        #             time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
+        #         self.task_phy_prediction_dic[key] = self.step_helper_phy(self.task_phy_prediction_dic[key], subtask, subtask, time)
+        #         self.task_psy_prediction_dic[key] = self.step_helper_psy(self.task_psy_prediction_dic[key], subtask, subtask, time)
+        #     self.task_phy_prediction_dic[key] -= self.phy_fatigue
+        #     self.task_psy_prediction_dic[key] -= self.psy_fatigue
+        phy_predict = self.update_predict_helper(self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
+        return phy_predict
+    
+    def update_filter_predict_dic(self):
+
+        filter_phy_predict = self.update_predict_helper(self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
+
+        return filter_phy_predict
+
+    def update_predict_helper(self, phy_ce_dic, phy_recover_ce_dic, phy_free_state_dic):
         step_time_scale = (1+self.hyper_param_time*math.log(1+self.phy_fatigue))
-        self.task_phy_prediction_dic = {task: self.phy_fatigue  for (key, task) in high_level_task_dic.items()} 
-        for key, v in self.task_phy_prediction_dic.items():
+        phy_predict_dic = {task: self.phy_fatigue  for (key, task) in high_level_task_dic.items()}
+        # psy_predict_dic = {task: self.psy_fatigue  for (key, task) in high_level_task_dic.items()} 
+        for key, v in phy_predict_dic.items():
             subtask_seq = self.task_human_subtasks_dic[key]
             for subtask in subtask_seq:
                 time = self.ONE_STEP_TIME
@@ -202,34 +251,45 @@ class Fatigue(object):
                     time = self.cfg.human_loading_time * self.ONE_STEP_TIME * step_time_scale
                 elif subtask == 'cutting_cube':
                     time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
-                self.task_phy_prediction_dic[key] = self.step_helper_phy(self.task_phy_prediction_dic[key], subtask, subtask, time)
-                self.task_psy_prediction_dic[key] = self.step_helper_psy(self.task_psy_prediction_dic[key], subtask, subtask, time)
-            self.task_phy_prediction_dic[key] -= self.phy_fatigue
-            self.task_psy_prediction_dic[key] -= self.psy_fatigue
+                phy_predict_dic[key] = self.step_helper_delta_phy_fatigue(phy_predict_dic[key], subtask, subtask, time, phy_ce_dic, phy_recover_ce_dic, phy_free_state_dic)
+                # psy_predict_dic[key] = self.step_helper_delta_psy_fatigue(psy_predict_dic[key], subtask, subtask, time, psy_ce_dic, psy_recover_ce_dic, phy_free_state_dic, psy_free_state_dic)
+            phy_predict_dic[key] -= self.phy_fatigue
+            # psy_predict_dic[key] -= self.psy_fatigue
+        return phy_predict_dic
 
-        return
 
-    def step_helper_phy(self, F_0, state_type, subtask, step_time):
+    def step_helper_delta_phy_fatigue(self, F_0, state_type, subtask, step_time, fatigue_coe_dic, recover_coe_dic, free_state_dic):
         # forgetting-fatigue-recovery exponential model
         # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
-        if state_type in self.phy_free_state_dic:
-            F_0 = F_0*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
+        if state_type in free_state_dic:
+            F_0 = F_0*math.exp(-recover_coe_dic[state_type]*step_time)
         else:
-            assert subtask in self.phy_fatigue_ce_dic.keys()
-            _lambda = -self.phy_fatigue_ce_dic[subtask]
+            assert subtask in fatigue_coe_dic.keys()
+            _lambda = -fatigue_coe_dic[subtask]
             F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
         return F_0
     
-    def step_helper_psy(self, F_0, state_type, subtask, step_time):
-        # forgetting-fatigue-recovery exponential model
-        # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
-        if state_type in self.psy_free_state_dic:
-            F_0 = F_0*math.exp(-self.psy_recovery_ce_dic[state_type]*step_time)
-        else:
-            assert subtask in self.psy_fatigue_ce_dic.keys()
-            _lambda = -self.psy_fatigue_ce_dic[subtask]
-            F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
-        return F_0
+    # def step_helper_phy(self, F_0, state_type, subtask, step_time, fatigue_coe, revcover_coe):
+    #     # forgetting-fatigue-recovery exponential model
+    #     # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
+    #     if state_type in self.phy_free_state_dic:
+    #         F_0 = F_0*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
+    #     else:
+    #         assert subtask in self.phy_fatigue_ce_dic.keys()
+    #         _lambda = -self.phy_fatigue_ce_dic[subtask]
+    #         F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
+    #     return F_0
+    
+    # def step_helper_psy(self, F_0, state_type, subtask, step_time):
+    #     # forgetting-fatigue-recovery exponential model
+    #     # paper name: Incorporating Human Fatigue and Recovery Into the Learning–Forgetting Process
+    #     if state_type in self.psy_free_state_dic:
+    #         F_0 = F_0*math.exp(-self.psy_recovery_ce_dic[state_type]*step_time)
+    #     else:
+    #         assert subtask in self.psy_fatigue_ce_dic.keys()
+    #         _lambda = -self.psy_fatigue_ce_dic[subtask]
+    #         F_0 = F_0 + (1-F_0)*(1-math.exp(_lambda*step_time))
+    #     return F_0
     
     def plot_curve(self):
         import matplotlib.pyplot as plt
@@ -382,12 +442,18 @@ class Characters(object):
         # np_task = np.array(self.tasks)
         # np_task = np.where(_fatigue_mask, np_task, -1)
         worker_tasks = self.tasks
-        if self.cost_mask_from_net is not None:
+        _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
+        if self.cfg.use_partial_filter:
+            _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx].tolist()
+            worker_tasks = [ self.tasks[i] if _fatigue_mask[i] else -1 for i in range(len(_fatigue_mask))]
+        elif self.cost_mask_from_net is not None:
             assert len(self.cost_mask_from_net) == 1, "error cost mask shape from cost function"
-            _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
             _fatigue_mask = self.cost_mask_from_net[0, _fatigue_mask_idx, :]
             _fatigue_mask[self.acti_num_charc:] = 0
             worker_tasks = [ self.tasks[i] if _fatigue_mask[i].item() else -1 for i in range(len(_fatigue_mask))]
+        
+        # elif self.cfg.use_partial_filter:
+            
         if random:
             idx = random_zero_index(worker_tasks)
         else:

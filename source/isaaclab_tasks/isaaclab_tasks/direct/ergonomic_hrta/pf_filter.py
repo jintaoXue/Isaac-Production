@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class ParticleFilter:
-    def __init__(self, dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v, upper_bound, lower_bound):
+    def __init__(self, dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v, lamda_init, upper_bound, lower_bound):
         self.dt = dt  # 时间间隔
         self.num_steps = num_steps  # 时间步数
         self.true_lambda = true_lambda  # 真实的 lambda 值
@@ -14,13 +14,13 @@ class ParticleFilter:
         # 初始化粒子
         # np.random.seed(42)
         self.l_bound = lower_bound
-        self.u_bound = upper_bound 
+        self.u_bound = upper_bound
         self.particles = np.random.uniform(lower_bound, upper_bound, num_particles)  # 初始粒子分布
         self.weights = np.ones(num_particles) / num_particles  # 初始权重
 
         self.prev_time_step = -2
         self.F_estimates = []
-        self.lambda_estimates = []
+        self.lambda_estimates = [lamda_init]
         self.measurements = []
         self.true_F = []
         self.times = []
