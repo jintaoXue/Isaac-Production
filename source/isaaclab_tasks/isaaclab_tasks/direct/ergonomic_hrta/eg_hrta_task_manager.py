@@ -6,7 +6,7 @@ import torch
 
 from ...utils import quaternion
 from .human_fatigue_model import Characters
-from .eg_hrta_env_cfg import HRTaskAllocEnvCfg
+from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, BoxCapacity
 import copy
 
 def random_zero_index(data):
@@ -444,7 +444,7 @@ class Agvs(object):
             except: 
                 return -1
         else:
-            return box_idx
+            # return box_idx
             min_dis_idx = -1
             pre_dis = torch.inf
             for agv_idx in range(0, len(self.list)):
@@ -517,7 +517,7 @@ class TransBoxs(object):
         # for obj in self.list:
         #     self.initial_pose_list.append(obj.get_world_poses())
         _cfg = HRTaskAllocEnvCfg()
-        self.CAPACITY = _cfg.box_capacity
+        self.capacity = BoxCapacity()
         self.reset()
         return
     
@@ -614,7 +614,7 @@ class TransBoxs(object):
         
     def find_full_products_box_idx(self):
         for list, idx in zip(self.product_idx_list, range(len(self.product_idx_list))):
-            if len(list) >= self.CAPACITY:
+            if len(list) >= self.capacity.product:
                 return idx
         else:
             return -1

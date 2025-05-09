@@ -7,7 +7,7 @@ import math
 from ...utils import quaternion
 from .ekf_filter import EkfFatigue, EKfRecover
 from .pf_filter import ParticleFilter, RecParticleFilter
-from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic
+from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic, BoxCapacity
 import random
 
 
@@ -29,12 +29,11 @@ class Fatigue(object):
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
         self.cfg = HRTaskAllocEnvCfg()
         self.hyper_param_time = self.cfg.hyper_param_time
-        box_capacity = self.cfg.box_capacity
-        self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*box_capacity, 
-            'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*box_capacity, 
+        self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*BoxCapacity.hoop, 
+            'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*BoxCapacity.bending_tube, 
             'hoop_loading_inner': ['hoop_loading_inner'], 'bending_tube_loading_inner': ['bending_tube_loading_inner'], 
             'hoop_loading_outer': ['hoop_loading_outer'], 'bending_tube_loading_outer':['bending_tube_loading_outer'], 
-            'cutting_cube':['cutting_cube'], 'collect_product':['free'], 'placing_product':['placing_product']*box_capacity}
+            'cutting_cube':['cutting_cube'], 'collect_product':['free'], 'placing_product':['placing_product']*BoxCapacity.product}
         
         self.phy_free_state_dic = {"free", "waiting_box", "approaching"}
         self.psy_free_state_dic = {"free", "waiting_box", "approaching"}
@@ -93,10 +92,13 @@ class Fatigue(object):
     def reset(self):
         # if self.time_step is not None and self.time_step > 100:
         #     self.plot_curve()
-        #     filter : ParticleFilter = self.pfs_phy_fat['put_hoop_into_box']
-        #     filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue')
-        #     R_filter : RecParticleFilter = self.pfs_phy_rec['free']
-        #     R_filter.plot_results(R_filter.times, R_filter.F_estimates, R_filter.lambda_estimates, name='recover')
+        #     if self.cfg.use_partial_filter:
+        #         for k, v in self.phy_fatigue_ce_dic.items():
+        #             if v is not None:
+        #                 filter : ParticleFilter = self.pfs_phy_fat[k]
+        #                 filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue_' + k)
+        #         R_filter : RecParticleFilter = self.pfs_phy_rec['free']
+        #         R_filter.plot_results(R_filter.times, R_filter.F_estimates, R_filter.lambda_estimates, name='recover')
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
@@ -108,7 +110,7 @@ class Fatigue(object):
         
         scale_phy = 3
         scale_psy = 0.5
-        scale_phy_recover= 0.4
+        scale_phy_recover= 0.3
         self.human_type = random.choice(self.human_types)
         self.phy_fatigue_ce_dic = self.scale_coefficient(scale_phy*self.human_type_coe_dic[self.human_type], self.raw_phy_fatigue_ce_dic)
         self.psy_fatigue_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_fatigue_ce_dic)
@@ -125,6 +127,7 @@ class Fatigue(object):
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
                 self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
+                # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
         
         for (key, v) in self.phy_recovery_ce_dic.items():
             if v is not None:
@@ -451,7 +454,7 @@ class Characters(object):
         _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
         if self.cfg.use_partial_filter:
             _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx].tolist()
-            worker_tasks = [ self.tasks[i] if _fatigue_mask[i] else -1 for i in range(len(_fatigue_mask))]
+            worker_tasks = [self.tasks[i] if _fatigue_mask[i] else -1 for i in range(len(_fatigue_mask))]
         elif self.cost_mask_from_net is not None:
             assert len(self.cost_mask_from_net) == 1, "error cost mask shape from cost function"
             _fatigue_mask = self.cost_mask_from_net[0, _fatigue_mask_idx, :]

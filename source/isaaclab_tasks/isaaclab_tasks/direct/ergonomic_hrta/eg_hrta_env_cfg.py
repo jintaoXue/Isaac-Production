@@ -87,11 +87,11 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     welding_once_time = 25
     human_loading_time = 8
     human_putting_time = 5
-    machine_time_random = 0
-    human_time_random = 0
+    machine_time_random = 3
+    human_time_random = 2
     # machine_time_random = 0
     # human_time_random = 0
-    box_capacity = 4
+    # box_capacity = 4
     # box_capacity_hoop = 4
     # box_capacity_bending_tube = 2
     # box_capacity_product = 1
@@ -100,9 +100,13 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     ftg_thresh_psy = 0.8
     hyper_param_time = 0.3
     # if not use fatigue mask, set False
-    use_partial_filter = False
+    use_partial_filter = True
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py
         return self.train_cfg != None
 
+class BoxCapacity:
+    hoop = 2
+    bending_tube = 2
+    product = 1

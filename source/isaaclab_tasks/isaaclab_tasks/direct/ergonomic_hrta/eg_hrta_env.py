@@ -180,18 +180,18 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
 
     def post_material_step(self):
         #part of materials state decision is in consideration
-        capacity = self.task_manager.boxs.CAPACITY
+        capacity = self.task_manager.boxs.capacity
         if len(self.depot_hoop_set) > 0:
             for idx in self.depot_hoop_set:
                 self.materials.hoop_list[idx].set_velocities(torch.zeros((1,6), device=self.cuda_device))
-                self.materials.hoop_list[idx].set_world_poses(self.materials.position_depot_hoop[idx%capacity].to(self.cuda_device))
+                self.materials.hoop_list[idx].set_world_poses(self.materials.position_depot_hoop[idx%capacity.hoop].to(self.cuda_device))
         elif self.state_depot_hoop == 2: #placed
             self.state_depot_hoop = 0
         
         if len(self.depot_bending_tube_set) > 0:
             for idx in self.depot_bending_tube_set:
                 self.materials.bending_tube_list[idx].set_velocities(torch.zeros((1,6), device=self.cuda_device))
-                self.materials.bending_tube_list[idx].set_world_poses(self.materials.position_depot_bending_tube[idx%capacity].to(self.cuda_device), self.materials.orientation_depot_bending_tube.to(self.cuda_device))
+                self.materials.bending_tube_list[idx].set_world_poses(self.materials.position_depot_bending_tube[idx%capacity.bending_tube].to(self.cuda_device), self.materials.orientation_depot_bending_tube.to(self.cuda_device))
         elif self.state_depot_bending_tube == 2: #placed
             self.state_depot_bending_tube = 0
 
@@ -282,24 +282,27 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         elif state == 3: #putting in box 
             target_position, target_orientation = current_pose
             available_material = True
+            can_load = True
             #check available materials first
             if task == 1:
                 try: self.materials.hoop_states.index(0)
                 except: available_material = False
-            elif task == 2:
-                try: self.materials.bending_tube_states.index(0)
-                except: available_material = False
-            if self.task_manager.boxs.counts[corresp_box_idx] >= self.task_manager.boxs.CAPACITY or available_material == False: 
-                self.task_manager.characters.states[idx] = 1
-                if task == 1: #put_hoop_into_box
+                if self.task_manager.boxs.counts[corresp_box_idx] >= self.task_manager.boxs.capacity.hoop or available_material == False:
+                    self.task_manager.characters.states[idx] = 1
                     self.task_manager.characters.tasks[idx] = 3 #put_hoop_on_table
                     self.task_manager.agvs.tasks[corresp_agv_idx] = 3
                     self.task_manager.agvs.states[corresp_agv_idx] = 2
-                elif task == 2: #put_bending_into_box
+                    can_load = False
+            elif task == 2:
+                try: self.materials.bending_tube_states.index(0)
+                except: available_material = False
+                if self.task_manager.boxs.counts[corresp_box_idx] >= self.task_manager.boxs.capacity.bending_tube or available_material == False:
+                    self.task_manager.characters.states[idx] = 1
                     self.task_manager.characters.tasks[idx] = 4 #put_bending_tube_on_table
                     self.task_manager.agvs.tasks[corresp_agv_idx] = 4
                     self.task_manager.agvs.states[corresp_agv_idx] = 2
-            elif self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
+                    can_load = False
+            if can_load and self.task_manager.characters.loading_operation_time_steps[idx] > self.task_manager.characters.PUTTING_TIME + self.temp_random_time:
                 self.reset_worker_random_time()
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0.
                 self.task_manager.boxs.counts[corresp_box_idx] += 1
@@ -510,15 +513,15 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         box.set_world_poses(positions=target_position, orientations=target_orientation)
         box.set_velocities(torch.zeros((1,6), device=self.cuda_device))  
         for idx in hoop_idx_list:
-            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.CAPACITY].to(self.cuda_device)
+            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.capacity.hoop].to(self.cuda_device)
             self.materials.hoop_list[idx].set_world_poses(positions=target_position+offset)
             self.materials.hoop_list[idx].set_velocities(torch.zeros((1,6), device=self.cuda_device))  
         for idx in bending_tube_idx_set:
-            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.CAPACITY].to(self.cuda_device)
+            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.capacity.bending_tube].to(self.cuda_device)
             self.materials.bending_tube_list[idx].set_world_poses(positions=target_position+offset)
             self.materials.bending_tube_list[idx].set_velocities(torch.zeros((1,6), device=self.cuda_device))  
         for idx in product_idx_list:
-            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.CAPACITY].to(self.cuda_device)
+            offset=self.materials.in_box_offsets[idx%self.task_manager.boxs.capacity.product].to(self.cuda_device)
             self.materials.product_list[idx].set_world_poses(positions=target_position+offset)
             self.materials.product_list[idx].set_velocities(torch.zeros((1,6), device=self.cuda_device))  
         return
@@ -647,12 +650,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             # stations_are_full = self.station_state_inner_middle and self.station_state_outer_middle #only state == 0 means free, -1 and >= 0 means full
             if self.station_state_inner_middle == 9 and 'collect_product' in self.task_manager.task_in_dic and self.task_manager.boxs.product_collecting_idx >= 0 \
                 and self.task_manager.boxs.states[self.task_manager.boxs.product_collecting_idx] == 1 \
-                and self.task_manager.boxs.counts[self.task_manager.boxs.product_collecting_idx]<self.task_manager.boxs.CAPACITY: #welded product
+                and self.task_manager.boxs.counts[self.task_manager.boxs.product_collecting_idx]<self.task_manager.boxs.capacity.product: #welded product
                 self.gripper_inner_task = 4
                 self.gripper_inner_state = 1
             elif self.station_state_outer_middle == 9 and  'collect_product' in self.task_manager.task_in_dic and self.task_manager.boxs.product_collecting_idx >= 0 \
                 and self.task_manager.boxs.states[self.task_manager.boxs.product_collecting_idx] == 1 \
-                and self.task_manager.boxs.counts[self.task_manager.boxs.product_collecting_idx]<self.task_manager.boxs.CAPACITY:
+                and self.task_manager.boxs.counts[self.task_manager.boxs.product_collecting_idx]<self.task_manager.boxs.capacity.product:
                 self.gripper_inner_task = 5
                 self.gripper_inner_state = 1
             elif (pick_up_place_cube_index>=0): #pick cut cube by cutting machine

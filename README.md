@@ -253,3 +253,12 @@ hoop 为4
 num product为2
 
 问题：机器人数量增加，效率反而下降了
+
+
+traning  worker:1, agv&box:3, env_len:1604, max_env_len:4000, finished:True, over_work:False | warm_up:True, Predict_loss:0.00109 Filter_predict_loss:0.000633 Recover_coe_loss:0.0123
+traning  worker:1, agv&box:1, env_len:1659, max_env_len:4000, finished:True, over_work:False | warm_up:True, Predict_loss:0.000859 Filter_predict_loss:0.00093 Recover_coe_loss:0.00771
+traning  worker:1, agv&box:2, env_len:1656, max_env_len:4000, finished:True, over_work:False | warm_up:True, Predict_loss:0.000729 Filter_predict_loss:0.000891 Recover_coe_loss:0.00633
+traning  worker:1, agv&box:3, env_len:1585, max_env_len:4000, finished:True, over_work:False | warm_up:True, Predict_loss:0.00148 Filter_predict_loss:0.00161 Recover_coe_loss:0.0128
+traning  worker:2, agv&box:1, env_len:1350, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00167 Filter_predict_loss:0.000787 Recover_coe_loss:0.0205
+traning  worker:2, agv&box:2, env_len:1232, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00129 Filter_predict_loss:0.0019 Recover_coe_loss:0.0159
+traning  worker:2, agv&box:3, env_len:1207, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00185 Filter_predict_loss:0.00162 Recover_coe_loss:0.0174

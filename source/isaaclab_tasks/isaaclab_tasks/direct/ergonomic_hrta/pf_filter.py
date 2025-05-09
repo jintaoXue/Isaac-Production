@@ -108,7 +108,7 @@ class ParticleFilter:
 
         # 绘制 F(t)
         plt.subplot(2, 1, 1)
-        plt.plot(times, self.true_F, label='True F(t)', color='blue')
+        # plt.plot(times, self.true_F, label='True F(t)', color='blue')
         plt.plot(times, self.measurements, 'x', label='Measurements', color='red', alpha=0.5)
         plt.plot(times, F_estimates, label='Estimated F(t)', color='green')
         plt.xlabel('Time')
@@ -118,7 +118,7 @@ class ParticleFilter:
 
         # 绘制 lambda
         plt.subplot(2, 1, 2)
-        plt.plot(times[1:], lambda_estimates, label='Estimated lambda', color='green')
+        plt.plot(times, lambda_estimates[1:], label='Estimated lambda', color='green')
         plt.axhline(y=self.true_lambda, color='blue', linestyle='--', label='True lambda')
         plt.xlabel('Time')
         plt.ylabel('lambda')
