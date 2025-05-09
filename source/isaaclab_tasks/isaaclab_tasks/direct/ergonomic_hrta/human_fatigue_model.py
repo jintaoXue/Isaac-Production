@@ -402,13 +402,19 @@ class Characters(object):
         pose_list = list(self.poses_dic.values())
         pose_str_list = list(self.poses_dic.keys())
         initial_pose_str = []
-        for i in range(0, acti_num_charc):
-            position = pose_list[random[i]][:2]+[0.0415]
-            initial_pose_str.append(pose_str_list[random[i]])
-            self.list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
-            self.list[i].set_velocities(torch.zeros((1,6)))
-            self.reset_idx(i)
-            self.reset_path(i)
+        for i in range(0, len(self.character_list)):
+            if i < acti_num_charc:
+                position = pose_list[random[i]][:2]+[0.0415]
+                initial_pose_str.append(pose_str_list[random[i]])
+                self.character_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.character_list[i].set_velocities(torch.zeros((1,6)))
+                self.reset_idx(i)
+                self.reset_path(i)
+            else:
+                position = [0, 0, -100]
+                self.character_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.character_list[i].set_velocities(torch.zeros((1,6)))
+        
         self.loading_operation_time_steps = [0. for i in range(acti_num_charc)]
         
         #1 is avaiable, 0 means worker is over fatigue threshold

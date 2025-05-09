@@ -267,7 +267,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 len(self.task_manager.boxs.product_idx_list[self.task_manager.boxs.product_collecting_idx])>0 and \
                 'placing_product' not in self.task_manager.task_in_dic.keys() and self.gripper_inner_task not in range (4, 8):
             task_mask[9] = 1
-        
+            if self.task_manager.boxs.acti_num_box > 1 and len(self.task_manager.boxs.product_idx_list[self.task_manager.boxs.product_collecting_idx])<self.task_manager.boxs.CAPACITY and self.materials.have_collecting_product_req():
+                task_mask[9] = 0
         if self.task_manager.characters.acti_num_charc == 1:
             #fix bug
             is_last_hoop = sum([_state<=2 and _state >= -1 for _state in self.materials.hoop_states]) == 1

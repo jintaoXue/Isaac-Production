@@ -31,13 +31,13 @@ class MapRoute(object):
         with open(os.path.expanduser(self.route_character_file_path), 'rb') as f:
             dic = pickle.load(f)
             if sampling_flag:
-                character_route_dic = self.routes_down_sampling(dic, to_cuda=False)
+                character_route_dic = self.routes_down_sampling(dic, to_cuda=False, route_type='human')
             else:
                 character_route_dic = dic
         with open(os.path.expanduser(self.route_agv_file_path), 'rb') as f:
             dic = pickle.load(f)
             if sampling_flag:
-                agv_route_dic = self.routes_down_sampling(dic, to_cuda=False)
+                agv_route_dic = self.routes_down_sampling(dic, to_cuda=False, route_type='robot')
             else:
                 agv_route_dic = dic
 
@@ -111,7 +111,7 @@ class MapRoute(object):
 
         return character_route_dic, agv_route_dic
 
-    def routes_down_sampling(self, routes_dic, to_cuda): 
+    def routes_down_sampling(self, routes_dic, to_cuda, route_type): 
         # min_len = 2e32
         # max_len = -1
         # self.max_x = -100
@@ -120,15 +120,21 @@ class MapRoute(object):
         # self.min_y = 100
         for (key, route_dic) in routes_dic.items():
             for (_key, route) in route_dic.items():
-                route_dic[_key] = self.down_sampling_helper(route, to_cuda, self.cuda_device)
+                if _key == 'placing_product' and route_type == 'robot':
+                    continue
+                else:
+                    route_dic[_key] = self.down_sampling_helper(route, to_cuda, self.cuda_device, route_type)
                 # x = route_dic[_key][0]
                 # min_len = min(min_len, len(x))
                 # max_len = max(max_len, len(x))
             routes_dic[key] = route_dic
         return routes_dic
     
-    def down_sampling_helper(self, route, to_cuda, cuda_device):
-        interval = 5
+    def down_sampling_helper(self, route, to_cuda, cuda_device, route_type):
+        if route_type == 'human':
+            interval = 5
+        elif route_type == 'robot':
+            interval = 3
         x,y,yaw = route
         x = [x[0]] + x[1:-1][::interval] + [x[-1]]
         y = [y[0]] + y[1:-1][::interval] + [y[-1]]

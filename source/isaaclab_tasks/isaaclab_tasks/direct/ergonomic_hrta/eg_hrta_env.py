@@ -254,7 +254,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 if np.linalg.norm(np.array(s[:2]) - np.array(g[:2])) < 0.1:
                     reaching_flag = True
                 else:
-                    s_str = self.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=s, in_dis=3)
+                    s_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=s, in_dis=3)
                     g_str = self.task_manager.characters.sub_task_character_dic[task]
                     # self.task_manager.characters.x_paths[idx], self.task_manager.characters.y_paths[idx], self.task_manager.characters.yaws[idx] = self.path_planner(s.copy(), g.copy())
                     self.task_manager.characters.x_paths[idx], self.task_manager.characters.y_paths[idx], self.task_manager.characters.yaws[idx] = self.task_manager.characters.routes_dic[s_str][g_str]
@@ -411,8 +411,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     else:
                         s, g = world_pose_to_navigation_pose(current_pose), world_pose_to_navigation_pose(box_pose)
                         '''no spatial information'''
-                        s_str = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=s, in_dis=4)
-                        g_str = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=g, in_dis=4)
+                        s_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=s, in_dis=4)
+                        g_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=g, in_dis=4)
                         if s_str == g_str:
                             reaching_flag = True
                         else:
@@ -447,7 +447,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 if np.linalg.norm(np.array(s[:2]) - np.array(g[:2])) < 0.1:
                     reaching_flag = True
                 else:
-                    s_str = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=s, in_dis=3)
+                    s_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=s, in_dis=3)
                     g_str = self.task_manager.agvs.sub_task_dic[task]
                     self.task_manager.agvs.x_paths[idx], self.task_manager.agvs.y_paths[idx], self.task_manager.agvs.yaws[idx] = self.task_manager.agvs.routes_dic[s_str][g_str]
                     # self.task_manager.agvs.x_paths[idx], self.task_manager.agvs.y_paths[idx], self.task_manager.agvs.yaws[idx] = self.path_planner(s.copy(), g.copy())
@@ -1730,19 +1730,6 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         next_pose, _ = self.get_next_pose_helper(welder_outer_pose[0], target, self.operator_welder)
         self.obj_11_welding_1.set_joint_positions(next_pose)
         self.obj_11_welding_1.set_joint_velocities(torch.zeros(1, device=self.cuda_device))
-    
-    def find_closest_pose(self, pose_dic, ego_pose, in_dis=5):
-        dis = np.inf
-        key = None
-        for _key, val in pose_dic.items():
-            _dis = np.linalg.norm(np.array(val[:2]) - np.array(ego_pose[:2]))
-            if _dis < 0.1:
-                return _key
-            elif _dis < dis:
-                key = _key
-                dis = _dis
-        assert dis < in_dis, 'error when get closest pose, distance is: {}'.format(dis)
-        return key
 
     def get_observations(self) -> dict:
         """Compute observations."""
@@ -1799,7 +1786,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 worker_token_mask[i*worker_state_len:(i+1)*worker_state_len] = 1
                 worker_position = self.task_manager.characters.list[i].get_world_poses()
                 wp = world_pose_to_navigation_pose(worker_position)
-                wp_str = self.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=wp, in_dis=1000.)
+                wp_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.characters.poses_dic, ego_pose=wp, in_dis=1000.)
                 wp_num = self.task_manager.characters.poses_dic2num[wp_str]
                 obs_dict['worker_pose'][i] = wp_num
                 obs_dict['worker_state'][i] = self.task_manager.characters.states[i]
@@ -1818,7 +1805,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 agv_mask[i] = 1
                 position = self.task_manager.agvs.list[i].get_world_poses()
                 p = world_pose_to_navigation_pose(position)
-                p_str = self.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=p, in_dis=1000.)
+                p_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.agvs.poses_dic, ego_pose=p, in_dis=1000.)
                 p_num = self.task_manager.agvs.poses_dic2num[p_str]
                 obs_dict['agv_pose'][i] = p_num
                 obs_dict['agv_state'][i] = self.task_manager.agvs.states[i]
@@ -1833,7 +1820,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 box_mask[i] = 1
                 position = self.task_manager.boxs.list[i].get_world_poses()
                 p = world_pose_to_navigation_pose(position)
-                p_str = self.find_closest_pose(pose_dic=self.task_manager.boxs.poses_dic, ego_pose=p, in_dis=1000.)
+                p_str = self.task_manager.find_closest_pose(pose_dic=self.task_manager.boxs.poses_dic, ego_pose=p, in_dis=1000.)
                 p_num = self.task_manager.boxs.poses_dic2num[p_str]
                 obs_dict['box_pose'][i] = p_num
                 obs_dict['box_state'][i] = self.task_manager.boxs.states[i]

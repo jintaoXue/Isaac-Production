@@ -63,6 +63,19 @@ class TaskManager(object):
         # self.task_mask = torch.zeros(len(self.task_dic), device=self.cuda_device)
         # self.task_mask[0] = 1
 
+    def find_closest_pose(self, pose_dic, ego_pose, in_dis=5):
+        dis = np.inf
+        key = None
+        for _key, val in pose_dic.items():
+            _dis = np.linalg.norm(np.array(val[:2]) - np.array(ego_pose[:2]))
+            if _dis < 0.1:
+                return _key
+            elif _dis < dis:
+                key = _key
+                dis = _dis
+        assert dis < in_dis, 'error when get closest pose, distance is: {}'.format(dis)
+        return key
+
     def assign_task(self, task):
         
         charac_idx = self.characters.assign_task(task, random = False)
@@ -96,7 +109,6 @@ class TaskManager(object):
         else:
             box_xyz = None
         agv_idx = self.agvs.assign_task(task, box_idx, box_xyz, random = False)
-        
         lacking_resource = False
         if charac_idx == -1 or agv_idx == -1 or box_idx == -1:
             lacking_resource = True            
@@ -376,13 +388,18 @@ class Agvs(object):
         pose_list = list(self.poses_dic.values())
         pose_str_list = list(self.poses_dic.keys())
         initial_pose_str = []
-        for i in range(0, acti_num_agv):
-            initial_pose_str.append(pose_str_list[random[i]])
-            position = pose_list[random[i]][:2]+[0.1]
-            self.list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
-            self.list[i].set_velocities(torch.zeros((1,6)))
-            self.reset_idx(i)
-            self.reset_path(i)
+        for i in range(0, len(self.agv_list)):
+            if i < acti_num_agv:
+                initial_pose_str.append(pose_str_list[random[i]])
+                position = pose_list[random[i]][:2]+[0.1]
+                self.agv_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.agv_list[i].set_velocities(torch.zeros((1,6)))
+                self.reset_idx(i)
+                self.reset_path(i)
+            else:
+                position = [0, 0, -100]
+                self.agv_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.agv_list[i].set_velocities(torch.zeros((1,6)))
 
         return initial_pose_str
     
@@ -427,6 +444,7 @@ class Agvs(object):
             except: 
                 return -1
         else:
+            return box_idx
             min_dis_idx = -1
             pre_dis = torch.inf
             for agv_idx in range(0, len(self.list)):
@@ -521,12 +539,17 @@ class TransBoxs(object):
         pose_list = list(self.poses_dic.values())
         pose_str_list = list(self.poses_dic.keys())
         initial_pose_str = []
-        for i in range(0, acti_num_box):
-            initial_pose_str.append(pose_str_list[random[i]])
-            position = pose_list[random[i]][:2]+[0.0]
-            self.list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
-            self.list[i].set_velocities(torch.zeros((1,6)))
-            self.reset_idx(i)
+        for i in range(0, len(self.box_list)):
+            if i < acti_num_box:
+                initial_pose_str.append(pose_str_list[random[i]])
+                position = pose_list[random[i]][:2]+[0.0]
+                self.box_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.box_list[i].set_velocities(torch.zeros((1,6)))
+                self.reset_idx(i)
+            else:
+                position = [0, 0, -100]
+                self.box_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
+                self.box_list[i].set_velocities(torch.zeros((1,6)))
 
         return initial_pose_str
 

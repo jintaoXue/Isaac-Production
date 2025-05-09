@@ -92,6 +92,9 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     # machine_time_random = 0
     # human_time_random = 0
     box_capacity = 4
+    # box_capacity_hoop = 4
+    # box_capacity_bending_tube = 2
+    # box_capacity_product = 1
     #fatigue
     ftg_thresh_phy = 0.95
     ftg_thresh_psy = 0.8
