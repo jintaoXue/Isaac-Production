@@ -237,9 +237,10 @@ class SafeRlFilterAgent():
         wandb.define_metric("Metrics/EpLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpEnvLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpFilterPredictLoss", step_metric="Metrics/step_episode")
-        wandb.define_metric("Metrics/EpFilterRecoverCoeLoss", step_metric="Metrics/step_episode")
-        wandb.define_metric("Metrics/EpFilterFatigueCoeLoss", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterPredictAccu", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpPredictLossCompare", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterRecoverCoeAccu", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterFatigueCoeAccu", step_metric="Metrics/step_episode")
 
         wandb.define_metric("Metrics/EpTime", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpProgress", step_metric="Metrics/step_episode")
@@ -274,8 +275,9 @@ class SafeRlFilterAgent():
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpFilterRecoverCoeLoss", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpFilterFatigueCoeLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterPredictAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
 
         for i in range(0, self.config['max_num_worker']):
@@ -581,8 +583,9 @@ class SafeRlFilterAgent():
                         if self.use_wandb:
                             wandb.log({
                             "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                            "Metrics/EpFilterRecoverCoeLoss": torch.sqrt(FilterRecoverCoeLoss).item(),
-                            "Metrics/EpFilterFatigueCoeLoss": torch.sqrt(FilterFatigueCoeLoss).item(),
+                            "Metrics/EpFilterPredictAccu": torch.sqrt(EpFilterPredictAccu).item(),
+                            "Metrics/EpFilterRecoverCoeAccu": torch.sqrt(FilterRecoverCoeLoss).item(),
+                            "Metrics/EpFilterFatigueCoeAccu": torch.sqrt(FilterFatigueCoeLoss).item(),
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                         })
@@ -845,8 +848,9 @@ class SafeRlFilterAgent():
                         EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                         wandb.log({
                             "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                            "Metrics/EpFilterRecoverCoeLoss": torch.sqrt(FilterRecoverCoeLoss).item(),
-                            "Metrics/EpFilterFatigueCoeLoss": torch.sqrt(FilterFatigueCoeLoss).item(),
+                            "Metrics/EpFilterPredictAccu": torch.sqrt(EpFilterPredictAccu).item(),
+                            "Metrics/EpFilterRecoverCoeAccu": torch.sqrt(FilterRecoverCoeLoss).item(),
+                            "Metrics/EpFilterFatigueCoeAccu": torch.sqrt(FilterFatigueCoeLoss).item(),
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                         })
@@ -941,6 +945,6 @@ class SafeRlFilterAgent():
             EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
             EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
             EpFilterPredictAccu = fatigue_datas['filter_phy_fat_accuracy'].mean()
-            FilterRecoverCoeLoss = fatigue_datas['filter_phy_rec_coe_accuracy'].mean()
-            FilterFatigueCoeLoss = fatigue_datas['filter_phy_fat_coe_accuracy'].mean()
-        return EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss
+            FilterRecoverCoeAccu = fatigue_datas['filter_phy_rec_coe_accuracy'].mean()
+            FilterFatigueCoeAccu = fatigue_datas['filter_phy_fat_coe_accuracy'].mean()
+        return EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeAccu, FilterFatigueCoeAccu
