@@ -193,12 +193,13 @@ class Fatigue(object):
     def get_filter_recover_coe_accuracy(self):
         true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
         filter_prediction = np.array(list(self.pfs_phy_rec_ce_dic.values()))
-        return np.sqrt(np.square(true_coe - filter_prediction).mean())
+        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
     
     def get_filter_fatigue_coe_accuracy(self):
-        true_coe = np.array(list(self.phy_fatigue_ce_dic.values()))
-        filter_prediction = np.array(list(self.pfs_phy_fat_ce_dic.values))
-        return np.sqrt(np.square(true_coe - filter_prediction).mean())
+        none_type_num = 3
+        true_coe = np.array(list(self.phy_fatigue_ce_dic.values())[none_type_num:])
+        filter_prediction = np.array(list(self.pfs_phy_fat_ce_dic.values())[none_type_num:])
+        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
     
     def update_ftg_mask(self, prediction : dict = None):
 
