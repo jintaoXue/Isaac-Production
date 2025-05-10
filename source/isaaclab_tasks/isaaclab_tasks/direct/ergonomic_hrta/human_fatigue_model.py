@@ -194,6 +194,15 @@ class Fatigue(object):
         true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
         filter_prediction = np.array(list(self.pfs_phy_rec_ce_dic.values()))
         return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
+
+    def get_filter_fat_predict_accuracy(self):
+        
+        true = np.array(list(self.task_phy_prediction_dic.values()))
+        true = true.ravel()[np.flatnonzero(true)]
+        filter_prediction = np.array(list(self.task_filter_phy_prediction_dic.values()))
+        filter_prediction = filter_prediction.ravel()[np.flatnonzero(filter_prediction)]
+        accu = np.sqrt(np.square((true - filter_prediction)/true).mean())
+        return accu
     
     def get_filter_fatigue_coe_accuracy(self):
         none_type_num = 3
