@@ -117,7 +117,7 @@ class Fatigue(object):
         self.phy_recovery_ce_dic = self.scale_coefficient(scale_phy_recover, self.raw_phy_recovery_ce_dic)
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
 
-        random_percent = 0.4
+        random_percent = 0.3
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
         self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
         self.pfs_phy_fat = {}
