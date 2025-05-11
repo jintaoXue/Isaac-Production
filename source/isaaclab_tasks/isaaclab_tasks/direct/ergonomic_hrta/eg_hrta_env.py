@@ -283,10 +283,13 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
             target_position, target_orientation = current_pose
             available_material = True
             can_load = True
+            assert corresp_box_idx >= 0, "corresp_box_idx"
+            assert corresp_agv_idx >= 0, "corresp_agv_idx"
             #check available materials first
             if task == 1:
                 try: self.materials.hoop_states.index(0)
                 except: available_material = False
+                
                 if self.task_manager.boxs.counts[corresp_box_idx] >= self.task_manager.boxs.capacity.hoop or available_material == False:
                     self.task_manager.characters.states[idx] = 1
                     self.task_manager.characters.tasks[idx] = 3 #put_hoop_on_table
@@ -336,9 +339,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.hoop_states[hoop_idx] = 2
                     self.depot_hoop_set.add(hoop_idx)
                 elif task == 4:
-                    bending_tube_idx = self.task_manager.boxs.bending_tube_idx_sets[corresp_box_idx].pop()
-                    self.materials.bending_tube_states[bending_tube_idx] = 2
-                    self.depot_bending_tube_set.add(bending_tube_idx)
+                    try:
+                        bending_tube_idx = self.task_manager.boxs.bending_tube_idx_sets[corresp_box_idx].pop()
+                        self.materials.bending_tube_states[bending_tube_idx] = 2
+                        self.depot_bending_tube_set.add(bending_tube_idx)
+                    except:
+                        pass
                 elif task == 10:
                     product_index = self.task_manager.boxs.product_idx_list[corresp_box_idx].pop()
                     self.materials.product_states[product_index] = 2
