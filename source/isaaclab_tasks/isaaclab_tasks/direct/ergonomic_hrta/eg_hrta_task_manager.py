@@ -30,6 +30,7 @@ class TaskManager(object):
         self.task_in_dic = {}
         # self.task_mask = torch.zeros(len(self.task_dic), device=cuda_device)
         self.task_dic_inverse = {value: key for key, value in self.task_dic.items()}
+        self.cfg = HRTaskAllocEnvCfg()
         self._test = train_cfg['test']
         if self._test:
            np.random.seed(1)
@@ -47,8 +48,8 @@ class TaskManager(object):
                 acti_num_agv = self.acti_num_agv
                 acti_num_charc = self.acti_num_charc
         elif acti_num_charc is None:
-            acti_num_agv =  np.random.randint(1, 4)
-            acti_num_charc = np.random.randint(1, 4)
+            acti_num_agv =  np.random.randint(1, self.cfg.n_max_robot+1)
+            acti_num_charc = np.random.randint(1, self.cfg.n_max_human+1)
             '''gantt chart'''
             # acti_num_agv =  2
             # acti_num_charc = 2
@@ -375,8 +376,8 @@ class Agvs(object):
         return
     
     def reset(self, acti_num_agv=None, random = None):
-        if acti_num_agv is None:
-            acti_num_agv = np.random.randint(2, 3)
+        # if acti_num_agv is None:
+        #     acti_num_agv = np.random.randint(1, HRTaskAllocEnvCfg.n_max_robot)
         self.acti_num_agv = acti_num_agv
         self.states = [0]*acti_num_agv
         self.tasks = [0]*acti_num_agv

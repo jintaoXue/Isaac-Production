@@ -113,6 +113,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
 
     def reset_step_helper(self, acti_num_char=None, acti_num_robot=None, evaluate=False) -> None:
+        # acti_num_char = 2
+        # acti_num_robot = 1
         #TODO
         if self._test:
             if self._test_all_settings:
@@ -270,7 +272,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             task_mask[9] = 1
             if self.task_manager.boxs.acti_num_box > 1 and len(self.task_manager.boxs.product_idx_list[self.task_manager.boxs.product_collecting_idx])<self.task_manager.boxs.capacity.product and self.materials.have_collecting_product_req():
                 task_mask[9] = 0
-        if self.task_manager.characters.acti_num_charc == 1:
+        # if self.task_manager.characters.acti_num_charc == 1:
+        if True:
             #fix bug
             is_last_hoop = sum([_state<=2 and _state >= -1 for _state in self.materials.hoop_states]) == 1
             #make sure the last one hoop is loaded in the same station including the cube waiting for welding
