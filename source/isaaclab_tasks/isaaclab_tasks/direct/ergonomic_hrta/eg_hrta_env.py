@@ -335,9 +335,12 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                 self.task_manager.characters.loading_operation_time_steps[idx] = 0.
                 self.task_manager.boxs.counts[corresp_box_idx] -= 1
                 if task == 3:
-                    hoop_idx = self.task_manager.boxs.hoop_idx_list[corresp_box_idx].pop()
-                    self.materials.hoop_states[hoop_idx] = 2
-                    self.depot_hoop_set.add(hoop_idx)
+                    try:
+                        hoop_idx = self.task_manager.boxs.hoop_idx_list[corresp_box_idx].pop()
+                        self.materials.hoop_states[hoop_idx] = 2
+                        self.depot_hoop_set.add(hoop_idx)
+                    except:
+                        pass
                 elif task == 4:
                     try:
                         bending_tube_idx = self.task_manager.boxs.bending_tube_idx_sets[corresp_box_idx].pop()
