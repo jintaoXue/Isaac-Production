@@ -583,9 +583,9 @@ class SafeRlFilterAgent():
                         if self.use_wandb:
                             wandb.log({
                             "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                            "Metrics/EpFilterPredictAccu": torch.sqrt(EpFilterPredictAccu).item(),
-                            "Metrics/EpFilterRecoverCoeAccu": torch.sqrt(FilterRecoverCoeLoss).item(),
-                            "Metrics/EpFilterFatigueCoeAccu": torch.sqrt(FilterFatigueCoeLoss).item(),
+                            "Metrics/EpFilterPredictAccu": EpFilterPredictAccu,
+                            "Metrics/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
+                            "Metrics/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
                         })
@@ -829,9 +829,24 @@ class SafeRlFilterAgent():
             if self.evaluate_use_cost_step < 0 and use_cost_func:
                 self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
-                
-                print_info = infos['print_info']
-                print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
+                print_info = infos['print_info']          
+                if len(fatigue_data_list)>0:
+                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                    if self.use_wandb:                    
+                        wandb.log({
+                            "Evaluate/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
+                            "Evaluate/EpFilterPredictAccu": EpFilterPredictAccu,
+                            "Evaluate/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
+                            "Evaluate/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
+                            # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
+                            "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
+                        })
+                    print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
+                    " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
+                        " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
+                else:
+                    print(print_info)
+                    # print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -843,18 +858,7 @@ class SafeRlFilterAgent():
                         "Evaluate/EpProgress": infos['progress'],
                         "Evaluate/EpRetAction": self.evaluate_current_rewards_action,
                         "Evaluate/EpOverCost": self.current_overworks,
-                    })                
-                    if len(fatigue_data_list)>0:
-                        EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
-                        wandb.log({
-                            "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
-                            "Metrics/EpFilterPredictAccu": torch.sqrt(EpFilterPredictAccu).item(),
-                            "Metrics/EpFilterRecoverCoeAccu": torch.sqrt(FilterRecoverCoeLoss).item(),
-                            "Metrics/EpFilterFatigueCoeAccu": torch.sqrt(FilterFatigueCoeLoss).item(),
-                            # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
-                            "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
-                        })
-
+                    })      
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
@@ -872,7 +876,7 @@ class SafeRlFilterAgent():
                         self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu())
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
                 action_info_list = []
-                next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot) 
+                next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot, evaluate=True) 
             self.evaluate_current_rewards = self.evaluate_current_rewards * not_dones
             self.evaluate_current_lengths = self.evaluate_current_lengths * not_dones
             self.evaluate_current_ep_time = self.evaluate_current_ep_time * not_dones
