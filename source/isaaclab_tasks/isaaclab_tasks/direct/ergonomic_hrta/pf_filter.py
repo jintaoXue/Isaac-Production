@@ -40,6 +40,7 @@ class ParticleFilter:
     def update_weights(self, F_prev, measurement_t):
         F_pred = F_prev + (1 - F_prev) * (1 - np.exp(-self.particles * self.dt))
         likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        # if likelihood.any():
         self.weights = self.weights * likelihood
         self.weights = self.weights / np.sum(self.weights)  # 归一化权重
 
@@ -135,6 +136,7 @@ class RecParticleFilter(ParticleFilter):
     def update_weights(self, F_prev, measurement_t):
         F_pred = F_prev*np.exp(-self.particles * self.dt)
         likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        # if likelihood.any():
         self.weights = self.weights * likelihood
         self.weights = self.weights / np.sum(self.weights)  # 归一化权重
 

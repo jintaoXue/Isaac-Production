@@ -582,12 +582,12 @@ class SafeRlFilterAgent():
                         EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                         if self.use_wandb:
                             wandb.log({
-                            "Metrics/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
+                            "Metrics/EpFilterPredictLoss": EpFilterPredictLoss,
                             "Metrics/EpFilterPredictAccu": EpFilterPredictAccu,
                             "Metrics/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
                             "Metrics/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
-                            "Metrics/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
+                            "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
                     # next_obs = self.env_reset()   
                     if not random_exploration and self.episode_num % self.evaluate_interval == 0:
@@ -834,12 +834,12 @@ class SafeRlFilterAgent():
                     EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                     if self.use_wandb:                    
                         wandb.log({
-                            "Evaluate/EpFilterPredictLoss": torch.sqrt(EpFilterPredictLoss).item(),
+                            "Evaluate/EpFilterPredictLoss": EpFilterPredictLoss,
                             "Evaluate/EpFilterPredictAccu": EpFilterPredictAccu,
                             "Evaluate/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
                             "Evaluate/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
-                            "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
+                            "Evaluate/EpPredictLossCompare": EpLossCompare, 
                         })
                     print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
                     " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
@@ -951,4 +951,4 @@ class SafeRlFilterAgent():
             EpFilterPredictAccu = fatigue_datas['filter_phy_fat_accuracy'].mean()
             FilterRecoverCoeAccu = fatigue_datas['filter_phy_rec_coe_accuracy'].mean()
             FilterFatigueCoeAccu = fatigue_datas['filter_phy_fat_coe_accuracy'].mean()
-        return EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeAccu, FilterFatigueCoeAccu
+        return torch.sqrt(EpLossCompare).item(), torch.sqrt(EpFilterPredictLoss).item(), EpFilterPredictAccu, FilterRecoverCoeAccu, FilterFatigueCoeAccu

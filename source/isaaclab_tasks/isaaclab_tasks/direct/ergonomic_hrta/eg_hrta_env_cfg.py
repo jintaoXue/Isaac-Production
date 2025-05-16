@@ -101,6 +101,8 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     hyper_param_time = 0.3
     # if not use fatigue mask, set False
     use_partial_filter = True
+    measure_noise_mu = 0.0
+    measure_noise_sigma = 0.1
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

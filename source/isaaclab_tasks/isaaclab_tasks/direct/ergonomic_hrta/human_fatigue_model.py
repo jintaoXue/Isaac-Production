@@ -126,13 +126,13 @@ class Fatigue(object):
         for (key, v) in self.phy_fatigue_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
                 # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
         
         for (key, v) in self.phy_recovery_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
-                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-2, sigma_v=1e-3, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
 
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
@@ -178,17 +178,25 @@ class Fatigue(object):
             # else:
                 # _filter.step(F, F, self.time_step)
             F = F*math.exp(-self.phy_recovery_ce_dic[state_type]*step_time)
-            _filter.step(F, F, self.time_step)
+            measure = self.add_measure_noise(F)
+            _filter.step(measure, F, self.time_step)
             self.pfs_phy_rec_ce_dic[state_type] = _filter.lambda_estimates[-1]
         else:
             assert subtask in self.phy_fatigue_ce_dic.keys()
             _filter : ParticleFilter = self.pfs_phy_fat[subtask]
             _lambda = -self.phy_fatigue_ce_dic[subtask]
             F = F + (1-F)*(1-math.exp(_lambda*step_time))
-            _filter.step(F, F, self.time_step)
+            measure = self.add_measure_noise(F)
+            _filter.step(measure, F, self.time_step)
             self.pfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
 
         return
+    
+    def add_measure_noise(self, F):
+        random = np.random.normal(self.cfg.measure_noise_mu, self.cfg.measure_noise_sigma, 1)
+        # random = np.clip(random, -0.1, 0.1)
+        F = np.clip(F + random, 0.0, 1.0) 
+        return F
      
     def get_filter_recover_coe_accuracy(self):
         true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
