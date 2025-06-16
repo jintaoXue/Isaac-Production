@@ -78,6 +78,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self.cfg.train_cfg['params']['config'])
         map_route = MapRoute(self.cfg)
         self.task_manager.characters.routes_dic, self.task_manager.agvs.routes_dic = map_route.load_pre_def_routes()
+        self.task_manager.boxs.routes_dic = self.task_manager.agvs.routes_dic
 
         self.train_env_len_settings = self.cfg.train_env_len_setting
         '''test settings'''
@@ -224,6 +225,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.extras['time_step'] = f"{self.episode_length_buf[0].cpu()}"
         self.extras['num_worker'] = self.task_manager.characters.acti_num_charc
         self.extras['num_robot'] = self.task_manager.agvs.acti_num_agv
+        self.extras['human_move'] = self.task_manager.characters.get_sum_movement()
+        self.extras['agv_move'] = self.task_manager.agvs.get_sum_movement()
         if self._test:
             self.extras['worker_initial_pose'] = self.task_manager.ini_worker_pose
             self.extras['robot_initial_pose'] = self.task_manager.ini_agv_pose

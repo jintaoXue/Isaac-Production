@@ -400,6 +400,7 @@ class Agvs(object):
         self.acti_num_agv = acti_num_agv
         self.states = [0]*acti_num_agv
         self.tasks = [0]*acti_num_agv
+        self.movements = [0]*acti_num_agv
         self.list = self.agv_list[:acti_num_agv]
         self.x_paths = [[] for i in range(acti_num_agv)]
         self.y_paths = [[] for i in range(acti_num_agv)]
@@ -423,7 +424,14 @@ class Agvs(object):
                 self.agv_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
                 self.agv_list[i].set_velocities(torch.zeros((1,6)))
 
+        self.poses_str = initial_pose_str
         return initial_pose_str
+
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
     
     def reset_idx(self, idx):
         if idx < 0 :
@@ -466,16 +474,32 @@ class Agvs(object):
             except: 
                 return -1
         else:
-            # return box_idx
-            min_dis_idx = -1
-            pre_dis = torch.inf
-            for agv_idx in range(0, len(self.list)):
-                if available[agv_idx] == 0:
-                    agv_xyz, _ = self.list[agv_idx].get_world_poses()
-                    dis = torch.norm(agv_xyz[0] - box_xyz)
-                    if dis.cpu() < pre_dis:
-                        pre_dis = dis
-                        min_dis_idx = agv_idx
+            count = available.count(0)
+            if count == 0:
+                return -1
+            elif count == 1:
+                return available.index(0)
+            else:
+                if True:
+                    min_dis_idx = -1
+                    pre_dis = torch.inf
+                    for agv_idx in range(0, self.acti_num_agv):
+                        if available[agv_idx] == 0:
+                            agv_xyz, _ = self.list[agv_idx].get_world_poses()
+                            dis = torch.norm(agv_xyz[0] - box_xyz)
+                            if dis.cpu() < pre_dis:
+                                pre_dis = dis
+                                min_dis_idx = agv_idx
+                else:
+                    min_dis_idx = -1
+                    pre_dis = -torch.inf
+                    for agv_idx in range(0, self.acti_num_agv):
+                        if available[agv_idx] == 0:
+                            agv_xyz, _ = self.list[agv_idx].get_world_poses()
+                            dis = torch.norm(agv_xyz[0] - box_xyz)
+                            if dis.cpu() > pre_dis:
+                                pre_dis = dis
+                                min_dis_idx = agv_idx
             return min_dis_idx
     
     def step_next_pose(self, agv_idx):
@@ -499,6 +523,7 @@ class Agvs(object):
             euler_angles = [0,0, self.yaws[agv_idx][path_idx]]
 
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
+        self.movements[agv_idx] +=1
         return position, orientation, reaching_flag
     
     def reset_path(self, agv_idx):
@@ -512,6 +537,9 @@ class Agvs(object):
         if task in self.low2high_level_task_dic.keys():
             return self.low2high_level_task_dic[task]
         else: return -1
+    
+    def get_sum_movement(self):
+        return sum(self.movements)
 
 
 class TransBoxs(object):
@@ -541,7 +569,9 @@ class TransBoxs(object):
         #     self.initial_pose_list.append(obj.get_world_poses())
         _cfg = HRTaskAllocEnvCfg()
         self.capacity = BoxCapacity()
+        self.routes_dic = None
         self.reset()
+
         return
     
     def reset(self, acti_num_box=None, random = None):
@@ -614,7 +644,7 @@ class TransBoxs(object):
         if random:
             idx = random_zero_index([a*b for a,b in zip(self.states,self.tasks)])
         else: 
-            idx = self.find_available_box()
+            idx = self.find_available_box(high_level_task)
         if idx == -1:
             if high_level_task == 'collect_product':
                 self.product_collecting_idx = -1
@@ -628,12 +658,34 @@ class TransBoxs(object):
                 self.product_collecting_idx = idx
             return idx
 
-    def find_available_box(self):
+    def find_available_box(self, task, idx=0):
         available = [a*b for a,b in zip(self.states,self.tasks)]
-        try:
-            return available.index(0)
-        except: 
+        # try:
+        #     return available.index(0)
+        # except: 
+        #     return -1
+        count = available.count(0)
+        if count == 0:
             return -1
+        elif count == 1:
+            return available.index(idx)
+        else:
+            task_pose_str = self.high2low_level_task_dic[task]
+            closet_idx = None
+            shortest_path = None
+            for i in range(0, len(available)):
+                if available[i] != 0:
+                    continue
+                if self.poses_str[i] == task_pose_str: #the closet idx
+                    return i
+                x,y,yaw = self.routes_dic[self.poses_str[i]][task_pose_str]
+                path_len = len(x)
+                if closet_idx is None:
+                    closet_idx = i
+                    shortest_path = path_len
+                else:
+                    closet_idx = i if path_len < shortest_path else closet_idx
+            return closet_idx
         
     def find_carrying_products_box_idx(self):
         for list, idx in zip(self.product_idx_list, range(len(self.product_idx_list))):

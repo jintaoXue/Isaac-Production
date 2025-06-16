@@ -607,6 +607,7 @@ class Characters(object):
             euler_angles = [0,0, self.yaws[charac_idx][path_idx]]
 
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
+        self.movements[charac_idx] +=1
         return position, orientation, reaching_flag
     
     def step_processing(self, idx):
@@ -643,3 +644,6 @@ class Characters(object):
         if task in self.low2high_level_task_dic.keys():
             return self.low2high_level_task_dic[task]
         else: return -1
+    
+    def get_sum_movement(self):
+        return sum(self.movements)
