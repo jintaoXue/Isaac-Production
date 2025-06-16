@@ -200,6 +200,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.extras['time_step'] = f"{self.episode_length_buf[0].cpu()}"
         self.extras['num_worker'] = self.task_manager.characters.acti_num_charc
         self.extras['num_robot'] = self.task_manager.agvs.acti_num_agv
+        self.extras['human_move'] = self.task_manager.characters.get_sum_movement()
+        self.extras['agv_move'] = self.task_manager.agvs.get_sum_movement()
         if self._test:
             self.extras['worker_initial_pose'] = self.task_manager.ini_worker_pose
             self.extras['robot_initial_pose'] = self.task_manager.ini_agv_pose

@@ -22,7 +22,7 @@ import wandb
 import copy
 
 
-class SafeRainbowAgent():
+class SafeRlFilterAgent():
     def __init__(self, base_name, params):
 
         self.config : DictConfig = params['config']
@@ -48,6 +48,7 @@ class SafeRainbowAgent():
         self.num_warmup_steps = config.get('num_warmup_steps', int(5e4))
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
+        self.use_prediction_net = config.get('use_prediction_net', False)
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
@@ -81,8 +82,9 @@ class SafeRainbowAgent():
         for param in self.target_net.parameters():
             param.requires_grad = False
         #####
-        self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
-        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
+        self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
+        # self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
+        # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
         if self.use_wandb:
@@ -226,7 +228,7 @@ class SafeRainbowAgent():
         wandb.define_metric("SuperviseTrain/loss_compare", step_metric="SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/buffer_size", step_metric="SuperviseTrain/step")
         wandb.define_metric("SuperviseTrain/EpOverCost", step_metric="SuperviseTrain/step")
-        
+
 
         wandb.define_metric("Train/Mrewards", step_metric="Train/step")
         wandb.define_metric("Train/MLen", step_metric="Train/step")
@@ -234,6 +236,11 @@ class SafeRainbowAgent():
         wandb.define_metric("Metrics/EpRet", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpEnvLen", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterPredictLoss", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterPredictAccu", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpPredictLossCompare", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterRecoverCoeAccu", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpFilterFatigueCoeAccu", step_metric="Metrics/step_episode")
 
         wandb.define_metric("Metrics/EpTime", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpProgress", step_metric="Metrics/step_episode")
@@ -267,10 +274,11 @@ class SafeRainbowAgent():
         wandb.define_metric("Evaluate/Savepth", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterPredictAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpMoveHuman", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpMoveRobot", step_metric="Evaluate/step_episode")
-
 
         for i in range(0, self.config['max_num_worker']):
             for j in range(0, self.config['max_num_robot']):
@@ -279,7 +287,7 @@ class SafeRainbowAgent():
         # self.evaluate_table = wandb.Table(columns=["env_length", "action_seq", "progress"])
 
         #test
-        self.test_table = wandb.Table(columns=["worker_initial_pose", "robot_initial_pose", "box_initial_pose", "progress", "env_length", "human_move", "robot_move"])
+        self.test_table = wandb.Table(columns=["worker_initial_pose", "robot_initial_pose", "box_initial_pose", "progress", "env_length"])
         self.test_table2 = wandb.Table(columns=["num_worker", "num_robot&box", "max", "min", "mean"])
         self.test_table3 = wandb.Table(columns=["time_step", "action_list"])
         return
@@ -291,8 +299,12 @@ class SafeRainbowAgent():
     # Acts based on single state (no batch)
     def act(self, state):
         with torch.no_grad():
-            action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
-            return action.argmax(1).unsqueeze(0), cost_mask 
+            if self.use_prediction_net:
+                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
+                return action.argmax(1).unsqueeze(0), cost_mask
+            else:
+                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0))
+                return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
 
     # Acts with an ε-greedy policy (used for evaluation only)
@@ -511,6 +523,7 @@ class SafeRainbowAgent():
         if self.only_train_cost_net:
             return step_time, None, total_update_time, total_time, loss
         for j in range(repeat_times):
+            fatigue_data_list = []
             for i in range(len(temporary_buffer)):
                 random_exploration = self.step_num < self.num_warmup_steps
                 self.set_train()
@@ -547,9 +560,13 @@ class SafeRainbowAgent():
                 rewards_cpu = rewards.squeeze().cpu()
                 dones_cpu = dones.squeeze().cpu()
                 self.replay_buffer.append(obs_cpu, action_cpu, rewards_cpu+reward_extra, dones_cpu)
-
+                if 'fatigue_data' in infos:
+                    fatigue_data = infos['fatigue_data']
+                    for _data in fatigue_data:
+                        fatigue_data_list.append(_data)
                 if dones[0]:
                     self.episode_num += 1
+
                     if self.use_wandb:
                         wandb.log({
                             "Train/step": self.step_num,
@@ -560,6 +577,17 @@ class SafeRainbowAgent():
                             "Metrics/EpTime": self.current_ep_time,
                             "Metrics/EpProgress": infos['progress'],
                             "Metrics/EpRetAction": self.current_rewards_action,
+                        })
+                    if len(fatigue_data_list)>0:
+                        EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                        if self.use_wandb:
+                            wandb.log({
+                            "Metrics/EpFilterPredictLoss": EpFilterPredictLoss,
+                            "Metrics/EpFilterPredictAccu": EpFilterPredictAccu,
+                            "Metrics/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
+                            "Metrics/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
+                            # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
+                            "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
                     # next_obs = self.env_reset()   
                     if not random_exploration and self.episode_num % self.evaluate_interval == 0:
@@ -637,11 +665,13 @@ class SafeRainbowAgent():
     
     def play_steps(self, num_worker=None, num_robot=None):
         temporary_buffer = []
+        fatigue_data_list = []
         while True:
             obs : dict = self.obs
             random_exploration = self.step_num < self.num_warmup_steps
             self.set_train()
             action_extra = {}
+
             if random_exploration:
                 if self.step_num < self.demonstration_steps:
                     action = None
@@ -653,25 +683,27 @@ class SafeRainbowAgent():
                     action_extra['cost_mask'] = cost_mask
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
+
             if 'fatigue_data' in infos:
                 fatigue_data = infos['fatigue_data']
                 for _data in fatigue_data:
-                    self.costfunc_buffer.append(_data)
+                    fatigue_data_list.append(_data)
 
-            if self.step_num_sfl >= self.cost_num_warmup_steps:
-                if self.step_num_sfl % self.update_frequency_sfl == 0:
-                    self.set_train()
-                    loss, loss_compare = self.update_cost_func()
-                    if self.use_wandb:
-                        wandb.log({
-                                'SuperviseTrain/step': self.step_num_sfl,
-                                "SuperviseTrain/loss": torch.sqrt(loss).item(),
-                                "SuperviseTrain/loss_compare": torch.sqrt(loss_compare).item(),
-                                "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
-                            })
-                    time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                    print("supervise traning loss:{}，".format(loss.mean().item()) + " time_now:{}".format(time_now))
-            self.step_num_sfl += 1
+            if self.use_prediction_net:
+                if self.step_num_sfl >= self.cost_num_warmup_steps:
+                    if self.step_num_sfl % self.update_frequency_sfl == 0:
+                        self.set_train()
+                        loss, loss_compare = self.update_cost_func()
+                        if self.use_wandb:
+                            wandb.log({
+                                    'SuperviseTrain/step': self.step_num_sfl,
+                                    "SuperviseTrain/loss": torch.sqrt(loss).item(),
+                                    "SuperviseTrain/loss_compare": torch.sqrt(loss_compare).item(),
+                                    "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
+                                })
+                        time_now = datetime.now().strftime("_%d-%H-%M-%S")   
+                        print("supervise traning loss:{}，".format(loss.mean().item()) + " time_now:{}".format(time_now))
+                self.step_num_sfl += 1
             #debug
             # if self.costfunc_buffer.total_num() == 3:
             #     batch_data = self.costfunc_buffer.sample(3)
@@ -698,8 +730,12 @@ class SafeRainbowAgent():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
+                EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                 print_info = infos['print_info']
-                print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
+                # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
+                print(print_info + " | Warm_up:{},".format(random_exploration) + " Comp_loss:{:.3}".format(EpLossCompare) + \
+                      " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
+                        " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -714,6 +750,7 @@ class SafeRainbowAgent():
                     self.env_len_avgs[_num_worker-1][_num_robot-1].update(torch.tensor([infos['env_length']], dtype=torch.float32, device=self._device))
                     wandb.log({f'Avg_progress/{_num_worker}_{_num_robot}': self.progress_avgs[_num_worker-1][_num_robot-1].get_mean()})
                     wandb.log({f'Avg_env_len/{_num_worker}_{_num_robot}': self.env_len_avgs[_num_worker-1][_num_robot-1].get_mean()})
+
                 next_obs = self.env_reset(num_worker=num_worker, num_robot=num_robot)
             not_dones = 1.0 - done_flag.float()
             self.temp_current_lengths = self.temp_current_lengths * not_dones
@@ -792,9 +829,24 @@ class SafeRainbowAgent():
             if self.evaluate_use_cost_step < 0 and use_cost_func:
                 self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
-                
-                print_info = infos['print_info']
-                print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
+                print_info = infos['print_info']          
+                if len(fatigue_data_list)>0:
+                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                    if self.use_wandb:                    
+                        wandb.log({
+                            "Evaluate/EpFilterPredictLoss": EpFilterPredictLoss,
+                            "Evaluate/EpFilterPredictAccu": EpFilterPredictAccu,
+                            "Evaluate/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
+                            "Evaluate/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
+                            # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
+                            "Evaluate/EpPredictLossCompare": EpLossCompare, 
+                        })
+                    print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
+                    " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
+                        " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
+                else:
+                    print(print_info)
+                    # print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -806,24 +858,7 @@ class SafeRainbowAgent():
                         "Evaluate/EpProgress": infos['progress'],
                         "Evaluate/EpRetAction": self.evaluate_current_rewards_action,
                         "Evaluate/EpOverCost": self.current_overworks,
-                        "Evaluate/EpMoveHuman": infos['human_move'],
-                        "Evaluate/EpMoveRobot": infos['agv_move'],
-                    })                
-                    if len(fatigue_data_list)>0:
-                        with torch.no_grad():
-                            fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
-                            fatigue_prediction = self.online_net.cost_forward(fatigue_datas)
-                            # next_fatigue = torch.cat((fatigue_datas['next_phy_fatigue'], fatigue_datas['next_psy_fatigue']), dim=1)
-                            delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
-                            _size = len(fatigue_prediction)
-                            EpLoss = self.loss_criterion(fatigue_prediction[torch.arange(_size), fatigue_datas['action']][...,[0]], delta_fatigue).mean()
-                            # delta_fatigue = torch.cat((fatigue_datas['next_phy_fatigue']- fatigue_datas['phy_fatigue'], fatigue_datas['next_psy_fatigue'] - fatigue_datas['psy_fatigue']), dim=1)
-                            # delta_fatigue_compare = torch.cat((fatigue_datas['phy_delta_predict'], fatigue_datas['psy_delta_predict']), dim=1)
-                            EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
-                            wandb.log({
-                                "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(), 
-                                "Evaluate/EpPredictLossCompare": torch.sqrt(EpLossCompare).item(), 
-                            })
+                    })      
                     if infos['env_length'] < infos['max_env_len']-1 and infos['progress'] == 1:
                         task_success = True
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
@@ -838,10 +873,10 @@ class SafeRainbowAgent():
                         #     checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
                         #     self.save(os.path.join(self.nn_dir, checkpoint_name)) 
                     if test:
-                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu(), infos['human_move'], infos['agv_move'])
+                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu())
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
                 action_info_list = []
-                next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot) 
+                next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot, evaluate=True) 
             self.evaluate_current_rewards = self.evaluate_current_rewards * not_dones
             self.evaluate_current_lengths = self.evaluate_current_lengths * not_dones
             self.evaluate_current_ep_time = self.evaluate_current_ep_time * not_dones
@@ -871,9 +906,7 @@ class SafeRainbowAgent():
                         if self.use_wandb:
                             index = w*self.config["max_num_worker"]+r
                             time_span = self.test_table.get_column("env_length")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            human_move = self.test_table.get_column("human_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            robot_move = self.test_table.get_column("robot_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            self.test_table2.add_data(w+1, r+1, np.max(time_span), np.min(time_span), np.mean(time_span), np.mean(human_move), np.mean(robot_move))
+                            self.test_table2.add_data(w+1, r+1, np.max(time_span), np.min(time_span), np.mean(time_span))
                 if self.use_wandb:
                     wandb.log({"Instances": self.test_table}) 
                     wandb.log({"Instances2": self.test_table2}) 
@@ -909,3 +942,13 @@ class SafeRainbowAgent():
                         wandb.finish()
                     break
 
+    def get_fatigue_related_predtion_loss(self, fatigue_data_list):
+        with torch.no_grad():
+            fatigue_datas = data.stack_from_array(fatigue_data_list, device=self._device)
+            delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
+            EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
+            EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
+            EpFilterPredictAccu = fatigue_datas['filter_phy_fat_accuracy'].mean()
+            FilterRecoverCoeAccu = fatigue_datas['filter_phy_rec_coe_accuracy'].mean()
+            FilterFatigueCoeAccu = fatigue_datas['filter_phy_fat_coe_accuracy'].mean()
+        return torch.sqrt(EpLossCompare).item(), torch.sqrt(EpFilterPredictLoss).item(), EpFilterPredictAccu, FilterRecoverCoeAccu, FilterFatigueCoeAccu

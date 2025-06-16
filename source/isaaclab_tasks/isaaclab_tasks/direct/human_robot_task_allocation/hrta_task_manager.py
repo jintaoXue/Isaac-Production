@@ -14,6 +14,25 @@ def random_zero_index(data):
         return indexs[_idx][0]
     else:
         return -1
+    
+def world_pose_to_navigation_pose(world_pose):
+    position, orientation = world_pose[0][0].cpu().numpy(), world_pose[1][0].cpu().numpy()
+    euler_angles = quaternion.quaternionToEulerAngles(orientation)
+    nav_pose = [position[0], position[1], euler_angles[2]]
+    return nav_pose
+
+def find_closest_pose(pose_dic, ego_pose, in_dis=5):
+    dis = np.inf
+    key = None
+    for _key, val in pose_dic.items():
+        _dis = np.linalg.norm(np.array(val[:2]) - np.array(ego_pose[:2]))
+        if _dis < 0.1:
+            return _key
+        elif _dis < dis:
+            key = _key
+            dis = _dis
+    assert dis < in_dis, 'error when get closest pose, distance is: {}'.format(dis)
+    return key
 
 class TaskManager(object):
     def __init__(self, character_list, agv_list, box_list, cuda_device, train_cfg) -> None:
@@ -324,6 +343,9 @@ class Characters(object):
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
         self.PUTTING_TIME = 5
         self.LOADING_TIME = 5
+
+        #for path pose
+        self.poses_str = []
         
         return
     
@@ -333,6 +355,7 @@ class Characters(object):
         self.acti_num_charc = acti_num_charc
         self.states = [0]*acti_num_charc
         self.tasks = [0]*acti_num_charc
+        self.movements = [0]*acti_num_charc
         self.list = self.character_list[:acti_num_charc]
         self.x_paths = [[] for i in range(acti_num_charc)]
         self.y_paths = [[] for i in range(acti_num_charc)]
@@ -351,8 +374,15 @@ class Characters(object):
             self.reset_idx(i)
             self.reset_path(i)
         self.loading_operation_time_steps = [0 for i in range(acti_num_charc)]
+        self.poses_str = initial_pose_str
 
         return initial_pose_str
+
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
 
 
     def reset_idx(self, idx):
@@ -408,11 +438,34 @@ class Characters(object):
             self.tasks[idx] = 10
         return idx
     
-    def find_available_charac(self, idx=0):
-        try:
-            return self.tasks.index(idx)
-        except: 
+
+    def find_available_charac(self, task, idx=0):
+        # try:
+        #     return self.tasks.index(idx)
+        # except: 
+        #     return -1
+        count = self.tasks.count(0)
+        if count == 0:
             return -1
+        elif count == 1:
+            return self.tasks.index(idx)
+        else:
+            task_pose_str = self.high2low_level_task_dic[task]
+            closet_idx = None
+            shortest_path = None
+            for i in range(0, len(self.tasks)):
+                if self.tasks[i] != 0:
+                    continue
+                if self.poses_str[i] == task_pose_str: #the closet idx
+                    return i
+                x,y,yaw = self.routes_dic[self.poses_str[i]][task_pose_str]
+                path_len = len(x)
+                if closet_idx is None:
+                    closet_idx = i
+                    shortest_path = path_len
+                else:
+                    closet_idx = i if path_len < shortest_path else closet_idx
+            return closet_idx
 
     def step_next_pose(self, charac_idx = 0):
         reaching_flag = False
@@ -435,6 +488,7 @@ class Characters(object):
             euler_angles = [0,0, self.yaws[charac_idx][path_idx]]
 
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
+        self.movements[charac_idx] +=1
         return position, orientation, reaching_flag
 
     
@@ -449,6 +503,9 @@ class Characters(object):
         if task in self.low2high_level_task_dic.keys():
             return self.low2high_level_task_dic[task]
         else: return -1
+
+    def get_sum_movement(self):
+        return sum(self.movements)
 
 
 class Agvs(object):
@@ -498,6 +555,7 @@ class Agvs(object):
         self.acti_num_agv = acti_num_agv
         self.states = [0]*acti_num_agv
         self.tasks = [0]*acti_num_agv
+        self.movements = [0]*acti_num_agv
         self.list = self.agv_list[:acti_num_agv]
         self.x_paths = [[] for i in range(acti_num_agv)]
         self.y_paths = [[] for i in range(acti_num_agv)]
@@ -516,8 +574,15 @@ class Agvs(object):
             self.reset_idx(i)
             self.reset_path(i)
 
+        self.poses_str = initial_pose_str
         return initial_pose_str
     
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
+
     def reset_idx(self, idx):
         if idx < 0 :
             return
@@ -551,6 +616,24 @@ class Agvs(object):
             self.tasks[idx] = 6 
         return idx
     
+    # def find_available_agv(self, box_idx, box_xyz):
+    #     available = [a*b for a,b in zip(self.states,self.tasks)]
+    #     if box_idx == -1: 
+    #         try:
+    #             return available.index(0)
+    #         except: 
+    #             return -1
+    #     else:
+    #         min_dis_idx = -1
+    #         pre_dis = torch.inf
+    #         for agv_idx in range(0, len(self.list)):
+    #             if available[agv_idx] == 0:
+    #                 agv_xyz, _ = self.list[agv_idx].get_world_poses()
+    #                 dis = torch.norm(agv_xyz[0] - box_xyz)
+    #                 if dis.cpu() < pre_dis:
+    #                     pre_dis = dis
+    #                     min_dis_idx = agv_idx
+    #         return min_dis_idx
     def find_available_agv(self, box_idx, box_xyz):
         available = [a*b for a,b in zip(self.states,self.tasks)]
         if box_idx == -1: 
@@ -559,15 +642,32 @@ class Agvs(object):
             except: 
                 return -1
         else:
-            min_dis_idx = -1
-            pre_dis = torch.inf
-            for agv_idx in range(0, len(self.list)):
-                if available[agv_idx] == 0:
-                    agv_xyz, _ = self.list[agv_idx].get_world_poses()
-                    dis = torch.norm(agv_xyz[0] - box_xyz)
-                    if dis.cpu() < pre_dis:
-                        pre_dis = dis
-                        min_dis_idx = agv_idx
+            count = available.count(0)
+            if count == 0:
+                return -1
+            elif count == 1:
+                return available.index(0)
+            else:
+                if True:
+                    min_dis_idx = -1
+                    pre_dis = torch.inf
+                    for agv_idx in range(0, self.acti_num_agv):
+                        if available[agv_idx] == 0:
+                            agv_xyz, _ = self.list[agv_idx].get_world_poses()
+                            dis = torch.norm(agv_xyz[0] - box_xyz)
+                            if dis.cpu() < pre_dis:
+                                pre_dis = dis
+                                min_dis_idx = agv_idx
+                else:
+                    min_dis_idx = -1
+                    pre_dis = -torch.inf
+                    for agv_idx in range(0, self.acti_num_agv):
+                        if available[agv_idx] == 0:
+                            agv_xyz, _ = self.list[agv_idx].get_world_poses()
+                            dis = torch.norm(agv_xyz[0] - box_xyz)
+                            if dis.cpu() > pre_dis:
+                                pre_dis = dis
+                                min_dis_idx = agv_idx
             return min_dis_idx
     
     def step_next_pose(self, agv_idx):
@@ -591,6 +691,7 @@ class Agvs(object):
             euler_angles = [0,0, self.yaws[agv_idx][path_idx]]
 
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
+        self.movements[agv_idx] +=1
         return position, orientation, reaching_flag
     
     def reset_path(self, agv_idx):
@@ -605,7 +706,8 @@ class Agvs(object):
             return self.low2high_level_task_dic[task]
         else: return -1
 
-
+    def get_sum_movement(self):
+        return sum(self.movements)
 
 class TransBoxs(object):
 
@@ -660,8 +762,16 @@ class TransBoxs(object):
             self.list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
             self.list[i].set_velocities(torch.zeros((1,6)))
             self.reset_idx(i)
-
+        self.poses_str = initial_pose_str
         return initial_pose_str
+
+
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
+
 
     def reset_idx(self, idx):
         if idx < 0 :
@@ -708,12 +818,34 @@ class TransBoxs(object):
                 self.product_collecting_idx = idx
             return idx
 
-    def find_available_box(self):
+    def find_available_box(self, task, idx=0):
         available = [a*b for a,b in zip(self.states,self.tasks)]
-        try:
-            return available.index(0)
-        except: 
+        # try:
+        #     return available.index(0)
+        # except: 
+        #     return -1
+        count = available.count(0)
+        if count == 0:
             return -1
+        elif count == 1:
+            return available.index(idx)
+        else:
+            task_pose_str = self.high2low_level_task_dic[task]
+            closet_idx = None
+            shortest_path = None
+            for i in range(0, len(available)):
+                if available[i] != 0:
+                    continue
+                if self.poses_str[i] == task_pose_str: #the closet idx
+                    return i
+                x,y,yaw = self.routes_dic[self.poses_str[i]][task_pose_str]
+                path_len = len(x)
+                if closet_idx is None:
+                    closet_idx = i
+                    shortest_path = path_len
+                else:
+                    closet_idx = i if path_len < shortest_path else closet_idx
+            return closet_idx
         
     def find_carrying_products_box_idx(self):
         for list, idx in zip(self.product_idx_list, range(len(self.product_idx_list))):

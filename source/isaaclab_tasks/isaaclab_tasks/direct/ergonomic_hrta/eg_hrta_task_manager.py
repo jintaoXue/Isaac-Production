@@ -17,6 +17,25 @@ def random_zero_index(data):
         return indexs[_idx][0]
     else:
         return -1
+    
+def world_pose_to_navigation_pose(world_pose):
+    position, orientation = world_pose[0][0].cpu().numpy(), world_pose[1][0].cpu().numpy()
+    euler_angles = quaternion.quaternionToEulerAngles(orientation)
+    nav_pose = [position[0], position[1], euler_angles[2]]
+    return nav_pose
+
+def find_closest_pose(pose_dic, ego_pose, in_dis=5):
+    dis = np.inf
+    key = None
+    for _key, val in pose_dic.items():
+        _dis = np.linalg.norm(np.array(val[:2]) - np.array(ego_pose[:2]))
+        if _dis < 0.1:
+            return _key
+        elif _dis < dis:
+            key = _key
+            dis = _dis
+    assert dis < in_dis, 'error when get closest pose, distance is: {}'.format(dis)
+    return key
 
 class TaskManager(object):
     def __init__(self, character_list, agv_list, box_list, cuda_device, train_cfg) -> None:
@@ -504,6 +523,7 @@ class TransBoxs(object):
         self.task_range = {'hoop_preparing', 'bending_tube_preparing', 'collect_product','placing_product'}
 
         # self.poses_dic = {'initial_box_pose_0': [-1.6895515, 8.0171, 0.0], 'initial_box_pose_1': [-1.7894887, 11.822739, 0.0]}
+        self.high2low_level_task_dic = {'hoop_preparing':'carry_box_to_hoop', 'bending_tube_preparing':'carry_box_to_bending_tube', 'collect_product':'collect_product','placing_product':'placing_product'}
         self.poses_dic = {"carry_box_to_hoop": [-0.654, 8.0171, np.deg2rad(0)] , "carry_box_to_bending_tube": [-0.654, 11.62488, np.deg2rad(0)], 
                 "carry_box_to_hoop_table": [-11.69736, 5.71486, np.deg2rad(0)], "carry_box_to_bending_tube_table":[-33.55065, 5.71486, np.deg2rad(-90)] ,
                 'collect_product':[-21.76757, 10.78427, np.deg2rad(0)],'placing_product':[-38.54638, 12.40097, np.deg2rad(0)], 
@@ -554,7 +574,14 @@ class TransBoxs(object):
                 self.box_list[i].set_world_poses(torch.tensor([position]), torch.tensor([[1., 0., 0., 0.]]))
                 self.box_list[i].set_velocities(torch.zeros((1,6)))
 
+        self.poses_str = initial_pose_str
         return initial_pose_str
+
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
 
     def reset_idx(self, idx):
         if idx < 0 :

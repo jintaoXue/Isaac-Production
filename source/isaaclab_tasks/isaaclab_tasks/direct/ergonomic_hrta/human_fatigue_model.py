@@ -13,14 +13,33 @@ import random
 
 ######### for human fatigue #####
 
-def random_zero_index(data : np.ndarray):
-    zero_data = data == 0
-    if np.count_nonzero(zero_data)>=1:
-        indexs = np.argwhere(zero_data)
+def world_pose_to_navigation_pose(world_pose):
+    position, orientation = world_pose[0][0].cpu().numpy(), world_pose[1][0].cpu().numpy()
+    euler_angles = quaternion.quaternionToEulerAngles(orientation)
+    nav_pose = [position[0], position[1], euler_angles[2]]
+    return nav_pose
+
+def random_zero_index(data):
+
+    if data.count(0)>=1:
+        indexs = np.argwhere(np.array(data) == 0)
         _idx = np.random.randint(low=0, high = len(indexs)) 
         return indexs[_idx][0]
     else:
         return -1
+
+def find_closest_pose(pose_dic, ego_pose, in_dis=5):
+    dis = np.inf
+    key = None
+    for _key, val in pose_dic.items():
+        _dis = np.linalg.norm(np.array(val[:2]) - np.array(ego_pose[:2]))
+        if _dis < 0.1:
+            return _key
+        elif _dis < dis:
+            key = _key
+            dis = _dis
+    assert dis < in_dis, 'error when get closest pose, distance is: {}'.format(dis)
+    return key
 
 class Fatigue(object):
 
@@ -364,6 +383,12 @@ class Characters(object):
                         "put_bending_tube_on_table":'bending_tube_preparing', 'hoop_loading_inner':'hoop_loading_inner', 'bending_tube_loading_inner':'bending_tube_loading_inner', 
                         'hoop_loading_outer':'hoop_loading_outer', 'bending_tube_loading_outer': 'bending_tube_loading_outer', 'cutting_cube': 'cutting_cube', 'placing_product':'placing_product'}
         
+        self.high2low_level_task_dic = {'hoop_preparing':'put_hoop_into_box', 'bending_tube_preparing':'put_bending_tube_into_box', 
+                                'hoop_loading_inner':'hoop_loading_inner', 'bending_tube_loading_inner':'bending_tube_loading_inner', 
+                                'hoop_loading_outer':'hoop_loading_outer', 'bending_tube_loading_outer':'bending_tube_loading_outer', "cutting_cube":'cutting_cube', 
+                    'placing_product':'placing_product'}
+
+
         self.poses_dic = {"put_hoop_into_box": [1.28376, 6.48821, np.deg2rad(0)] , "put_bending_tube_into_box": [1.28376, 13.12021, np.deg2rad(0)], 
                         "put_hoop_on_table": [-12.26318, 4.72131, np.deg2rad(0)], "put_bending_tube_on_table":[-32, 8.0, np.deg2rad(-90)],
                         'hoop_loading_inner':[-16.26241, 6.0, np.deg2rad(180)],'bending_tube_loading_inner':[-29.06123, 6.3725, np.deg2rad(0)],
@@ -413,6 +438,7 @@ class Characters(object):
         self.acti_num_charc = acti_num_charc
         self.states = [0]*acti_num_charc
         self.tasks = [0]*acti_num_charc
+        self.movements = [0]*acti_num_charc
         self.list = self.character_list[:acti_num_charc]
         self.x_paths = [[] for i in range(acti_num_charc)]
         self.y_paths = [[] for i in range(acti_num_charc)]
@@ -445,7 +471,15 @@ class Characters(object):
             fatigue.reset()
             self.fatigue_task_masks[i] = fatigue.ftg_task_mask
         self.cost_mask_from_net = None
+        self.poses_str = initial_pose_str
+
         return initial_pose_str
+
+    def update_pose_str(self, idx):
+        worker_position = self.list[idx].get_world_poses()
+        wp = world_pose_to_navigation_pose(worker_position)
+        wp_str = find_closest_pose(pose_dic=self.poses_dic, ego_pose=wp, in_dis=1000.)
+        self.poses_str[idx] = wp_str
 
     # def get_fatigue_task_masks(self):
     #     fatigue_task_masks = torch.zeros((self.n_max_human, len(high_level_task_dic)), device=self.cfg.cuda_device_str)
@@ -484,7 +518,7 @@ class Characters(object):
         if random:
             idx = random_zero_index(worker_tasks)
         else:
-            idx = self.find_available_charac(worker_tasks)
+            idx = self.find_available_charac(worker_tasks, high_level_task)
             
         if idx == -1:
             return idx
@@ -518,11 +552,39 @@ class Characters(object):
         
         return idx
     
-    def find_available_charac(self, mask : list, idx=0):
-        try:
-            return mask.index(idx)
-        except: 
+    # def find_available_charac(self, mask : list, idx=0):
+    #     try:
+    #         return mask.index(idx)
+    #     except: 
+    #         return -1
+
+    def find_available_charac(self, mask, task, idx=0):
+        # try:
+        #     return self.tasks.index(idx)
+        # except: 
+        #     return -1
+        count = mask.count(0)
+        if count == 0:
             return -1
+        elif count == 1:
+            return mask.index(idx)
+        else:
+            task_pose_str = self.high2low_level_task_dic[task]
+            closet_idx = None
+            shortest_path = None
+            for i in range(0, len(mask)):
+                if mask[i] != 0:
+                    continue
+                if self.poses_str[i] == task_pose_str: #the closet idx
+                    return i
+                x,y,yaw = self.routes_dic[self.poses_str[i]][task_pose_str]
+                path_len = len(x)
+                if closet_idx is None:
+                    closet_idx = i
+                    shortest_path = path_len
+                else:
+                    closet_idx = i if path_len < shortest_path else closet_idx
+            return closet_idx
 
     def step_next_pose(self, charac_idx = 0):
         reaching_flag = False

@@ -262,3 +262,11 @@ traning  worker:1, agv&box:3, env_len:1585, max_env_len:4000, finished:True, ove
 traning  worker:2, agv&box:1, env_len:1350, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00167 Filter_predict_loss:0.000787 Recover_coe_loss:0.0205
 traning  worker:2, agv&box:2, env_len:1232, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00129 Filter_predict_loss:0.0019 Recover_coe_loss:0.0159
 traning  worker:2, agv&box:3, env_len:1207, max_env_len:1800, finished:True, over_work:False | warm_up:True, Predict_loss:0.00185 Filter_predict_loss:0.00162 Recover_coe_loss:0.0174
+
+
+
+# 6.16
+要实现这个PPO-lag discrete的话就要修改储存的memory，修改网络结构，计算adv surrogate要有区别
+要么就用PPO-penatly
+
+还要把low-level改成nearest path的方式
