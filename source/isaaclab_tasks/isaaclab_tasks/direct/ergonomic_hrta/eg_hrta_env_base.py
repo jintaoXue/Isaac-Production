@@ -227,6 +227,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.extras['num_robot'] = self.task_manager.agvs.acti_num_agv
         self.extras['human_move'] = self.task_manager.characters.get_sum_movement()
         self.extras['agv_move'] = self.task_manager.agvs.get_sum_movement()
+        self.extras['cost_value'] = self.compute_cost_value()
         if self._test:
             self.extras['worker_initial_pose'] = self.task_manager.ini_worker_pose
             self.extras['robot_initial_pose'] = self.task_manager.ini_agv_pose
@@ -234,6 +235,14 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # self.reward_test_list.append(self.reward_buf[0].clone())
         return
     
+    def compute_cost_value(self):
+        cost = 0.0
+        if self.task_manager.characters.have_overwork():
+            cost += 1
+        cost += self.task_manager.characters.compute_fatigue_cost()
+        return cost
+        
+
     def get_fatigue_data(self):
         self.extras['overwork'] = self.task_manager.characters.have_overwork()
         if self.extras['overwork']:

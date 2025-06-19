@@ -24,6 +24,8 @@ gym.register(
         "env_cfg_entry_point": f"{__name__}.eg_hrta_env_cfg:HRTaskAllocEnvCfg",
         "rainbowmini": f"{agents.__name__}:rainbowmini.yaml",
         "rl_filter": f"{agents.__name__}:rl_filter.yaml",
+        "ppolag_dis": f"{agents.__name__}:ppolag_dis.yaml",
+        "ppolag_filter_dis": f"{agents.__name__}:ppolag_filter_dis.yaml",
         # "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:CartpolePPORunnerCfg",
         # "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
         # "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",

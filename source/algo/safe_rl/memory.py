@@ -20,15 +20,25 @@ blank_state = {'action_mask': torch.tensor([0., 0., 0., 0., 0., 0., 0., 0., 0., 
 Transition_dtype = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])
 blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 
-#fatigue
+##################### PPO ###########
+Transition_dtype_PPO = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('action_prob', dict), ('reward', np.float32), ('cost', np.float32), ('nonterminal', np.bool_)])
+blank_trans_PPO = (0, blank_state, torch.zeros((1), dtype=torch.int64), {'action_prob': torch.zeros([10], dtype=torch.float32)}, 0.0, False)
+
+######################PPO End#########
+
+
+#################fatigue cost func memory
 costfunc_transition_dtype = np.dtype((dict))
 fatigue_blank_state = blank_state.copy()
 additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
                     'phy_delta_predict': torch.tensor([0.]), 'charac_idx':torch.tensor([0], dtype=torch.int64), 'action': torch.tensor([0])}
 # additional_state = {'phy_fatigue': torch.tensor([0.]), 'psy_fatigue': torch.tensor([0.]), 'next_phy_fatigue': torch.tensor([0.]), 'next_psy_fatigue': torch.tensor([0.]), 
 #  'charac_idx':torch.tensor([0]), 'action': torch.zeros((10), dtype=torch.float32)}
+
 for key, value in additional_state.items():
   fatigue_blank_state[key] = value
+
+
 
 
 
@@ -231,7 +241,7 @@ class CostfuncMemory():
     return self.index if not self.full else self.size
   
 
-
+###################### PPO buffer
 
 class SegmentTreePPO(SegmentTree):
   def __init__(self, size):
@@ -262,9 +272,9 @@ class ReplayMemoryPPO(ReplayMemory):
     self.transitions = SegmentTreePPO(self.capacity)
 
     # Adds state and action at time t, reward and terminal at time t + 1
-  def append(self, state, action, action_pro, reward, terminal):
+  def append(self, state, action, action_pro, reward, cost, terminal):
     # state = state[-1].mul(255).to(dtype=torch.uint8, device=torch.device('cpu'))  # Only store last frame and discretise to save memory
-    self.transitions.append((self.t, state, action, action_pro, reward, not terminal), self.transitions.max)  # Store new transition with maximum priority
+    self.transitions.append((self.t, state, action, action_pro, reward, cost, not terminal), self.transitions.max)  # Store new transition with maximum priority
     self.t = 0 if terminal else self.t + 1  # Start new episodes with t = 0
 
   # Returns a valid sample from each segment
@@ -288,16 +298,18 @@ class ReplayMemoryPPO(ReplayMemory):
     actions_prob = transitions['action_prob'][:, :self.history]
     # Calculate truncated n-step discounted returns R^n = Σ_k=0->n-1 (γ^k)R_t+k+1 (note that invalid nth next states have reward 0)
     rewards = torch.tensor(np.copy(transitions['reward'][:, self.history - 1:-1]), dtype=torch.float32, device=self.device)
+    costs = torch.tensor(np.copy(transitions['cost'][:, self.history - 1:-1]), dtype=torch.float32, device=self.device)
     R = torch.matmul(rewards, self.n_step_scaling)
+    C = torch.matmul(costs, self.n_step_scaling)
     # Mask for non-terminal nth next states
     nonterminals = torch.tensor(np.expand_dims(transitions['nonterminal'][:, self.history + self.n - 1], axis=1), dtype=torch.float32, device=self.device)
-    return probs, idxs, tree_idxs, states, actions, actions_prob, R, next_states, nonterminals
+    return probs, idxs, tree_idxs, states, actions, actions_prob, R, C, next_states, nonterminals
 
   def sample(self, batch_size):
     p_total = self.transitions.total()  # Retrieve sum of all priorities (used to create a normalised probability distribution)
-    probs, idxs, tree_idxs, states, actions, actions_prob, returns, next_states, nonterminals = self._get_samples_from_segments(batch_size, p_total)  # Get batch of valid samples
+    probs, idxs, tree_idxs, states, actions, actions_prob, returns, costs, next_states, nonterminals = self._get_samples_from_segments(batch_size, p_total)  # Get batch of valid samples
     probs = probs / p_total  # Calculate normalised probabilities
     capacity = self.capacity if self.transitions.full else self.transitions.index
     weights = (capacity * probs) ** -self.priority_weight  # Compute importance-sampling weights w
     weights = torch.tensor(weights / weights.max(), dtype=torch.float32, device=self.device)  # Normalise by max importance-sampling weight from batch
-    return tree_idxs, states, actions, actions_prob, returns, next_states, nonterminals, weights
+    return tree_idxs, states, actions, actions_prob, returns, costs, next_states, nonterminals, weights

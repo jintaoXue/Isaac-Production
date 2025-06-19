@@ -270,3 +270,27 @@ traning  worker:2, agv&box:3, env_len:1207, max_env_len:1800, finished:True, ove
 要么就用PPO-penatly
 
 还要把low-level改成nearest path的方式
+
+
+# 6.19 各算法对比
+PPO
+https://arxiv.org/abs/1707.06347
+
+ppolag_dis有两个版本：  
+   1. 没有cost
+   2. 直接penalty in reward，
+   3. 用cost critic, 用lagrangian结合
+   4. cost_mask (by cost critic, by task predicticve neural, by filter)
+
+ppolag_filter通过predictive的方式，加上cost mask作为硬约束
+
+EBQ同样也是，考虑加mask和不加mask的区别
+    1. 没有cost
+    2. cost penalty in reward
+    3. cost critic penalty in critic
+    4. cost_mask (by cost critic, by task predicticve neural, by filter)
+
+
+setting3:
+    fatigue coe是已知的，输入给网络
+    fatigue coe是未知的，用rl filter

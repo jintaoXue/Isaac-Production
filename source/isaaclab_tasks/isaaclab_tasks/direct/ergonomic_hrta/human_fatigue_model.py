@@ -91,6 +91,9 @@ class Fatigue(object):
     
     def have_overwork(self):
         return self.phy_fatigue>self.ftg_thresh_phy or self.psy_fatigue>self.ftg_thresh_psy
+    
+    def compute_fatigue_cost(self):
+        return self.phy_fatigue
 
     def scale_coefficient(self, scale, dic : dict):
         return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
@@ -633,6 +636,12 @@ class Characters(object):
                 return True
         return False
     
+    def compute_fatigue_cost(self):
+        cost = []
+        for i in range(self.acti_num_charc):
+            cost.append(self.fatigue_list[i].compute_fatigue_cost()) 
+        return np.mean(cost)
+
     def reset_path(self, charac_idx):
         self.x_paths[charac_idx] = []
         self.y_paths[charac_idx] = []
