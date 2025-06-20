@@ -13,7 +13,7 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemoryPPO, CostfuncMemory
-from .model import DQN, DQNTrans, SafePPOFilterTrans
+from .model import DQN, DQNTrans, SafePPOTrans
 from tqdm import trange
 import time
 from omegaconf import DictConfig
