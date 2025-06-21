@@ -294,3 +294,7 @@ EBQ同样也是，考虑加mask和不加mask的区别
 setting3:
     fatigue coe是已知的，输入给网络
     fatigue coe是未知的，用rl filter
+
+
+## 6.21 决定还是用rl filter的方式
+对比算法实现

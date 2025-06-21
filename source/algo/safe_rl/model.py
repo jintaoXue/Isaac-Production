@@ -1154,17 +1154,17 @@ class SafeDQNTrans(nn.Module):
 
 
 #################333333333333333333333333############################
-######################## PPO ########################
-######################## PPO ########################
-######################## PPO ########################
-######################## PPO ########################
+######################## PPO actor critic########################
+######################## PPO actor critic########################
+######################## PPO actor critic########################
+######################## PPO actor critic########################
 
 
 
 class ActorCriticTransformer(nn.Module):
 
-    def __init__(self, encoder: Encoder, decoder: Decoder, critic_decoder: Decoder, src_embed: FeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
-          src_pos: PositionalEncoding, projection_layer: ProjectionLayer, projection_layer_critic: ProjectionLayer) -> None:
+    def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: FeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
+          src_pos: PositionalEncoding, projection_layer: ProjectionLayer, critic_decoder: Decoder, projection_layer_critic: ProjectionLayer) -> None:
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -1189,7 +1189,8 @@ class ActorCriticTransformer(nn.Module):
     
     def decode_critic(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
         # (batch, seq_len, d_model)
-        tgt = self.tgt_embed(tgt).unsqueeze(1)
+        with torch.no_grad():
+            tgt = self.tgt_embed(tgt).unsqueeze(1)
         # tgt = self.tgt_pos(tgt)
         return self.critic_decoder(tgt, encoder_output, src_mask, tgt_mask)
 
@@ -1255,7 +1256,7 @@ def build_actor_critic_transformer(dim_state: DimState, d_model: int=512, h: int
     projection_layer = FeatureMapper(d_model, d_model)
     projection_layer_critic = FeatureMapper(d_model, d_model)
     # Create the transformer
-    transformer = ActorCriticTransformer(encoder, decoder, critic_decoder, src_embed, tgt_embed, src_pos, projection_layer, projection_layer_critic)
+    transformer = ActorCriticTransformer(encoder, decoder, src_embed, tgt_embed, src_pos, projection_layer, critic_decoder, projection_layer_critic)
     
     # Initialize the parameters
     for p in transformer.parameters():
@@ -1265,12 +1266,12 @@ def build_actor_critic_transformer(dim_state: DimState, d_model: int=512, h: int
     return transformer
 
 
-class SafePPOTrans(nn.Module):
+class PPOTrans(nn.Module):
   def __init__(self, config, action_space):
-    super(SafePPOTrans, self).__init__()
+    super(PPOTrans, self).__init__()
     self.action_space = action_space
     hidden_size = config['hidden_size']
-    self.transformer : ActorCriticTransformer = build_actor_critic_transformer(config['max_num_worker'], DimState(), hidden_size) 
+    self.transformer : ActorCriticTransformer = build_actor_critic_transformer(DimState(), hidden_size) 
     self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
@@ -1279,14 +1280,15 @@ class SafePPOTrans(nn.Module):
     self.fc_h_v_critic = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_h_a_critic = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_z_v_critic = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
-    self.fc_z_a_critic = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
+    self.fc_z_a_critic = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
 
     self.Vmin = config.get('V_min', -20)
     self.Vmax = config.get('V_max', 20)
     self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.95)
     self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.8)
 
-    critic_training_dict = {'transformer.encoder', 'transformer.critic_decoder', 'transformer.projection_layer_critic'}
+    critic_training_dict = {'transformer.critic_decoder', 'transformer.projection_layer_critic'}
+    # critic_training_dict = {'transformer.encoder', 'transformer.critic_decoder', 'transformer.projection_layer_critic'}
     self.trainable_params_sft = []
     self.trainable_params_rl = []
     for name, p in self.named_parameters():
@@ -1308,13 +1310,12 @@ class SafePPOTrans(nn.Module):
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
     n = torch.tanh(q)
-    action_prob = F.softmax(n, dim=0)
+    action_prob = F.softmax(n, dim=1)
     return action_prob
 
   
   def forward_critic(self, x, log=False):
 
-    action_mask = x['action_mask']
     x = self.transformer.forward_critic(x)
     x = x.squeeze(1) # squeeze the query sequence
     v = self.fc_z_v_critic(F.relu(self.fc_h_v_critic(x)))  # Value stream
@@ -1322,8 +1323,199 @@ class SafePPOTrans(nn.Module):
     q = v + a - a.mean(1, keepdim=True)  # Combine streams
     # q = torch.nn.functional.normalize(q, dim=1)
     assert log==False, "rainbowmini only support log False"
+    return q
+     
+    
+  def reset_noise(self):
+    for name, module in self.named_children():
+      if 'fc' in name:
+        module.reset_noise()
+
+
+
+
+
+
+##########################44444444444444444444########################
+######################## PPO actor critic cost########################
+######################## PPO actor critic cost########################
+######################## PPO actor critic cost########################
+######################## PPO actor critic cost########################
+
+
+class ActorCriticCostTransformer(ActorCriticTransformer):
+
+    def __init__(self, encoder: Encoder, decoder: Decoder, src_embed: FeatureEmbeddingBlock, tgt_embed: InputEmbeddings, 
+          src_pos: PositionalEncoding, projection_layer: ProjectionLayer, critic_decoder: Decoder, projection_layer_critic: ProjectionLayer, cost_decoder: Decoder, projection_layer_cost: ProjectionLayer) -> None:
+        super().__init__(encoder, decoder, src_embed, tgt_embed, src_pos, projection_layer, critic_decoder, projection_layer_critic)
+        self.cost_decoder = cost_decoder
+        self.projection_layer_cost = projection_layer_cost
+    
+
+    def decode_cost(self, encoder_output: torch.Tensor, src_mask: torch.Tensor, tgt: torch.Tensor, tgt_mask: torch.Tensor):
+        # (batch, seq_len, d_model)
+        with torch.no_grad():
+            tgt = self.tgt_embed(tgt).unsqueeze(1)
+        # tgt = self.tgt_pos(tgt)
+        return self.cost_decoder(tgt, encoder_output, src_mask, tgt_mask)
+
+    def forward_cost(self, state):
+        with torch.no_grad():
+            src = self.encode(state, None)
+        cost_tgt = self.decode_cost(src, None, state['action_mask'], None)
+        return self.projection_layer_cost(cost_tgt)
+
+
+
+def build_actor_critic_cost_transformer(dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=1024) -> ActorCriticCostTransformer:
+    # Create the embedding layers
+    src_embed = FeatureEmbeddingBlock(d_model, dim_state)
+    tgt_embed = nn.Sequential(
+            nn.Linear(dim_state.action_mask, d_model), nn.ReLU(),
+            nn.Linear(d_model, d_model),
+        )
+    # Create the positional encoding layers
+    src_pos = PositionalEncoding(d_model, dim_state.src_seq_len, dropout)
+    
+    # Create the encoder blocks
+    encoder_blocks = []
+    for _ in range(2):
+        encoder_self_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        encoder_block = EncoderBlock(d_model, encoder_self_attention_block, feed_forward_block, dropout)
+        encoder_blocks.append(encoder_block)
+
+    # Create the decoder blocks
+    decoder_blocks = []
+    for _ in range(1):
+        decoder_cross_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        decoder_block = DecoderBlock(d_model, decoder_cross_attention_block, feed_forward_block, dropout)
+        decoder_blocks.append(decoder_block)
+
+    # Create the critic decoder blocks
+    critic_decoder_blocks = []
+    for _ in range(1):
+        decoder_cross_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        decoder_block = DecoderBlock(d_model, decoder_cross_attention_block, feed_forward_block, dropout)
+        critic_decoder_blocks.append(decoder_block)
+    
+    # Create the cost decoder blocks
+    cost_decoder_blocks = []
+    for _ in range(1):
+        decoder_cross_attention_block = MultiheadAttentionBlock(d_model, h, dropout)
+        feed_forward_block = FeedForwardBlock(d_model, d_ff, dropout)
+        decoder_block = DecoderBlock(d_model, decoder_cross_attention_block, feed_forward_block, dropout)
+        cost_decoder_blocks.append(decoder_block)
+    
+    # Create the encoder and decoder
+    encoder = Encoder(d_model, nn.ModuleList(encoder_blocks))
+    # decoder = None
+    decoder = Decoder(d_model, nn.ModuleList(decoder_blocks))
+    # critic_decoder
+    critic_decoder = Decoder(d_model, nn.ModuleList(critic_decoder_blocks))
+    cost_decoder = Decoder(d_model, nn.ModuleList(cost_decoder_blocks))
+    
+    # Create the projection layer
+    projection_layer = FeatureMapper(d_model, d_model)
+    projection_layer_critic = FeatureMapper(d_model, d_model)
+    projection_layer_cost = FeatureMapper(d_model, d_model)
+    # Create the transformer
+    transformer = ActorCriticCostTransformer(encoder, decoder, src_embed, tgt_embed, src_pos, projection_layer, critic_decoder, projection_layer_critic, cost_decoder, projection_layer_cost)
+    
+    # Initialize the parameters
+    for p in transformer.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
+    
+    return transformer
+
+
+class SafePPOTrans(nn.Module):
+  
+  def __init__(self, config, action_space):
+    super(SafePPOTrans, self).__init__()
+    self.action_space = action_space
+    hidden_size = config['hidden_size']
+    self.transformer : ActorCriticCostTransformer = build_actor_critic_cost_transformer(DimState(), hidden_size) 
+    self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_a = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
+
+    self.fc_h_v_critic = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_h_a_critic = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_z_v_critic = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_a_critic = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+
+    self.fc_h_v_cost = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_h_a_cost = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_z_v_cost = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_a_cost = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+
+    self.Vmin = config.get('V_min', -20)
+    self.Vmax = config.get('V_max', 20)
+    self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.95)
+    self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.8)
+
+    critic_training_dict = {'transformer.critic_decoder', 'transformer.projection_layer_critic'}
+    cost_training_dict = {'transformer.cost_decoder', 'transformer.projection_layer_cost'}
+    self.trainable_params_sft = []
+    self.trainable_params_rl = []
+    self.trainable_params_cost = []
+    for name, p in self.named_parameters():
+        if any([1 for sub_name in critic_training_dict if sub_name in name]):
+          self.trainable_params_sft.append(p)
+        elif any([1 for sub_name in cost_training_dict if sub_name in name]):
+          self.trainable_params_cost.append(p)
+        else:
+           self.trainable_params_rl.append(p)
+
+  def forward(self, x, log=False):
+    #actor network
+    action_mask = x['action_mask']
+    x = self.transformer(x)
+    x = x.squeeze(1) # squeeze the query sequence
+    v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
+    a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
+    q = v + a - a.mean(1, keepdim=True)  # Combine streams
+    # q = torch.nn.functional.normalize(q, dim=1)
+    assert log==False, "rainbowmini only support log False"
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
+    n = torch.tanh(q)
+    action_prob = F.softmax(n, dim=1)
+    return action_prob
+
+  
+  def forward_critic(self, x, log=False):
+
+    x = self.transformer.forward_critic(x)
+    x = x.squeeze(1) # squeeze the query sequence
+    v = self.fc_z_v_critic(F.relu(self.fc_h_v_critic(x)))  # Value stream
+    a = self.fc_z_a_critic(F.relu(self.fc_h_a_critic(x)))  # Advantage stream
+    q = v + a - a.mean(1, keepdim=True)  # Combine streams
+    # q = torch.nn.functional.normalize(q, dim=1)
+    assert log==False, "rainbowmini only support log False"
+    return q
+     
+    
+  def reset_noise(self):
+    for name, module in self.named_children():
+      if 'fc' in name:
+        module.reset_noise()
+
+  def forward_cost(self, x, log=False):
+
+    x = self.transformer.forward_cost(x)
+    x = x.squeeze(1) # squeeze the query sequence
+    v = self.fc_z_v_cost(F.relu(self.fc_h_v_cost(x)))  # Value stream
+    a = self.fc_z_a_cost(F.relu(self.fc_h_a_cost(x)))  # Advantage stream
+    q = v + a - a.mean(1, keepdim=True)  # Combine streams
+    # q = torch.nn.functional.normalize(q, dim=1)
+    assert log==False, "rainbowmini only support log False"
+    q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     return q
      
     

@@ -13,7 +13,8 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemoryPPO, CostfuncMemory
-from .model import DQN, DQNTrans, SafePPOTrans
+from .model import SafePPOTrans
+from .lagrange import Lagrange
 from tqdm import trange
 import time
 from omegaconf import DictConfig
@@ -49,12 +50,12 @@ class SafeRlFilterAgentPPO():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
-        self.ppo_each_train_epochs = config.get('ppo_each_train_epochs', 10)
+        self.ppo_each_train_epochs = config.get('ppo_each_train_epochs', 5)
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
         # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.num_warmup_steps = config.get('num_warmup_steps', int(1000))
         # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
         # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
@@ -71,7 +72,7 @@ class SafeRlFilterAgentPPO():
         ####### net
         self.only_train_cost_net = self.config['only_train_cost']
 
-        self.online_net = SafePPOFilterTrans(config, self.actions_num).to(device=self._device)
+        self.online_net = SafePPOTrans(config, self.actions_num).to(device=self._device)
         if self._test and not self.env_rule_based_exploration:
             weights = torch.load(self.train_dir + self._load_dir + self._load_name, weights_only=True)
             self.online_net.load_state_dict(weights['net'])
@@ -84,11 +85,15 @@ class SafeRlFilterAgentPPO():
         #####
         self.actor_optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
         self.critic_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
+        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
         self.gamma = 0.98
         self.lmbda = 0.95
         self.eps = 0.2
+
+        #####lagrange
+        self._lagrange: Lagrange = Lagrange(cost_limit=25.0, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -106,6 +111,7 @@ class SafeRlFilterAgentPPO():
         ########for replay buffer args initialize
         self.setdefault(self.config, key='replay_buffer_size', default=int(5e5))
         self.setdefault(self.config, key='history_length', default=1)
+        self.setdefault(self.config, key='discount', default=0.99)
         self.setdefault(self.config, key='gamma', default=0.99)
         self.setdefault(self.config, key='multi_step', default=1)
         self.setdefault(self.config, key='priority_exponent', default=0.5)
@@ -251,6 +257,9 @@ class SafeRlFilterAgentPPO():
         wandb.define_metric("Train/step")
         wandb.define_metric("Train/buffer_size", step_metric="Train/step")
         wandb.define_metric("Train/loss", step_metric="Train/step")
+        wandb.define_metric("Train/actor_loss", step_metric="Train/step")
+        wandb.define_metric("Train/critic_loss", step_metric="Train/step")
+        wandb.define_metric("Train/cost_loss", step_metric="Train/step")
         wandb.define_metric("Train/train_epoch", step_metric="Train/step")
         
         for i in range(0, self.config['max_num_worker']):
@@ -413,8 +422,7 @@ class SafeRlFilterAgentPPO():
 
     def update(self, step):
         # Sample transitions
-        actor_loss_list = []
-        critic_loss_list = []
+
         for i in range(self.ppo_each_train_epochs):
             idxs, states, actions, actions_prob, returns, costs, next_states, nonterminals, weights = self.replay_buffer.sample(self.batch_size)
             states = data.stack_from_array(states.squeeze(), device=self._device)
@@ -428,18 +436,29 @@ class SafeRlFilterAgentPPO():
                 td_delta = td_target - self.online_net.forward_critic(states)
                 advantage = self.compute_advantage(self.gamma, self.lmbda, td_delta.cpu()).to(self._device)
 
+                #compute cost advantage
+
+                td_target_cost = costs.unsqueeze(-1) + self.gamma * self.online_net.forward_cost(next_states) * (1 - terminals)
+                td_delta_cost = td_target_cost - self.online_net.forward_cost(states)
+                advantage_cost = self.compute_advantage(self.gamma, self.lmbda, td_delta_cost.cpu()).to(self._device)
+
+                advantage = self._compute_adv_surrogate(advantage, advantage_cost)
             log_probs = torch.log(self.online_net(states).gather(1, actions.unsqueeze(-1)))
             ratio = torch.exp(log_probs - old_log_probs)
             surr1 = ratio * advantage
             surr2 = torch.clamp(ratio, 1 - self.eps, 1 + self.eps) * advantage  # 截断
             actor_loss = torch.mean(-torch.min(surr1, surr2))  # PPO损失函数
             critic_loss = torch.mean(self.loss_criterion(self.online_net.forward_critic(states), td_target.detach()))
+            cost_loss = torch.mean(self.loss_criterion(self.online_net.forward_cost(states), td_target_cost.detach()))
             self.actor_optimiser.zero_grad()
             self.critic_optimiser.zero_grad()
+            self.cost_optimiser.zero_grad()
             actor_loss.backward()
             critic_loss.backward()
+            cost_loss.backward()
             self.actor_optimiser.step()
             self.critic_optimiser.step()
+            self.cost_optimiser.step()
 
             self.replay_buffer.update_priorities(idxs, critic_loss.detach().cpu().numpy())  # Update priorities of sampled transitions
 
@@ -448,13 +467,38 @@ class SafeRlFilterAgentPPO():
                         'Train/step': self.step_num,
                         "Train/actor_loss": actor_loss.mean().item(),
                         "Train/critic_loss": critic_loss.mean().item(),
+                        "Train/cost_loss": cost_loss.mean().item(),
                     })
             time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-            print("time_now:{}".format(time_now) +" traning actor_loss:{}, critic_loss:{}".format(actor_loss.mean().item(), critic_loss.mean().item()))
-            actor_loss_list.append(actor_loss.detach().item())
-            critic_loss_list.append(critic_loss.detach().item())
+            print("time_now:{}".format(time_now) +" traning actor_loss:{}, critic_loss:{}, cost_loss:{}".format(actor_loss.mean().item(), critic_loss.mean().item(), cost_loss.mean().item()))
+
         self.replay_buffer.clear_data()
-        return actor_loss_list, critic_loss_list
+        return
+
+
+
+    def _compute_adv_surrogate(self, adv_r: torch.Tensor, adv_c: torch.Tensor) -> torch.Tensor:
+        r"""Compute surrogate loss.
+
+        PPOLag uses the following surrogate loss:
+
+        .. math::
+
+            L = \frac{1}{1 + \lambda} [
+                A^{R}_{\pi_{\theta}} (s, a)
+                - \lambda A^C_{\pi_{\theta}} (s, a)
+            ]
+
+        Args:
+            adv_r (torch.Tensor): The ``reward_advantage`` sampled from buffer.
+            adv_c (torch.Tensor): The ``cost_advantage`` sampled from buffer.
+
+        Returns:
+            The advantage function combined with reward and cost.
+        """
+        penalty = self._lagrange.lagrangian_multiplier.item()
+        return (adv_r - penalty * adv_c) / (1 + penalty)
+
 
     def compute_advantage(self, gamma, lmbda, td_delta):
         td_delta = td_delta.detach().numpy()
@@ -566,7 +610,7 @@ class SafeRlFilterAgentPPO():
                 #debug TODO
                 # action = None
                 step_start = time.time()
-                obs, action, rewards, costs, dones, infos = temporary_buffer[i]
+                obs, action, action_prob, rewards, costs, dones, infos = temporary_buffer[i]
                 # if self.reward_clip > 0:
                 #     reward = max(min(reward, self.reward_clip), -self.reward_clip)  # Clip rewards
                 step_end = time.time()
@@ -591,9 +635,10 @@ class SafeRlFilterAgentPPO():
                 for key, value in obs.items():
                     obs_cpu[key] = value.cpu()
                 action_cpu = action.squeeze().cpu()
+                action_prob_cpu = action_prob.squeeze().cpu()
                 rewards_cpu = rewards.squeeze().cpu()
                 dones_cpu = dones.squeeze().cpu()
-                self.replay_buffer.append(obs_cpu, action_cpu, rewards_cpu+reward_extra, costs, dones_cpu)
+                self.replay_buffer.append(obs_cpu, action_cpu, {'action_prob': action_prob_cpu}, rewards_cpu+reward_extra, costs, dones_cpu)
                 if 'fatigue_data' in infos:
                     fatigue_data = infos['fatigue_data']
                     for _data in fatigue_data:
@@ -675,20 +720,7 @@ class SafeRlFilterAgentPPO():
                         self.set_train()
                         update_time_start = time.time()
                         # loss = self.update(self.step_num_sfl > self.use_cost_num_steps)
-                        loss = self.update()
-                        update_time_end = time.time()
-                        update_time = update_time_end - update_time_start
-                        if self.use_wandb:
-                            wandb.log({
-                                    'Train/step': self.step_num,
-                                    "Train/loss": loss.mean().item(),
-                                })
-                        time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-                        print("RL traning loss:{}".format(loss.mean().item()) + "time_now:{}".format(time_now))
-
-                # Update target network
-                if self.step_num % self.target_update == 0:
-                    self.update_target_net()
+                        self.update(self.step_num)
 
                 total_update_time += update_time
 
@@ -790,7 +822,7 @@ class SafeRlFilterAgentPPO():
             reward_extra = -0.01
             repeat_times = 1
             if done_flag[0]:
-                _,_,_,_,_infos = temporary_buffer[-1]
+                _,_,_,_,_, _, _infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
                 # if self.current_overworks > 0:
                 #     reward_extra += -0.03

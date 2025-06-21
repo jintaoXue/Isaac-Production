@@ -22,7 +22,7 @@ blank_trans = (0, blank_state, torch.zeros((1), dtype=torch.int64), 0.0, False)
 
 ##################### PPO ###########
 Transition_dtype_PPO = np.dtype([('timestep', np.int32), ('state', dict), ('action', np.int32), ('action_prob', dict), ('reward', np.float32), ('cost', np.float32), ('nonterminal', np.bool_)])
-blank_trans_PPO = (0, blank_state, torch.zeros((1), dtype=torch.int64), {'action_prob': torch.zeros([10], dtype=torch.float32)}, 0.0, False)
+blank_trans_PPO = (0, blank_state, torch.zeros((1), dtype=torch.int64), {'action_prob': torch.zeros([10], dtype=torch.float32)}, 0.0, 0.0, False)
 
 ######################PPO End#########
 
@@ -276,6 +276,21 @@ class ReplayMemoryPPO(ReplayMemory):
     # state = state[-1].mul(255).to(dtype=torch.uint8, device=torch.device('cpu'))  # Only store last frame and discretise to save memory
     self.transitions.append((self.t, state, action, action_pro, reward, cost, not terminal), self.transitions.max)  # Store new transition with maximum priority
     self.t = 0 if terminal else self.t + 1  # Start new episodes with t = 0
+
+
+  # Returns the transitions with blank states where appropriate
+  def _get_transitions(self, idxs):
+    transition_idxs = np.arange(-self.history + 1, self.n + 1) + np.expand_dims(idxs, axis=1)
+    transitions = self.transitions.get(transition_idxs)
+    transitions_firsts = transitions['timestep'] == 0
+    blank_mask = np.zeros_like(transitions_firsts, dtype=np.bool_)
+    for t in range(self.history - 2, -1, -1):  # e.g. 2 1 0
+      blank_mask[:, t] = np.logical_or(blank_mask[:, t + 1], transitions_firsts[:, t + 1]) # True if future frame has timestep 0
+    for t in range(self.history, self.history + self.n):  # e.g. 4 5 6
+      blank_mask[:, t] = np.logical_or(blank_mask[:, t - 1], transitions_firsts[:, t]) # True if current or past frame has timestep 0
+    transitions[blank_mask] = blank_trans_PPO
+    return transitions
+
 
   # Returns a valid sample from each segment
   def _get_samples_from_segments(self, batch_size, p_total):
