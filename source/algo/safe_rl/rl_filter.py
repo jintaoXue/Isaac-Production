@@ -66,7 +66,7 @@ class SafeRlFilterAgent():
         #########buffer
         self.priority_weight_increase = (1 - config['priority_weight']) / (self.max_steps - self.num_warmup_steps)
         self.replay_buffer = ReplayMemory(config, config["replay_buffer_size"])
-        self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
+        # self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
         ####### net
         self.only_train_cost_net = self.config['only_train_cost']
 
@@ -406,7 +406,7 @@ class SafeRlFilterAgent():
             target_param.data.copy_(tau * param.data +
                                     (1.0 - tau) * target_param.data)
 
-    def update(self, use_cost_function):
+    def update(self, _):
         # Sample transitions
         idxs, states, actions, returns, next_states, nonterminals, weights = self.replay_buffer.sample(self.batch_size)
         states = data.stack_from_array(states.squeeze(), device=self._device)
@@ -414,15 +414,15 @@ class SafeRlFilterAgent():
         # Calculate current state probabilities (online network noise already sampled)
         # log_ps = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
         # log_ps_a = log_ps[range(self.batch_size), actions]  # log p(s_t, a_t; θonline)
-        q, _ = self.online_net(states, use_cost_function)  # probabilities log p(s_t, ·; θonline)
+        q, _ = self.online_net(states, use_cost_function=False)  # probabilities log p(s_t, ·; θonline)
         q_a = q[range(self.batch_size), actions]  # p(s_t, a_t; θonline)
         
         with torch.no_grad():
             # Calculate nth next state probabilities
-            qns, _ = self.online_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θonline)
+            qns, _ = self.online_net(next_states, use_cost_function=False)  # Probabilities p(s_t+n, ·; θonline)
             argmax_indices_ns = qns.argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θonline))]
             self.target_net.reset_noise()  # Sample new target net noise
-            qns, _ = self.target_net(next_states, use_cost_function)  # Probabilities p(s_t+n, ·; θtarget)
+            qns, _ = self.target_net(next_states, use_cost_function=False)  # Probabilities p(s_t+n, ·; θtarget)
             qns_a = qns[range(self.batch_size), argmax_indices_ns]  # Double-Q probabilities p(s_t+n, argmax_a[(z, p(s_t+n, a; θonline))]; θtarget)
             y = returns + self.gamma*qns_a*nonterminals.squeeze() 
             
@@ -767,11 +767,10 @@ class SafeRlFilterAgent():
                 # if self.current_overworks > 0:
                 #     reward_extra += -0.03
                 if goal_finished:
-                    if self.step_num_sfl > self.use_cost_num_steps:
-                        num_worker, num_robot = infos['num_worker'], infos['num_robot']
-                        if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
-                            reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
-                            repeat_times = 5
+                    num_worker, num_robot = infos['num_worker'], infos['num_robot']
+                    if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
+                        reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
+                        repeat_times = 5
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:
@@ -828,9 +827,9 @@ class SafeRlFilterAgent():
                     fatigue_data_list.append(_data)
             if infos['overwork']:
                 self.current_overworks += 1
-            use_cost_func = self.step_num_sfl > self.use_cost_num_steps
-            if self.evaluate_use_cost_step < 0 and use_cost_func:
-                self.evaluate_use_cost_step = self.evaluate_step_num             
+            # use_cost_func = self.step_num_sfl > self.use_cost_num_steps
+            # if self.evaluate_use_cost_step < 0 and use_cost_func:
+            #     self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
                 print_info = infos['print_info']          
                 if len(fatigue_data_list)>0:

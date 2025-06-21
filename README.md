@@ -298,3 +298,8 @@ setting3:
 
 ## 6.21 决定还是用rl filter的方式
 对比算法实现
+
+能确保算法训练符合故事
+
+EBQ 先去掉cost 约束试试
+    if done_flag[0]:
