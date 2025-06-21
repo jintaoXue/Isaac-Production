@@ -13,7 +13,7 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemory, CostfuncMemory
-from .model import DQN, DQNTrans, SafeDQNTrans
+from .model import DQNTrans, SafeDQNTrans
 from tqdm import trange
 import time
 from omegaconf import DictConfig
@@ -54,6 +54,7 @@ class SafeRlFilterAgent():
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
         # self.evaluate_interval = config.get('evaluate_interval', 20)
         # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        # self.batch_size = 64
         # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
         # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
