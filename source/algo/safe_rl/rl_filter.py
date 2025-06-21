@@ -771,7 +771,7 @@ class SafeRlFilterAgent():
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
                     if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
                         reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
-                        repeat_times = 5
+                        repeat_times = 10
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:
