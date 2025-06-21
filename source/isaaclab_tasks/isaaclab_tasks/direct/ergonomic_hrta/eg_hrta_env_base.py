@@ -172,7 +172,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # if self.episode_length_buf[0] >= 700:
         #     a = 1
         self.task_mask = self.get_task_mask()
-        if self.cfg.use_partial_filter:
+        if self.cfg.train_cfg.use_fatigue_mask:
             self.fatigue_mask = self.get_fatigue_mask()
             self.task_mask = self.task_mask * self.fatigue_mask
         self.available_task_dic = self.get_task_mask_dic(self.task_mask)
