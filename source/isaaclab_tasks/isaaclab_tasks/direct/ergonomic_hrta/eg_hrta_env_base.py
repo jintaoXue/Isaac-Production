@@ -237,9 +237,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     
     def compute_cost_value(self):
         cost = 0.0
+        scale = 0.5
         if self.task_manager.characters.have_overwork():
-            cost += 1
-        cost += self.task_manager.characters.compute_fatigue_cost()
+            cost += 1.0
+        cost += self.task_manager.characters.compute_fatigue_cost()*scale
         return cost
         
 
@@ -303,7 +304,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 if self.materials.inner_cube_processing_index == -1 or self.materials.cube_states[self.materials.inner_cube_processing_index] in range(10, 14):
                     task_mask[4] = 0
 
-        task_mask[0] = 0
+        task_mask[0] = 1
         return task_mask
 
     def get_fatigue_mask(self):
