@@ -305,7 +305,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                     task_mask[4] = 0
 
         task_mask[0] = 1
-        task_mask[0] = 1
         return task_mask
 
     def get_fatigue_mask(self):
