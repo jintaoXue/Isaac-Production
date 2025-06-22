@@ -594,7 +594,8 @@ class SafeRlFilterAgent():
                             "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
                     # next_obs = self.env_reset()   
-                    if not random_exploration and self.episode_num % self.evaluate_interval == 0:
+                    # if not random_exploration and self.episode_num % self.evaluate_interval == 0:
+                    if self.episode_num % self.evaluate_interval == 0:
                     # if True:
                         #TODO debug
                         # pass
