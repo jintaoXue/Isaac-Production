@@ -88,29 +88,7 @@ class Fatigue(object):
         # self.time_history = None 
 
         return
-    
-    def have_overwork(self):
-        return self.phy_fatigue>self.ftg_thresh_phy or self.psy_fatigue>self.ftg_thresh_psy
-    
-    def compute_fatigue_cost(self):
-        return self.phy_fatigue
 
-    def scale_coefficient(self, scale, dic : dict):
-        return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
-    
-    def add_coefficient_randomness(self, scale, dic : dict):
-        _dict = {}
-        for (key, v) in dic.items():
-            
-            _dict[key] = (v + v*np.random.uniform(-scale, scale)) if v is not None else None
-
-        return _dict
-
-    def get_phy_fatigue_coe(self):
-        if self.cfg.use_partial_filter:
-            return list(self.pfs_phy_fat_ce_dic.values())[3:]
-        return list(self.phy_fatigue_ce_dic.values())[3:]
-    
     def reset(self):
         # if self.time_step is not None and self.time_step > 100:
         #     self.plot_curve()
@@ -164,6 +142,32 @@ class Fatigue(object):
         self.ftg_task_mask = torch.ones(len(high_level_task_dic))
 
         return
+
+
+
+
+
+    def have_overwork(self):
+        return self.phy_fatigue>self.ftg_thresh_phy or self.psy_fatigue>self.ftg_thresh_psy
+    
+    def compute_fatigue_cost(self):
+        return self.phy_fatigue
+
+    def scale_coefficient(self, scale, dic : dict):
+        return {key: (v * scale if v is not None else None)  for (key, v) in dic.items()}
+    
+    def add_coefficient_randomness(self, scale, dic : dict):
+        _dict = {}
+        for (key, v) in dic.items():
+            
+            _dict[key] = (v + v*np.random.uniform(-scale, scale)) if v is not None else None
+
+        return _dict
+
+    def get_phy_fatigue_coe(self):
+        if self.cfg.use_partial_filter:
+            return list(self.pfs_phy_fat_ce_dic.values())[3:]
+        return list(self.phy_fatigue_ce_dic.values())[3:]
 
     def step(self, state_type, subtask, task, ftg_prediction = None):
         if self.cfg.use_partial_filter == True:
