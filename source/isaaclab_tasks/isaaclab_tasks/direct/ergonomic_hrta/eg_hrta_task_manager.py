@@ -143,7 +143,9 @@ class TaskManager(object):
     def task_clearing(self, task):
 
         charac_idx, agv_idx, box_idx = self.task_in_dic[task]['charac_idx'], self.task_in_dic[task]['agv_idx'], self.task_in_dic[task]['box_idx']
-        if task in self.characters.task_range:
+        task_range = self.characters.task_range
+        task_range.add('none')
+        if task in task_range:
             assert charac_idx >=0, "charac idx should >= 0"
             self.fatigue_data[task]['next_phy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].phy_fatigue], dtype=torch.float32) 
             self.fatigue_data[task]['next_psy_fatigue'] = torch.tensor([self.characters.fatigue_list[charac_idx].psy_fatigue], dtype=torch.float32)
