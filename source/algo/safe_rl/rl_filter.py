@@ -735,7 +735,9 @@ class SafeRlFilterAgent():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
-                assert len(fatigue_data_list)>0, "no fatigue data"
+                # assert len(fatigue_data_list)>0, "no fatigue data"
+                if len(fatigue_data_list) == 0:
+                    a = 1
                 EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                 print_info = infos['print_info']
                 # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
@@ -773,7 +775,7 @@ class SafeRlFilterAgent():
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
                     if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
                         reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
-                        repeat_times = 10
+                        repeat_times = 5
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:

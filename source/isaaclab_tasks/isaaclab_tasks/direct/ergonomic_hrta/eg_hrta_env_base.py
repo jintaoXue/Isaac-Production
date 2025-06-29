@@ -304,7 +304,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                 if self.materials.inner_cube_processing_index == -1 or self.materials.cube_states[self.materials.inner_cube_processing_index] in range(10, 14):
                     task_mask[4] = 0
 
-        task_mask[0] = 1
+        # task_mask[0] = 1
         return task_mask
 
     def get_fatigue_mask(self):
