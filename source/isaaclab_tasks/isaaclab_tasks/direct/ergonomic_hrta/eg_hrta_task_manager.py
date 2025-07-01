@@ -40,7 +40,7 @@ def find_closest_pose(pose_dic, ego_pose, in_dis=5):
 class TaskManager(object):
     def __init__(self, character_list, agv_list, box_list, cuda_device, train_cfg) -> None:
         self.cuda_device = cuda_device
-        self.characters = Characters(character_list=character_list)
+        self.characters = Characters(character_list=character_list, train_cfg=train_cfg)
         self.agvs = Agvs(agv_list = agv_list)
         self.boxs = TransBoxs(box_list=box_list)
         self.task_dic =  {-1:'none', 0: 'hoop_preparing', 1:'bending_tube_preparing', 2:'hoop_loading_inner', 3:'bending_tube_loading_inner', 4:'hoop_loading_outer', 

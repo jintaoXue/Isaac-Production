@@ -378,7 +378,7 @@ class Fatigue(object):
 
 class Characters(object):
 
-    def __init__(self, character_list) -> None:
+    def __init__(self, character_list, train_cfg) -> None:
         self.character_list = character_list
         self.state_character_dic = {0:"free", 1:"approaching", 2:"waiting_box", 3:"putting_in_box", 4:"putting_on_table", 5:"loading", 6:"cutting_machine"}
         self.task_range = {'hoop_preparing', 'bending_tube_preparing', 'hoop_loading_inner', 'bending_tube_loading_inner', 'hoop_loading_outer', 'bending_tube_loading_outer', "cutting_cube", 
@@ -425,6 +425,7 @@ class Characters(object):
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
         _cfg = HRTaskAllocEnvCfg()
         self.cfg = _cfg
+        self.train_cfg = train_cfg
         self.PUTTING_TIME = _cfg.human_putting_time
         self.LOADING_TIME = _cfg.human_loading_time
         self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
@@ -511,7 +512,7 @@ class Characters(object):
         # np_task = np.where(_fatigue_mask, np_task, -1)
         worker_tasks = self.tasks
         _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
-        if self.cfg.train_cfg['params']['config']['use_fatigue_mask']:
+        if self.train_cfg['use_fatigue_mask']:
             _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx].tolist()
             worker_tasks = [self.tasks[i] if _fatigue_mask[i] else -1 for i in range(len(_fatigue_mask))]
         elif self.cost_mask_from_net is not None:
