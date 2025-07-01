@@ -511,7 +511,7 @@ class Characters(object):
         # np_task = np.where(_fatigue_mask, np_task, -1)
         worker_tasks = self.tasks
         _fatigue_mask_idx = high_level_task_rev_dic[high_level_task] + 1
-        if self.cfg.use_partial_filter:
+        if self.cfg.train_cfg['params']['config']['use_fatigue_mask']:
             _fatigue_mask = self.fatigue_task_masks[:self.acti_num_charc, _fatigue_mask_idx].tolist()
             worker_tasks = [self.tasks[i] if _fatigue_mask[i] else -1 for i in range(len(_fatigue_mask))]
         elif self.cost_mask_from_net is not None:

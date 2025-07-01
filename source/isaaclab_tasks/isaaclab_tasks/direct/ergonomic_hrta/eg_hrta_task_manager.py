@@ -134,7 +134,7 @@ class TaskManager(object):
         lacking_resource = False
         if charac_idx == -1 or agv_idx == -1 or box_idx == -1:
             lacking_resource = True            
-
+        assert lacking_resource is False, "lacking resource problem"
         self.task_in_set.add(task)
         self.task_in_dic[task] = {'charac_idx': charac_idx, 'agv_idx': agv_idx, 'box_idx': box_idx, 'lacking_resource': lacking_resource}
         
