@@ -303,3 +303,5 @@ setting3:
 
 EBQ 先去掉cost 约束试试
     if done_flag[0]:
+
+### 7.2 记得保存训练模型
