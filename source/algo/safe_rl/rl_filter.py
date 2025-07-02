@@ -37,10 +37,10 @@ class SafeRlFilterAgent():
         self.norm_clip = config.get('norm_clip', 10)
 
         '''Params for agent training'''
-        self.update_frequency = config.get('update_frequency', 200)
+        self.update_frequency = config.get('update_frequency', 400)
         self.update_frequency_sfl = config.get('update_frequency_sfl', 1000)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
-        self.evaluate_interval = config.get('evaluate_interval', 200)
+        self.evaluate_interval = config.get('evaluate_interval', 400)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(5e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
@@ -773,7 +773,7 @@ class SafeRlFilterAgent():
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
                     if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
                         reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
-                        repeat_times = 5
+                        repeat_times = 10
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:
