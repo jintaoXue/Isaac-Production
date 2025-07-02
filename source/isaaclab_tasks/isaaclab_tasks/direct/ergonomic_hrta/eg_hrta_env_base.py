@@ -52,8 +52,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
             sub_env_path = f"/World/envs/env_{i}"
             # the usd file already has a ground plane
             add_reference_to_stage(usd_path = self.cfg.asset_path, prim_path = sub_env_path + "/obj")
-            # raw_ground_path = sub_env_path + "/obj" + "/GroundPlane"
-            # ground_prim = self._stage.GetPrimAtPath(raw_ground_path)
+            raw_ground_path = sub_env_path + "/obj" + "/GroundPlane"
+            # ground_prim = self.scene.stage.GetPrimAtPath(raw_ground_path)
+            # color_attr = ground_prim.GetAttribute("inputs:diffuse_color_constant")
+            # color_attr.Set(Gf.Vec3f(0.6, 0.13, 0.13))
             # set_prim_visibility(prim=ground_prim, visible=False)
             # if get_prim_at_path(raw_ground_path):
             #     delete_prim(raw_ground_path)
