@@ -38,7 +38,7 @@ class SafeRlFilterAgentPPO():
         self.norm_clip = config.get('norm_clip', 10)
 
         '''Params for agent training'''
-        self.update_frequency = config.get('update_frequency', 200)
+        self.update_frequency = config.get('update_frequency', 500)
         self.update_frequency_sfl = config.get('update_frequency_sfl', 1000)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 200)
