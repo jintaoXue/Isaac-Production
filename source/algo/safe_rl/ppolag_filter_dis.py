@@ -50,7 +50,7 @@ class SafeRlFilterAgentPPO():
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
-        self.ppo_each_train_epochs = config.get('ppo_each_train_epochs', 5)
+        self.ppo_each_train_epochs = config.get('ppo_each_train_epochs', 1)
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
