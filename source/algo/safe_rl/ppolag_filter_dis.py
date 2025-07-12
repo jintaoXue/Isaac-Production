@@ -38,7 +38,7 @@ class SafeRlFilterAgentPPO():
         self.norm_clip = config.get('norm_clip', 10)
 
         '''Params for agent training'''
-        self.update_frequency = config.get('update_frequency', 500)
+        self.update_frequency = config.get('update_frequency', 400)
         self.update_frequency_sfl = config.get('update_frequency_sfl', 1000)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 200)
@@ -109,7 +109,7 @@ class SafeRlFilterAgentPPO():
 
         self.setdefault(self.config, key='device', default='cuda:0')
         ########for replay buffer args initialize
-        self.setdefault(self.config, key='replay_buffer_size', default=int(5e5))
+        self.setdefault(self.config, key='replay_buffer_size', default=int(1e4))
         self.setdefault(self.config, key='history_length', default=1)
         self.setdefault(self.config, key='discount', default=0.99)
         self.setdefault(self.config, key='gamma', default=0.99)
@@ -460,7 +460,7 @@ class SafeRlFilterAgentPPO():
             self.critic_optimiser.step()
             self.cost_optimiser.step()
 
-            self.replay_buffer.update_priorities(idxs, critic_loss.detach().cpu().numpy())  # Update priorities of sampled transitions
+            # self.replay_buffer.update_priorities(idxs, critic_loss.detach().cpu().numpy())  # Update priorities of sampled transitions
 
             if self.use_wandb:
                 wandb.log({
@@ -472,7 +472,6 @@ class SafeRlFilterAgentPPO():
             time_now = datetime.now().strftime("_%d-%H-%M-%S")   
             print("time_now:{}".format(time_now) +" traning actor_loss:{}, critic_loss:{}, cost_loss:{}".format(actor_loss.mean().item(), critic_loss.mean().item(), cost_loss.mean().item()))
 
-        self.replay_buffer.clear_data()
         return
 
 
@@ -669,7 +668,7 @@ class SafeRlFilterAgentPPO():
                             "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
                     # next_obs = self.env_reset()   
-                    if not random_exploration and self.episode_num % self.evaluate_interval == 0:
+                    if self.episode_num % self.evaluate_interval == 0:
                     # if True:
                         #TODO debug
                         # pass
@@ -793,6 +792,7 @@ class SafeRlFilterAgentPPO():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(action_prob), copy.deepcopy(rewards), cost_value, copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
+                assert len(fatigue_data_list)>0, "no fatigue data"
                 EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                 print_info = infos['print_info']
                 # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
@@ -827,11 +827,11 @@ class SafeRlFilterAgentPPO():
                 # if self.current_overworks > 0:
                 #     reward_extra += -0.03
                 if goal_finished:
-                    if self.step_num_sfl > self.use_cost_num_steps:
-                        num_worker, num_robot = infos['num_worker'], infos['num_robot']
-                        if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
-                            reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
-                            repeat_times = 5
+                    # if self.step_num_sfl > self.use_cost_num_steps:
+                    num_worker, num_robot = infos['num_worker'], infos['num_robot']
+                    if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
+                        reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
+                        repeat_times = 10
                 else:
                     reward_extra += -0.05
                     if len(temporary_buffer) > 100:

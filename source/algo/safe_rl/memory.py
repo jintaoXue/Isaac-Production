@@ -300,8 +300,8 @@ class ReplayMemoryPPO(ReplayMemory):
     while not valid:
       samples = np.random.uniform(0.0, segment_length, [batch_size]) + segment_starts  # Uniformly sample from within all segments
       probs, idxs, tree_idxs = self.transitions.find(samples)  # Retrieve samples from tree with un-normalised probability
-      if np.all((self.transitions.index - idxs) % self.capacity > self.n) and np.all((idxs - self.transitions.index) % self.capacity >= self.history) and np.all(probs != 0):
-        valid = True  # Note that conditions are valid but extra conservative around buffer index 0
+      # if np.all((self.transitions.index - idxs) % self.capacity > self.n) and np.all((idxs - self.transitions.index) % self.capacity >= self.history) and np.all(probs != 0):
+      valid = True  # Note that conditions are valid but extra conservative around buffer index 0
     # Retrieve all required transition data (from t - h to t + n)
     transitions = self._get_transitions(idxs)
     # Create un-discretised states and nth next states
