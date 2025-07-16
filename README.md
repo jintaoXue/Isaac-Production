@@ -312,4 +312,6 @@ fatigue 的参数值 完成时间要好好调整一下
 
 
 ## 7.16
-RL sutton 的书133页
+RL sutton 的书133页 + DDQN的 原文
+https://arxiv.org/pdf/1509.06461
+
