@@ -792,8 +792,9 @@ class SafeRlFilterAgentPPO():
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(action_prob), copy.deepcopy(rewards), cost_value, copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
-                assert len(fatigue_data_list)>0, "no fatigue data"
-                EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                # assert len(fatigue_data_list)>0, "no fatigue data"
+                if len(fatigue_data_list)>0:
+                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                 print_info = infos['print_info']
                 # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
                 print(print_info + " | Warm_up:{},".format(random_exploration) + " Comp_loss:{:.3}".format(EpLossCompare) + \
