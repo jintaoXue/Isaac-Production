@@ -309,3 +309,7 @@ fatigue 的参数值 完成时间要好好调整一下
 
 ## 7.10
 %图片2 的红字对齐要改，ppo图片要改，comparison algorithm怎么设计？分为加不加safe set 还是说直接对比性能就好了
+
+
+## 7.16
+RL sutton 的书133页
