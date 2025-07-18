@@ -614,7 +614,7 @@ class SafeRlFilterAgent():
                         if np.all(success_list):
                             # checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_len_' + str(infos['env_length'].item()) + '_rew_' + "{:.2f}".format(self.evaluate_current_rewards.item())
                             checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
-                            # self.save(os.path.join(self.nn_dir, checkpoint_name))
+                            self.save(os.path.join(self.nn_dir, checkpoint_name))
                             if self.use_wandb:
                                 wandb.log({"Evaluate/Savepth": self.episode_num,
                                 })
