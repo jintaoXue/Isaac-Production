@@ -687,7 +687,7 @@ class SafeRlFilterAgentPPO():
                         if np.all(success_list):
                             # checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_len_' + str(infos['env_length'].item()) + '_rew_' + "{:.2f}".format(self.evaluate_current_rewards.item())
                             checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
-                            # self.save(os.path.join(self.nn_dir, checkpoint_name))
+                            self.save(os.path.join(self.nn_dir, checkpoint_name))
                             if self.use_wandb:
                                 wandb.log({"Evaluate/Savepth": self.episode_num,
                                 })
@@ -932,12 +932,6 @@ class SafeRlFilterAgentPPO():
                     self.eval_env_len_avgs[num_worker-1][num_robot-1].update(torch.tensor([infos['env_length']], dtype=torch.float32, device=self._device))
                     wandb.log({f'Eval_avg_progress/{num_worker}_{num_robot}': self.eval_progress_avgs[num_worker-1][num_robot-1].get_mean()})
                     wandb.log({f'Eval_avg_env_len/{num_worker}_{num_robot}': self.eval_env_len_avgs[num_worker-1][num_robot-1].get_mean()})
-                        # self.evaluate_table.add_data(infos['env_length'], ' '.join(action_info_list), infos['progress'])
-                        # wandb.log({"Action": self.evaluate_table}) 
-                        # if not test:
-                        #     # checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_len_' + str(infos['env_length'].item()) + '_rew_' + "{:.2f}".format(self.evaluate_current_rewards.item())
-                        #     checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
-                        #     self.save(os.path.join(self.nn_dir, checkpoint_name)) 
                     if test:
                         self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu())
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
