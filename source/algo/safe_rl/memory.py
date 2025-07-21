@@ -159,11 +159,16 @@ class ReplayMemory():
     segment_length = p_total / batch_size  # Batch size number of segments, based on sum over all probabilities
     segment_starts = np.arange(batch_size) * segment_length
     valid = False
+    not_valid_count = 0
     while not valid:
       samples = np.random.uniform(0.0, segment_length, [batch_size]) + segment_starts  # Uniformly sample from within all segments
       probs, idxs, tree_idxs = self.transitions.find(samples)  # Retrieve samples from tree with un-normalised probability
       if np.all((self.transitions.index - idxs) % self.capacity > self.n) and np.all((idxs - self.transitions.index) % self.capacity >= self.history) and np.all(probs != 0):
         valid = True  # Note that conditions are valid but extra conservative around buffer index 0
+      else:
+        not_valid_count += 1
+      if not_valid_count > 20:
+        valid = True
     # Retrieve all required transition data (from t - h to t + n)
     transitions = self._get_transitions(idxs)
     # Create un-discretised states and nth next states
