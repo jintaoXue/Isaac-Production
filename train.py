@@ -21,6 +21,12 @@ parser.add_argument("--video_interval", type=int, default=2000, help="Interval b
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--algo", type=str, default=None, help="Name of the algorithm.")
+parser.add_argument("--test", type=bool, default=None, help="load model and test.")
+parser.add_argument("--test_times", type=int, default=None, help="test times for one setting.")
+parser.add_argument("--load_dir", type=str, default=None, help="dir to model checkpoint.")
+parser.add_argument("--load_name", type=str, default=None, help="name of model checkpoint.")
+parser.add_argument("--wandb_activate", type=bool, default=None, help="RL Policy training iterations.")
+parser.add_argument("--wandb_project", type=str, default=None, help="name of wandb project.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument(
     "--distributed", action="store_true", default=False, help="Run training with multiple GPUs or nodes."
@@ -28,7 +34,7 @@ parser.add_argument(
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--sigma", type=str, default=None, help="The policy's initial standard deviation.")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
-parser.add_argument("--wandb_activate", type=bool, default=False, help="RL Policy training iterations.")
+
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
@@ -88,7 +94,18 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     '''process name'''
     setproctitle.setproctitle("Xjt_SafeHRTA")
     '''update args'''
-    agent_cfg["params"]["config"]['wandb_activate'] = args_cli.wandb_activate
+    if args_cli.wandb_activate:
+        agent_cfg["params"]["config"]['wandb_activate'] = args_cli.wandb_activate
+    if args_cli.test:
+        agent_cfg["params"]["config"]['test'] = args_cli.test
+    if args_cli.test_times:
+        agent_cfg["params"]["config"]['test_times'] = args_cli.test_times
+    if args_cli.load_dir:
+        agent_cfg["params"]["config"]['load_dir'] = args_cli.load_dir
+    if args_cli.load_name:
+        agent_cfg["params"]["config"]['load_name'] = args_cli.load_name
+    if args_cli.wandb_project:
+        agent_cfg["params"]["config"]['wandb_project'] = args_cli.wandb_project
     """Train with RL-Games agent."""
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs

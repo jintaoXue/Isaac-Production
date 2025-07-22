@@ -1,31 +1,11 @@
 #！/bin/bash
-# 读取不同的学习率
-load_dir="/FactoryTaskAllocationMiC_2024-12-09_21-42-46/nn"
-relative_pth="/omniisaacgymenvs/runs"
+load_dir="/rl_filter_2025-07-20_12-17-12/nn"
+relative_pth="/logs/rl_games/HRTA_direct"
 str="/"
 work_space_path=$(pwd)
 dir_path=$work_space_path$relative_pth$load_dir
 # path=$1
 files=$(ls $dir_path)
-
-# for f in "$dir_path"/*; do
-#   echo $f >> filename.txt
-#   echo -e >> filename.txt
-# done
-
-# for filename in $files
-# do
-#    echo $filename >> filename.txt
-# #    echo -e >> filename.txt
-# done
-
-# for filename in $files
-# do
-#     python omniisaacgymenvs/scripts/rlgames_train_v1.py task=FactoryTaskAllocationMiC train=FactoryTaskAllocationMiCRainbownoe headless=True wandb_activate=True test=True \
-#     load_dir="$load_dir" load_name="$str$filename" wandb_project=test_HRTA test_times=100 
-# #    echo $filename >> filename.txt
-# #    echo -e >> filename.txt
-# done
 
 list=(
     1
@@ -34,20 +14,13 @@ list=(
     4
     5
 )
-python omniisaacgymenvs/scripts/rlgames_train_v1.py task=FactoryTaskAllocationMiC train=FactoryTaskAllocationMiCRainbownoe headless=True wandb_activate=True test=True \
-    load_dir="$load_dir" load_name="/FactoryTaskAllocationMiC_ep_6100.pth" wandb_project=test_HRTA test_times=100 
+
+
 for num in $list
 do
-    python omniisaacgymenvs/scripts/rlgames_train_v1.py task=FactoryTaskAllocationMiC train=FactoryTaskAllocationMiCRainbownoe headless=True wandb_activate=True test=True \
-    load_dir="$load_dir" load_name="/FactoryTaskAllocationMiC_ep_6100.pth" wandb_project=test_zero_shot test_times=10 num_product=$num
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless True --wandb_activate True --test True \
+        --load_dir "$load_dir" --load_name "/HRTA_direct_ep_82400.pth" --wandb_project test_HRTA_fatigue --test_times 10
 #    echo $filename >> filename.txt
 #    echo -e >> filename.txt
 done
 
-
-
-# # 循环执行命令
-# for lr in "${lrs[@]}";do
-#     python omniisaacgymenvs/scripts/rlgames_train_v1.py task=FactoryTaskAllocationMiC train=FactoryTaskAllocationMiCRainbowmini  headless=True wandb_activate=False
-# 	python ./src/run.py --model DNN --data data/normalized/EdgeIIoT_normalized.csv --epoch 1 --lr "$lr" --method EDL --ood False --ensemble True --ks False >> ./src/output.txt
-# done

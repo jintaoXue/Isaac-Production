@@ -298,8 +298,8 @@ class SafeRlFilterAgentPPO():
         # self.evaluate_table = wandb.Table(columns=["env_length", "action_seq", "progress"])
 
         #test
-        self.test_table = wandb.Table(columns=["worker_initial_pose", "robot_initial_pose", "box_initial_pose", "progress", "env_length"])
-        self.test_table2 = wandb.Table(columns=["num_worker", "num_robot&box", "max", "min", "mean"])
+        self.test_table = wandb.Table(columns=["worker_initial_pose", "robot_initial_pose", "box_initial_pose", "progress", "env_length", "human_move", "robot_move"])
+        self.test_table2 = wandb.Table(columns=["num_worker", "num_robot&box", "max", "min", "mean", "human_mean", "robot_mean"])
         self.test_table3 = wandb.Table(columns=["time_step", "action_list"])
         return
     

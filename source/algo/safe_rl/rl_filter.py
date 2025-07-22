@@ -292,7 +292,7 @@ class SafeRlFilterAgent():
 
         #test
         self.test_table = wandb.Table(columns=["worker_initial_pose", "robot_initial_pose", "box_initial_pose", "progress", "env_length", "human_move", "robot_move"])
-        self.test_table2 = wandb.Table(columns=["num_worker", "num_robot&box", "max", "min", "mean"])
+        self.test_table2 = wandb.Table(columns=["num_worker", "num_robot&box", "max", "min", "mean", "human_mean", "robot_mean"])
         self.test_table3 = wandb.Table(columns=["time_step", "action_list"])
         return
     
@@ -880,7 +880,7 @@ class SafeRlFilterAgent():
                         #     checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
                         #     self.save(os.path.join(self.nn_dir, checkpoint_name)) 
                     if test:
-                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu(), infos['human_move'], infos['agv_move'])
+                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'], infos['human_move'], infos['agv_move'])
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
                 action_info_list = []
                 next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot, evaluate=True) 
