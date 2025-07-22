@@ -317,3 +317,13 @@ RL sutton 的书133页 + DDQN的 原文
 https://arxiv.org/pdf/1509.06461
 
 
+        {
+            "name": "test: rl_filter filter headless wandb",
+            "type": "python",
+            "request": "launch",
+            "args" : ["--task", "Isaac-TaskAllocation-Direct-v1", "--algo", "rl_filter", "--headless", "--wandb_activate", "True", "--test", "True", "--load_dir", 
+            "/rl_filter_2025-07-20_12-17-12/nn", "--load_name", "/HRTA_direct_ep_82400.pth", "--wandb_project", "test_HRTA_fatigue", "--test_times", "10"],
+            "program": "${workspaceFolder}/train.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+        },
