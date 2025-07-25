@@ -415,13 +415,13 @@ class DqnAgent():
         # Calculate current state probabilities (online network noise already sampled)
         # log_ps = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
         # log_ps_a = log_ps[range(self.batch_size), actions]  # log p(s_t, a_t; θonline)
-        q, _ = self.online_net(states, use_cost_function=False)  # probabilities log p(s_t, ·; θonline)
+        q = self.online_net(states)  # probabilities log p(s_t, ·; θonline)
         q_a = q[range(self.batch_size), actions]  # p(s_t, a_t; θonline)
         
         with torch.no_grad():
             # Calculate nth next state probabilities
             self.target_net.reset_noise()  # Sample new target net noise
-            qns, _ = self.target_net(next_states, use_cost_function=False)  # Probabilities p(s_t+n, ·; θtarget)
+            qns = self.target_net(next_states)  # Probabilities p(s_t+n, ·; θtarget)
             argmax_indices_ns = qns.argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θtarget))]
             qns_a = qns[range(self.batch_size), argmax_indices_ns]  # Q probabilities p(s_t+n, argmax_a[(z, p(s_t+n, a; θonline))]; θtarget)
             y = returns + self.gamma*qns_a*nonterminals.squeeze() 
