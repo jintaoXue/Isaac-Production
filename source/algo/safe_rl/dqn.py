@@ -50,13 +50,13 @@ class DqnAgent():
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
         #########debug
-        self.update_frequency = config.get('update_frequency', 100)
-        self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
-        self.evaluate_interval = config.get('evaluate_interval', 20)
-        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        self.batch_size = 64
-        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
+        # self.update_frequency = config.get('update_frequency', 100)
+        # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
+        # self.evaluate_interval = config.get('evaluate_interval', 5)
+        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        # self.batch_size = 64
+        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -702,7 +702,6 @@ class DqnAgent():
                                     'SuperviseTrain/step': self.step_num_sfl,
                                     "SuperviseTrain/loss": torch.sqrt(loss).item(),
                                     "SuperviseTrain/loss_compare": torch.sqrt(loss_compare).item(),
-                                    "SuperviseTrain/buffer_size": self.costfunc_buffer.total_num(),
                                 })
                         time_now = datetime.now().strftime("_%d-%H-%M-%S")   
                         print("supervise traning loss:{}，".format(loss.mean().item()) + " time_now:{}".format(time_now))
@@ -799,7 +798,7 @@ class DqnAgent():
                 action = None
             else:
                 with torch.no_grad():
-                    action, cost_mask = self.act(obs)
+                    action = self.act(obs)
             step_start = time.time()
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)
