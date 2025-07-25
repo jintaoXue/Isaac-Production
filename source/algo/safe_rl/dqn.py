@@ -50,13 +50,13 @@ class DqnAgent():
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.batch_size = 64
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.batch_size = 64
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -304,11 +304,11 @@ class DqnAgent():
     def act(self, state):
         with torch.no_grad():
             if self.use_prediction_net:
-                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
-                return action.argmax(1).unsqueeze(0), cost_mask
+                action = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
+                return action.argmax(1).unsqueeze(0)
             else:
-                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0))
-                return action.argmax(1).unsqueeze(0), cost_mask
+                action = self.online_net(data.func(state, 'unsqueeze', 0))
+                return action.argmax(1).unsqueeze(0)
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
 
     # Acts with an ε-greedy policy (used for evaluation only)
@@ -683,8 +683,7 @@ class DqnAgent():
                     action = self.act_random(obs)
             else:
                 with torch.no_grad():
-                    action, cost_mask = self.act(obs)
-                    action_extra['cost_mask'] = cost_mask
+                    action = self.act(obs)
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
 
