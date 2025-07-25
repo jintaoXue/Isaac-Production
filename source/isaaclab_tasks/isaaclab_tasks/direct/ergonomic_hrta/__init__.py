@@ -26,6 +26,7 @@ gym.register(
         "rl_filter": f"{agents.__name__}:rl_filter.yaml",
         "ppolag_dis": f"{agents.__name__}:ppolag_dis.yaml",
         "ppolag_filter_dis": f"{agents.__name__}:ppolag_filter_dis.yaml",
+        "dqn": f"{agents.__name__}:dqn.yaml",
         # "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:CartpolePPORunnerCfg",
         # "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
         # "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",

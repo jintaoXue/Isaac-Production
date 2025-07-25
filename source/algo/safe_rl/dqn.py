@@ -22,7 +22,7 @@ import wandb
 import copy
 
 
-class SafeRlFilterAgent():
+class DqnAgent():
     def __init__(self, base_name, params):
 
         self.config : DictConfig = params['config']
