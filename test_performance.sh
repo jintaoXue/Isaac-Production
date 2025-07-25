@@ -18,7 +18,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless True --wandb_activate True --test True \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate True --test True \
         --load_dir "$load_dir" --load_name "/HRTA_direct_ep_82400.pth" --wandb_project test_HRTA_fatigue --test_times 10
 #    echo $filename >> filename.txt
 #    echo -e >> filename.txt
