@@ -177,17 +177,19 @@ nomask_4090_rl_filter_2025-07-25_15-02-16
 2. PF-CD3Q
 rl_filter_2025-07-20_12-17-12 4070
 
-3. PPO-lag
+3. PF-CD3Q with penalty
+
+4. PPO-lag
 no_mask_ppolag_filter_dis_2025-07-23_22-24-04   4070
 
-4. PF-PPO-lag
+5. PF-PPO-lag
 ppolag_filter_dis_2025-07-21_23-34-32  4070
 
-5. PPO-dis
+6. PPO-dis with penalty
 
-6. DQN
+7. DQN with penalty
 
-7. PF-DQN
+8. PF-DQN
 
 对比网络：
 1. PF-CD3Q 
@@ -200,6 +202,8 @@ PF
 
 对比setting:
 测试参数实时变化
+
+程序的截止时间要改一下
 
 
 PPO
@@ -223,3 +227,5 @@ EBQ同样也是，考虑加mask和不加mask的区别
 setting3:
     fatigue coe是已知的，输入给网络
     fatigue coe是未知的，用rl filter
+
+
