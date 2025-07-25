@@ -229,3 +229,10 @@ setting3:
     fatigue coe是未知的，用rl filter
 
 
+# TODO
+DQN 的cost function penalty 还没写
+纯PPO 算法也要加进来
+现在要重新画实验数据的图，不能太雷同
+想一想实验结果怎么表达，比如新加入箱型图
+然后怎么记录这些实验的数据，模型权重，画图
+KF的代码是否需要写
