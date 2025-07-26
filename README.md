@@ -230,6 +230,7 @@ setting3:
 
 
 # TODO
+训练轮次可以减少
 DQN 的cost function penalty 还没写
 纯PPO 算法也要加进来
 现在要重新画实验数据的图，不能太雷同
