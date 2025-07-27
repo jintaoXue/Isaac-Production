@@ -184,7 +184,7 @@ https://arxiv.org/pdf/1509.06461
 4. DQN (先不用做实验)
 
 5. DQN with penalty
-    4070_dqn_2025-07-27_11-39-32
+    penalty_4070_dqn_2025-07-27_11-39-32
 
 6. PF-DQN
 
