@@ -34,6 +34,7 @@ parser.add_argument(
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--sigma", type=str, default=None, help="The policy's initial standard deviation.")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--use_fatigue_mask", type=bool, default=None, help="Use fatigue mask.")
 
 
 # append AppLauncher cli args
@@ -106,6 +107,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         agent_cfg["params"]["config"]['load_name'] = args_cli.load_name
     if args_cli.wandb_project:
         agent_cfg["params"]["config"]['wandb_project'] = args_cli.wandb_project
+    if args_cli.use_fatigue_mask:
+        agent_cfg["params"]["config"]['use_fatigue_mask'] = args_cli.use_fatigue_mask
     """Train with RL-Games agent."""
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
