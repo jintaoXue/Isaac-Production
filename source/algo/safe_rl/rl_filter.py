@@ -732,6 +732,9 @@ class SafeRlFilterAgent():
             # action_cpu = action.squeeze().cpu()
             # rewards_cpu = rewards.squeeze().cpu()
             # dones_cpu = dones.squeeze().cpu()
+            if not self.config['use_faitgue_mask']:
+                cost_value = infos['cost_value']
+                rewards -= cost_value*0.05
             temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:

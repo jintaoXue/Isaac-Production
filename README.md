@@ -171,25 +171,36 @@ https://arxiv.org/pdf/1509.06461
 
 #### 算法记录
 对比算法：
+
+**DQN系列：**
 1. D3QN 
-nomask_4090_rl_filter_2025-07-25_15-02-16
+    nomask_4090_rl_filter_2025-07-25_15-02-16
 
-2. PF-CD3Q
-rl_filter_2025-07-20_12-17-12 4070
+2. D3QN with penalty 
 
-3. PF-CD3Q with penalty
+3. PF-CD3Q
+    rl_filter_2025-07-20_12-17-12 (4070)
 
-4. PPO-lag
-no_mask_ppolag_filter_dis_2025-07-23_22-24-04   4070
+4. DQN (先不用做实验)
 
-5. PF-PPO-lag
-ppolag_filter_dis_2025-07-21_23-34-32  4070
+5. DQN with penalty
+    4070_dqn_2025-07-27_11-39-32
 
-6. PPO-dis with penalty
+6. PF-DQN
 
-7. DQN with penalty
+**PPO系列：**
+7. PPO-dis (先不用做实验)
 
-8. PF-DQN
+8. PPO-dis with penalty
+
+9. PF-PPO-dis
+
+10. PPO-lag
+    nomask_4070_ppolag_filter_dis_2025-07-23_22-24-04
+
+11. PF-PPO-lag
+    4070_ppolag_filter_dis_2025-07-21_23-34-32
+
 
 对比网络：
 1. PF-CD3Q 
