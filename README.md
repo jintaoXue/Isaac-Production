@@ -180,6 +180,10 @@ https://arxiv.org/pdf/1509.06461
     penalty_4090_rl_filter_2025-07-27_14-41-12
 3. PF-CD3Q
     rl_filter_2025-07-20_12-17-12 (4070)
+    
+    3.2
+    mask_penalty_4090_rl_filter_2025-07-27_14-41-12
+
 
 4. DQN (先不用做实验)
 
