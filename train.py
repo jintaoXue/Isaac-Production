@@ -34,7 +34,7 @@ parser.add_argument(
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--sigma", type=str, default=None, help="The policy's initial standard deviation.")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
-parser.add_argument("--use_fatigue_mask", type=bool, default=None, help="Use fatigue mask.")
+parser.add_argument("--use_fatigue_mask", type=bool, default=False, help="Use fatigue mask.")
 
 
 # append AppLauncher cli args
