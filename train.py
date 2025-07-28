@@ -25,7 +25,7 @@ parser.add_argument("--test", type=bool, default=None, help="load model and test
 parser.add_argument("--test_times", type=int, default=None, help="test times for one setting.")
 parser.add_argument("--load_dir", type=str, default=None, help="dir to model checkpoint.")
 parser.add_argument("--load_name", type=str, default=None, help="name of model checkpoint.")
-parser.add_argument("--wandb_activate", type=bool, default=None, help="RL Policy training iterations.")
+parser.add_argument("--wandb_activate", action="store_true", default=None, help="Activate wandb logging.")
 parser.add_argument("--wandb_project", type=str, default=None, help="name of wandb project.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument(
@@ -34,7 +34,7 @@ parser.add_argument(
 parser.add_argument("--checkpoint", type=str, default=None, help="Path to model checkpoint.")
 parser.add_argument("--sigma", type=str, default=None, help="The policy's initial standard deviation.")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
-parser.add_argument("--use_fatigue_mask", type=bool, default=False, help="Use fatigue mask.")
+parser.add_argument("--use_fatigue_mask", action="store_true", default=False, help="Use fatigue mask.")
 
 
 # append AppLauncher cli args
