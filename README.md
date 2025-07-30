@@ -177,7 +177,7 @@ https://arxiv.org/pdf/1509.06461
     nomask_4090_rl_filter_2025-07-25_15-02-16
 
 2. D3QN with penalty 
-    
+    penalty_rl_filter_2025-07-28_16-47-50
 3. PF-CD3Q
     rl_filter_2025-07-20_12-17-12 (4070)
     

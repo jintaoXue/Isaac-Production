@@ -218,7 +218,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     runner.algo_factory.register_builder('rainbowmini', lambda **kwargs: rainbowmini.SafeRainbowAgent(**kwargs))
     runner.algo_factory.register_builder('rl_filter', lambda **kwargs: rl_filter.SafeRlFilterAgent(**kwargs))
     runner.algo_factory.register_builder('ppolag_filter_dis', lambda **kwargs: ppolag_filter_dis.SafeRlFilterAgentPPO(**kwargs))
-    runner.algo_factory.register_builder('ppolag_dis', lambda **kwargs: ppo_dis.SafeRlFilterAgentPPO(**kwargs))
+    runner.algo_factory.register_builder('ppo_dis', lambda **kwargs: ppo_dis.SafeRlFilterAgentPPO(**kwargs))
     runner.algo_factory.register_builder('dqn', lambda **kwargs: dqn.DqnAgent(**kwargs))
     
     
