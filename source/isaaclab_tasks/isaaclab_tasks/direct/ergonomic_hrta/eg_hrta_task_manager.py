@@ -52,7 +52,6 @@ class TaskManager(object):
         self.cfg = HRTaskAllocEnvCfg()
         self._test = train_cfg['test']
         if self._test:
-           np.random.seed(1)
            self._eval_times = train_cfg['test_times']
            self.acti_num_agv = train_cfg['test_one']['acti_agv']
            self.acti_num_charc = train_cfg['test_one']['acti_charc']

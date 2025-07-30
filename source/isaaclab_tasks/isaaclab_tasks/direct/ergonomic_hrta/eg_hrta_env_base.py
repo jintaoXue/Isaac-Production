@@ -63,6 +63,11 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         
         # for debug, visualize only prims 
         # stage_utils.print_stage_prim_paths()
+        '''test settings'''
+        self._test = self.cfg.train_cfg['params']['config']['test']
+        if self._test:
+            np.random.seed(1)
+            self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
         cube_list, hoop_list, bending_tube_list, upper_tube_list, product_list = [],[],[],[],[]
         for i in range(self.cfg.n_max_product):
             cube, hoop, bending_tube, upper_tube, product = self.set_up_material(num=i)
@@ -83,10 +88,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.task_manager.boxs.routes_dic = self.task_manager.agvs.routes_dic
 
         self.train_env_len_settings = self.cfg.train_env_len_setting
-        '''test settings'''
-        self._test = self.cfg.train_cfg['params']['config']['test']
-        if self._test:
-            self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
         # # clone and replicate
         # self.scene.clone_environments(copy_from_source=False)
         
