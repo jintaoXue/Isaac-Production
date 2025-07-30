@@ -6,6 +6,7 @@ import torch
 import math
 from ...utils import quaternion
 from .ekf_filter import EkfFatigue, EKfRecover
+from .kf_filter import KfFatigue, KfRecover
 from .pf_filter import ParticleFilter, RecParticleFilter
 from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic, BoxCapacity
 import random
@@ -43,10 +44,11 @@ def find_closest_pose(pose_dic, ego_pose, in_dis=5):
 
 class Fatigue(object):
 
-    def __init__(self, human_idx, human_types) -> None:
+    def __init__(self, human_idx, human_types, train_cfg) -> None:
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
         self.cfg = HRTaskAllocEnvCfg()
+        self._test = train_cfg['test']
         self.hyper_param_time = self.cfg.hyper_param_time
         self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*BoxCapacity.hoop, 
             'bending_tube_preparing': ['put_bending_tube_into_box','put_bending_tube_on_table']*BoxCapacity.bending_tube, 
@@ -142,10 +144,6 @@ class Fatigue(object):
         self.ftg_task_mask = torch.ones(len(high_level_task_dic))
 
         return
-
-
-
-
 
     def have_overwork(self):
         return self.phy_fatigue>self.ftg_thresh_phy or self.psy_fatigue>self.ftg_thresh_psy
@@ -436,7 +434,7 @@ class Characters(object):
         self.fatigue_list : list[Fatigue] = []
         self.human_types = ["strong", "normal", "weak"]
         for i in range(0,len(self.character_list)):
-            self.fatigue_list.append(Fatigue(i, self.human_types))
+            self.fatigue_list.append(Fatigue(i, self.human_types, self.train_cfg))
         self.fatigue_task_masks = None
         return
     

@@ -48,7 +48,7 @@ class KfFatigue:
         self.prev_time_step = time_step
 
     def run(self):
-        np.random.seed(42)
+        # np.random.seed(42)
         self.times = np.arange(0, self.num_steps * self.dt, self.dt)
         self.true_F = 1 - (1 - self.F0) * np.exp(-self.true_lambda * self.times)
         self.measurements = self.true_F + np.random.normal(0, np.sqrt(self.R[0, 0]), size=self.true_F.shape)
@@ -129,7 +129,7 @@ class KfRecover:
         self.prev_time_step = time_step
 
     def run(self):
-        np.random.seed(42)
+        # np.random.seed(42)
         self.times = np.arange(0, self.num_steps * self.dt, self.dt)
         self.true_R = self.R0 * np.exp(-self.true_mu * self.times)
         self.measurements = self.true_R + np.random.normal(0, np.sqrt(self.R[0, 0]), size=self.true_R.shape)

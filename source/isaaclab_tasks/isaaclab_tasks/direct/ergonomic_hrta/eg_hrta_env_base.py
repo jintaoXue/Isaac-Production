@@ -66,8 +66,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         '''test settings'''
         self._test = self.cfg.train_cfg['params']['config']['test']
         if self._test:
-            np.random.seed(1)
+            np.random.seed(self.cfg.train_cfg['params']['seed'])
             self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
+        self.train_env_len_settings = self.cfg.train_env_len_setting
         cube_list, hoop_list, bending_tube_list, upper_tube_list, product_list = [],[],[],[],[]
         for i in range(self.cfg.n_max_product):
             cube, hoop, bending_tube, upper_tube, product = self.set_up_material(num=i)
@@ -87,7 +88,6 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.task_manager.characters.routes_dic, self.task_manager.agvs.routes_dic = map_route.load_pre_def_routes()
         self.task_manager.boxs.routes_dic = self.task_manager.agvs.routes_dic
 
-        self.train_env_len_settings = self.cfg.train_env_len_setting
         # # clone and replicate
         # self.scene.clone_environments(copy_from_source=False)
         

@@ -67,7 +67,7 @@ class EkfFatigue:
 
     def run(self):
         # 生成模拟数据
-        np.random.seed(42)
+        # np.random.seed(42)
         self.times = np.arange(0, self.num_steps * self.dt, self.dt)
         self.true_F = 1 - (1 - self.F0) * np.exp(-true_lambda * self.times)  # 真实的 F(t)
         self.measurements = self.true_F + np.random.normal(0, np.sqrt(self.R[0, 0]), size=self.true_F.shape)  # 带噪声的测量
@@ -180,7 +180,7 @@ class EKfRecover:
     def run(self):
 
         # 生成模拟数据
-        np.random.seed(42)
+        # np.random.seed(42)
         self.times = np.arange(0, self.num_steps * self.dt, self.dt)
         self.true_R = self.R0 * np.exp(-true_mu * self.times)  # 真实的 R(t)
         self.true_R[0] = 3
