@@ -93,7 +93,8 @@ class Fatigue(object):
         return
 
     def reset(self):
-        if self.time_step is not None and self.time_step > 100:
+        self.visualize = True
+        if self.time_step is not None and self.time_step > 100 and self.visualize:
             self.plot_comprehensive_fatigue_analysis()
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
@@ -144,9 +145,26 @@ class Fatigue(object):
         self.psy_history = [(0, self.time_step)]
         self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 
         self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step 
-        
         self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, self.one_task_fatigue_prediction('none'))] #state, task, time_step 
 
+        if self.visualize:
+            self.reset_for_visualization()
+        return
+
+    def reset_for_visualization(self):
+        """
+        用于可视化时，初始化各类滤波器（PF/KF/EKF）
+        """
+        # 初始化KF和EKF的字典
+        self.kfs_phy_fat = {}
+        self.ekfs_phy_fat = {}
+        random_percent = 0.3
+        for (key, v) in self.phy_fatigue_ce_dic.items():
+            if v is not None:
+                # KF
+                self.kfs_phy_fat[key] = KfFatigue(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, Q=0.01, R=0.1, x0=0.0, P0=1.0)
+                # EKF
+                self.ekfs_phy_fat[key] = EkfFatigue(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
         return
 
     def have_overwork(self):
