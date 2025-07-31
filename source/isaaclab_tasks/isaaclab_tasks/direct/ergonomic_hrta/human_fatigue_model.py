@@ -83,8 +83,9 @@ class Fatigue(object):
         self.phy_fatigue = None
         self.psy_fatigue = None
         self.time_step = None
-        self.state_subtask_history = None
-        self.state_task_history = None
+        self.time_step_level_f_history = None
+        self.subtask_level_f_history = None
+        self.task_levle_f_history = None
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None 
@@ -92,23 +93,19 @@ class Fatigue(object):
         return
 
     def reset(self):
-        # if self.time_step is not None and self.time_step > 100:
-        #     self.plot_curve()
-        #     if self.cfg.use_partial_filter:
-        #         for k, v in self.phy_fatigue_ce_dic.items():
-        #             if v is not None:
-        #                 filter : ParticleFilter = self.pfs_phy_fat[k]
-        #                 filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue_' + k)
-        #         R_filter : RecParticleFilter = self.pfs_phy_rec['free']
-        #         R_filter.plot_results(R_filter.times, R_filter.F_estimates, R_filter.lambda_estimates, name='recover')
+        if self.time_step is not None and self.time_step > 100:
+            self.plot_comprehensive_fatigue_analysis()
+            # if self.cfg.use_partial_filter:
+            #     for k, v in self.phy_fatigue_ce_dic.items():
+            #         if v is not None:
+            #             filter : ParticleFilter = self.pfs_phy_fat[k]
+            #             filter.plot_results(filter.times, filter.F_estimates, filter.lambda_estimates, 'fatigue_' + k)
+            #     R_filter : RecParticleFilter = self.pfs_phy_rec['free']
+            #     R_filter.plot_results(R_filter.times, R_filter.F_estimates, R_filter.lambda_estimates, name='recover')
         self.time_step = 0
         self.phy_fatigue = 0
         self.psy_fatigue = 0
         self.pre_state_type = 'free'
-        self.phy_history = [(0, self.time_step)] # value, time_step
-        self.psy_history = [(0, self.time_step)]
-        self.state_subtask_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
-        self.state_task_history = [('free', 'free', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, time_step 
         
         scale_phy = 3
         scale_psy = 0.5
@@ -128,13 +125,13 @@ class Fatigue(object):
         for (key, v) in self.phy_fatigue_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent))
                 # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
         
         for (key, v) in self.phy_recovery_ce_dic.items():
             if v is not None:
                 # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
-                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=1e-5, sigma_v=0.05, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1-random_percent)) 
 
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
@@ -142,6 +139,13 @@ class Fatigue(object):
         self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
         self.update_ftg_mask()
         self.ftg_task_mask = torch.ones(len(high_level_task_dic))
+        
+        self.phy_history = [(0, self.time_step)] # value, time_step
+        self.psy_history = [(0, self.time_step)]
+        self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 
+        self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step 
+        
+        self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, self.one_task_fatigue_prediction('none'))] #state, task, time_step 
 
         return
 
@@ -169,28 +173,32 @@ class Fatigue(object):
 
     def step(self, state_type, subtask, task, ftg_prediction = None):
         if self.cfg.use_partial_filter == True:
-            self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
+            esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_pfs(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
             recover_coe_accuracy = self.get_filter_recover_coe_accuracy()
         self.phy_fatigue = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME,  self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
+        self.task_phy_prediction_dic = self.update_predict_dic()
+        self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
+        # _phy_fatigue_prediction = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, 
+        #     self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
         # self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
         self.phy_history.append((self.phy_fatigue, self.time_step))
         self.psy_history.append((self.psy_fatigue, self.time_step))
-        pre_state_type, pre_subtask, _ , _, _= self.state_subtask_history[-1]
+        self.time_step_level_f_history.append((state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step))
+        pre_state_type, pre_subtask,_, _, _, _= self.subtask_level_f_history[-1]
         if pre_state_type != state_type or pre_subtask != subtask:
-            self.state_subtask_history.append((state_type, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
-        _, pre_task, _ , _, _= self.state_task_history[-1]
+            self.subtask_level_f_history.append((state_type, task, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
+        _, pre_task, _ , _, _, _= self.task_levle_f_history[-1]
         if pre_task != task:
-            self.state_task_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
+            predict_list = self.one_task_fatigue_prediction(task)
+            self.task_levle_f_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list)) #state, subtask, time_step
         
-        self.task_phy_prediction_dic = self.update_predict_dic()
-        self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
         if self.cfg.use_partial_filter == True:
             self.update_ftg_mask(self.task_filter_phy_prediction_dic)
         else:
             self.update_ftg_mask(ftg_prediction)
 
-        return
+        return 
 
     def step_pfs(self, F, state_type, subtask, step_time):
         
@@ -214,7 +222,7 @@ class Fatigue(object):
             _filter.step(measure, F, self.time_step)
             self.pfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
 
-        return
+        return _filter.lambda_estimates[-1], _filter.F_estimates[-1]
     
     def add_measure_noise(self, F):
         random = np.random.normal(self.cfg.measure_noise_mu, self.cfg.measure_noise_sigma, 1)
@@ -302,6 +310,28 @@ class Fatigue(object):
             # psy_predict_dic[key] -= self.psy_fatigue
         return phy_predict_dic
 
+    def one_task_fatigue_prediction(self, task):
+        """
+        返回指定高层任务下所有子任务的疲劳预测值列表
+        """
+        # 当前疲劳值作为初始值
+        F_0 = self.phy_fatigue
+        predict_list = [F_0]
+        step_time_scale = (1 + self.hyper_param_time * math.log(1 + self.phy_fatigue))
+        subtask_seq = self.task_human_subtasks_dic[task]
+        for subtask in subtask_seq:
+            time = self.ONE_STEP_TIME
+            if 'put' in subtask or subtask == 'placing_product':
+                time = self.cfg.human_putting_time * self.ONE_STEP_TIME * step_time_scale
+            elif 'loading' in subtask:
+                time = self.cfg.human_loading_time * self.ONE_STEP_TIME * step_time_scale
+            elif subtask == 'cutting_cube':
+                time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
+            # 计算疲劳预测
+            for i in range(0, int(time/self.ONE_STEP_TIME)):
+                F_0 = self.step_helper_delta_phy_fatigue(F_0, subtask, subtask, 0.1, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
+                predict_list.append(F_0)
+        return predict_list
 
     def step_helper_delta_phy_fatigue(self, F_0, state_type, subtask, step_time, fatigue_coe_dic, recover_coe_dic, free_state_dic):
         # forgetting-fatigue-recovery exponential model
@@ -363,7 +393,7 @@ class Fatigue(object):
             x,y = _data[:, 1], _data[:, 0]
             ax.plot(x, y, '-', color=color_dict[line_label], label=line_label, ms=5, linewidth=2, marker='.', linestyle='dashed')
         
-        vlines = np.array(self.state_task_history)[:, -1]
+        vlines = np.array(self.task_levle_f_history)[:, -1]
         ax.vlines(vlines.astype(np.int32), 0, 1, linestyles='dashed', colors='silver')
         ax.legend()
         
@@ -372,6 +402,321 @@ class Fatigue(object):
         # path = os.path.dirname(__file__)
         # fig.savefig('{}.pdf'.format(path + '/' + 'polyline'), bbox_inches='tight')
     
+    def plot_fatigue_prediction_curve(self):
+        import matplotlib.pyplot as plt
+        plt.style.use('seaborn-v0_8-white')
+        plt.rcParams['pdf.fonttype'] = 42
+        params = {'legend.fontsize': 15,
+            'legend.handlelength': 2}
+        plt.rcParams.update(params)
+        
+        fig = plt.figure(figsize=(20,10), dpi=100)
+        ax = plt.subplot(111)
+        ax.set_title('Fatigue Prediction vs True Value, Human type:' + self.human_type, fontsize=20)
+        ax.set_xlabel('time step', fontsize=15)
+        ax.set_ylabel('fatigue value', fontsize=15)
+        ax.tick_params(axis='both', which='both', labelsize=15)
+        
+        # 提取time_step_level_f_history中的数据
+        if self.time_step_level_f_history is not None and len(self.time_step_level_f_history) > 0:
+            # 提取预测值、真值和时间步
+            prediction_values = []
+            true_values = []
+            time_steps = []
+            
+            for record in self.time_step_level_f_history:
+                # record格式: (state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step)
+                prediction_values.append(record[4])  # _phy_fatigue_prediction
+                true_values.append(record[5])       # self.phy_fatigue
+                time_steps.append(record[6])        # self.time_step
+            
+            # 绘制预测值和真值
+            ax.plot(time_steps, prediction_values, '-', color='blue', label='Predicted Fatigue', 
+                   linewidth=2, marker='o', markersize=4)
+            ax.plot(time_steps, true_values, '-', color='red', label='True Fatigue', 
+                   linewidth=2, marker='s', markersize=4)
+            
+            # 添加任务切换的垂直线
+            if self.task_levle_f_history is not None and len(self.task_levle_f_history) > 0:
+                task_switch_times = np.array(self.task_levle_f_history)[:, -1]
+                ax.vlines(task_switch_times.astype(np.int32), 0, 1, linestyles='dashed', 
+                         colors='silver', alpha=0.5, label='Task Switch')
+        
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
+    
+    def plot_filter_lambda_estimates(self):
+        import matplotlib.pyplot as plt
+        plt.style.use('seaborn-v0_8-white')
+        plt.rcParams['pdf.fonttype'] = 42
+        params = {'legend.fontsize': 12,
+            'legend.handlelength': 2}
+        plt.rcParams.update(params)
+        
+        # 获取所有filter的subtask
+        fatigue_filters = list(self.pfs_phy_fat.keys())
+        recovery_filters = list(self.pfs_phy_rec.keys())
+        
+        # 计算子图布局
+        total_filters = len(fatigue_filters) + len(recovery_filters)
+        if total_filters == 0:
+            print("No filters available to plot")
+            return
+            
+        cols = 3  # 每行3个子图
+        rows = (total_filters + cols - 1) // cols  # 计算需要的行数
+        
+        fig, axes = plt.subplots(rows, cols, figsize=(20, 5*rows), dpi=100)
+        if total_filters == 1:
+            axes = [axes]
+        elif rows == 1:
+            axes = axes.reshape(1, -1)
+        
+        # 绘制疲劳filter的lambda估计
+        for i, subtask in enumerate(fatigue_filters):
+            row = i // cols
+            col = i % cols
+            ax = axes[row, col] if rows > 1 else axes[col]
+            
+            filter_obj = self.pfs_phy_fat[subtask]
+            true_lambda = filter_obj.true_lambda
+            
+            # 绘制lambda估计值
+            if len(filter_obj.lambda_estimates) > 1:
+                times = range(len(filter_obj.lambda_estimates))
+                ax.plot(times, filter_obj.lambda_estimates, '-o', color='green', 
+                       label='Estimated λ', linewidth=2, markersize=4)
+                ax.axhline(y=true_lambda, color='red', linestyle='--', 
+                          label='True λ', linewidth=2)
+                
+                ax.set_title(f'Fatigue Filter: {subtask}', fontsize=14)
+                ax.set_xlabel('Time Step', fontsize=12)
+                ax.set_ylabel('λ Value', fontsize=12)
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+        
+        # 绘制恢复filter的lambda估计
+        for i, state_type in enumerate(recovery_filters):
+            idx = len(fatigue_filters) + i
+            row = idx // cols
+            col = idx % cols
+            ax = axes[row, col] if rows > 1 else axes[col]
+            
+            filter_obj = self.pfs_phy_rec[state_type]
+            true_lambda = filter_obj.true_lambda
+            
+            # 绘制lambda估计值
+            if len(filter_obj.lambda_estimates) > 1:
+                times = range(len(filter_obj.lambda_estimates))
+                ax.plot(times, filter_obj.lambda_estimates, '-s', color='blue', 
+                       label='Estimated λ', linewidth=2, markersize=4)
+                ax.axhline(y=true_lambda, color='red', linestyle='--', 
+                          label='True λ', linewidth=2)
+                
+                ax.set_title(f'Recovery Filter: {state_type}', fontsize=14)
+                ax.set_xlabel('Time Step', fontsize=12)
+                ax.set_ylabel('λ Value', fontsize=12)
+                ax.legend()
+                ax.grid(True, alpha=0.3)
+        
+        # 隐藏多余的子图
+        for i in range(total_filters, rows * cols):
+            row = i // cols
+            col = i % cols
+            ax = axes[row, col] if rows > 1 else axes[col]
+            ax.set_visible(False)
+        
+        plt.suptitle(f'Filter Lambda Estimates - Human type: {self.human_type}', fontsize=16)
+        plt.tight_layout()
+        plt.show()
+    
+    def plot_comprehensive_fatigue_analysis(self):
+        import matplotlib.pyplot as plt
+        plt.style.use('seaborn-v0_8-white')
+        plt.rcParams['pdf.fonttype'] = 42
+        params = {'legend.fontsize': 12,
+            'legend.handlelength': 2}
+        plt.rcParams.update(params)
+        
+        # 获取所有filter的subtask
+        fatigue_filters = list(self.pfs_phy_fat.keys())
+        recovery_filters = list(self.pfs_phy_rec.keys())
+        total_filters = len(fatigue_filters) + len(recovery_filters)
+        
+        # 计算子图布局：上半部分为task-level预测对比，下半部分为filter lambda估计
+        if total_filters == 0:
+            # 只有疲劳预测图
+            fig, axes = plt.subplots(1, 1, figsize=(20, 8), dpi=100)
+            ax1 = axes
+        else:
+            # 计算filter子图的布局
+            cols = 3  # 每行3个子图
+            rows = (total_filters + cols - 1) // cols  # 计算需要的行数
+            
+            # 创建子图：上半部分1个图，下半部分filter子图
+            fig = plt.figure(figsize=(20, 8 + 5*rows), dpi=100)
+            
+            # 上半部分：task-level疲劳预测对比图
+            ax1 = plt.subplot2grid((rows + 1, cols), (0, 0), colspan=cols)
+        
+        # ====== 新增：task-level预测曲线与真值对比 ======
+        # 1. 构造预测曲线（分段画线）
+        pred_segments = []
+        for record in self.task_levle_f_history:
+            _, _, _, _, cur_time, predict_list = record
+            if len(predict_list) < 2:
+                continue
+            seg_x = [cur_time + i for i in range(len(predict_list))]
+            seg_y = predict_list
+            pred_segments.append((seg_x, seg_y))
+        # 画每一段，只在首尾保留marker
+        for idx, (seg_x, seg_y) in enumerate(pred_segments):
+            # 只画首尾marker
+            ax1.plot(seg_x, seg_y, color='blue', linewidth=1.2, 
+                     marker='o', markevery=[0, -1], markersize=6, 
+                     label='Task-level Predicted Fatigue' if idx==0 else "")
+
+        # 2. 构造真值曲线
+        true_time_steps = [t for _, t in self.phy_history]
+        true_fatigue = [v for v, _ in self.phy_history]
+        # 3. 绘制真值
+        ax1.plot(true_time_steps, true_fatigue, label='True Fatigue', color='red', alpha=0.7, linewidth=1.2)
+        # ====== 新增：task切换的垂直线 ======
+        task_switch_times = [record[4] for record in self.task_levle_f_history]
+        ax1.vlines(task_switch_times, ymin=min(true_fatigue+[y for _, y in pred_segments for y in y]), ymax=max(true_fatigue+[y for _, y in pred_segments for y in y]), linestyles='dashed', colors='silver', alpha=0.5, label='Task Switch')
+        ax1.set_xlabel('Time Step', fontsize=15)
+        ax1.set_ylabel('Fatigue Value', fontsize=15)
+        ax1.set_title('Task-level Fatigue Prediction vs True Value', fontsize=18)
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # ====== 下半部分：filter lambda估计图 ======
+        if total_filters > 0:
+            # 绘制疲劳filter的lambda估计
+            for i, subtask in enumerate(fatigue_filters):
+                row = i // cols + 1  # +1 因为第一行是疲劳预测图
+                col = i % cols
+                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                filter_obj = self.pfs_phy_fat[subtask]
+                true_lambda = filter_obj.true_lambda
+                if len(filter_obj.lambda_estimates) > 1:
+                    times = range(len(filter_obj.lambda_estimates))
+                    ax.plot(times, filter_obj.lambda_estimates, '-o', color='green', 
+                           label='Estimated λ', linewidth=2, markersize=4)
+                    ax.axhline(y=true_lambda, color='red', linestyle='--', 
+                              label='True λ', linewidth=2)
+                    ax.set_title(f'Fatigue Filter: {subtask}', fontsize=12)
+                    ax.set_xlabel('Time Step', fontsize=10)
+                    ax.set_ylabel('λ Value', fontsize=10)
+                    ax.legend(fontsize=8)
+                    ax.grid(True, alpha=0.3)
+            # 绘制恢复filter的lambda估计
+            for i, state_type in enumerate(recovery_filters):
+                idx = len(fatigue_filters) + i
+                row = idx // cols + 1  # +1 因为第一行是疲劳预测图
+                col = idx % cols
+                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                filter_obj = self.pfs_phy_rec[state_type]
+                true_lambda = filter_obj.true_lambda
+                if len(filter_obj.lambda_estimates) > 1:
+                    times = range(len(filter_obj.lambda_estimates))
+                    ax.plot(times, filter_obj.lambda_estimates, '-s', color='blue', 
+                           label='Estimated λ', linewidth=2, markersize=4)
+                    ax.axhline(y=true_lambda, color='red', linestyle='--', 
+                              label='True λ', linewidth=2)
+                    ax.set_title(f'Recovery Filter: {state_type}', fontsize=12)
+                    ax.set_xlabel('Time Step', fontsize=10)
+                    ax.set_ylabel('λ Value', fontsize=10)
+                    ax.legend(fontsize=8)
+                    ax.grid(True, alpha=0.3)
+            # 隐藏多余的子图
+            for i in range(total_filters, rows * cols):
+                row = i // cols + 1
+                col = i % cols
+                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                ax.set_visible(False)
+        
+        plt.suptitle(f'Comprehensive Fatigue Analysis - Human type: {self.human_type}', fontsize=16)
+        plt.tight_layout()
+        plt.show()
+    
+    def _plot_fatigue_prediction_only(self, ax):
+        """绘制疲劳预测对比图的辅助函数"""
+        ax.set_title('Fatigue Prediction vs True Value', fontsize=14)
+        ax.set_xlabel('time step', fontsize=12)
+        ax.set_ylabel('fatigue value', fontsize=12)
+        ax.tick_params(axis='both', which='both', labelsize=10)
+        
+        # 提取time_step_level_f_history中的数据
+        if self.time_step_level_f_history is not None and len(self.time_step_level_f_history) > 0:
+            # 提取预测值、真值和时间步
+            prediction_values = []
+            true_values = []
+            time_steps = []
+            
+            for record in self.time_step_level_f_history:
+                # record格式: (state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step)
+                prediction_values.append(record[4])  # _phy_fatigue_prediction
+                true_values.append(record[5])       # self.phy_fatigue
+                time_steps.append(record[6])        # self.time_step
+            
+            # 绘制预测值和真值
+            ax.plot(time_steps, prediction_values, '-', color='blue', label='Predicted Fatigue', 
+                   linewidth=2, marker='x', markersize=4)
+            ax.plot(time_steps, true_values, '-', color='red', label='True Fatigue', 
+                   linewidth=1, marker='s', markersize=4)
+            
+            # 添加任务切换的垂直线
+            if self.task_levle_f_history is not None and len(self.task_levle_f_history) > 0:
+                task_switch_times = np.array(self.task_levle_f_history)[:, -1]
+                ax.vlines(task_switch_times.astype(np.int32), 0, 1, linestyles='dashed', 
+                         colors='silver', alpha=0.5, label='Task Switch')
+        
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    
+    def plot_task_level_fatigue_prediction(self):
+        """
+        绘制task-level的疲劳预测曲线与真实值对比
+        """
+        import matplotlib.pyplot as plt
+        plt.style.use('seaborn-v0_8-white')
+        plt.rcParams['pdf.fonttype'] = 42
+        params = {'legend.fontsize': 15, 'legend.handlelength': 2}
+        plt.rcParams.update(params)
+
+        # 1. 构造预测曲线
+        pred_fatigue = []
+        pred_time_steps = []
+        cur_time = None
+        for record in self.task_levle_f_history:
+            # record: (state_type, task, phy_fatigue, psy_fatigue, time_step, predict_list)
+            _, _, _, _, time_step, predict_list = record
+            if cur_time is None:
+                cur_time = time_step
+            for v in predict_list:
+                pred_fatigue.append(v)
+                pred_time_steps.append(cur_time)
+                cur_time += 1
+
+        # 2. 构造真值曲线
+        # 用 self.phy_history 里的 (phy_fatigue, time_step)
+        true_time_steps = [t for _, t in self.phy_history]
+        true_fatigue = [v for v, _ in self.phy_history]
+
+        # 3. 绘图
+        plt.figure(figsize=(20, 8))
+        plt.plot(pred_time_steps, pred_fatigue, label='Task-level Predicted Fatigue', color='blue', marker='o')
+        plt.plot(true_time_steps, true_fatigue, label='True Fatigue', color='red', marker='s', alpha=0.7)
+        plt.xlabel('Time Step', fontsize=15)
+        plt.ylabel('Fatigue Value', fontsize=15)
+        plt.title('Task-level Fatigue Prediction vs True Value', fontsize=18)
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.show()
 
 
 class Characters(object):
@@ -626,6 +971,8 @@ class Characters(object):
         state_type = self.state_character_dic[state]
         subtask = self.sub_task_character_dic[subtask]
         fatigue : Fatigue = self.fatigue_list[idx]
+        if task is -1:
+            task = 'none'
         fatigue.step(state_type, subtask, task, ftg_prediction)
         self.fatigue_task_masks[idx] = fatigue.ftg_task_mask
 

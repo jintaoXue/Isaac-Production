@@ -184,21 +184,21 @@ https://arxiv.org/pdf/1509.06461
     3.2
     mask_penalty_4090_rl_filter_2025-07-27_14-41-12
 
-
 4. DQN (先不用做实验)
 
 5. DQN with penalty
     penalty_4070_dqn_2025-07-27_11-39-32
 
 6. PF-DQN
+    4090_dqn_2025-07-29_13-21-06
 
 **PPO系列：**
 7. PPO-dis (先不用做实验)
 
 8. PPO-dis with penalty
-
+    
 9. PF-PPO-dis
-
+    4090_ppo_dis_2025-07-30_13-18-07
 10. PPO-lag
     nomask_4070_ppolag_filter_dis_2025-07-23_22-24-04
 
