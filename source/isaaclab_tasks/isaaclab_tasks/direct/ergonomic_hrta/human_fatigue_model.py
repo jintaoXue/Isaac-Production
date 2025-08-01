@@ -93,7 +93,7 @@ class Fatigue(object):
         return
 
     def reset(self):
-        self.visualize = False
+        self.visualize = True
         if self.time_step is not None and self.time_step > 100 and self.visualize:
             self.plot_comprehensive_fatigue_analysis()
             # if self.cfg.use_partial_filter:
@@ -118,6 +118,7 @@ class Fatigue(object):
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
 
         random_percent = 0.3
+        # self.random_percent = random_percent
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
         self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
         self.pfs_phy_fat = {}
@@ -144,29 +145,35 @@ class Fatigue(object):
         self.phy_history = [(0, self.time_step)] # value, time_step
         self.psy_history = [(0, self.time_step)]
         self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 
-        self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step 
-        self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, self.one_task_fatigue_prediction('none'))] #state, task, time_step 
+        self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step
+        _predict_list = self.one_task_fatigue_prediction('none', self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
+        self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)] #state, task, time_step 
 
         if self.visualize:
-            self.reset_for_visualization()
+            self.reset_for_visualization(random_percent)
         return
 
-    def reset_for_visualization(self):
+    def reset_for_visualization(self, random_percent):
         """
         用于可视化时，初始化各类滤波器（PF/KF/EKF）
         """
         # 初始化KF和EKF的字典
-        self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
-        self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
+        self.kfs_phy_fat_ce_dic = {k:v for k,v in self.pfs_phy_fat_ce_dic.items()}
+        self.kfs_phy_rec_ce_dic = {k:v for k,v in self.pfs_phy_rec_ce_dic.items()}
+        self.ekfs_phy_fat_ce_dic = {k:v for k,v in self.pfs_phy_fat_ce_dic.items()}
+        self.ekfs_phy_rec_ce_dic = {k:v for k,v in self.pfs_phy_rec_ce_dic.items()}
         self.kfs_phy_fat = {}
         self.ekfs_phy_fat = {}
-        random_percent = 0.3
+
         for (key, v) in self.phy_fatigue_ce_dic.items():
             if v is not None:
                 # KF
                 self.kfs_phy_fat[key] = KfFatigue(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, Q=0.01, R=0.1, x0=0.0, P0=1.0)
                 # EKF
                 self.ekfs_phy_fat[key] = EkfFatigue(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
+        
+        self.task_levle_f_history_kf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, self.one_task_fatigue_prediction('none'))]
+        self.task_levle_f_history_ekf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, self.one_task_fatigue_prediction('none'))]
         return
 
     def have_overwork(self):
@@ -330,7 +337,7 @@ class Fatigue(object):
             # psy_predict_dic[key] -= self.psy_fatigue
         return phy_predict_dic
 
-    def one_task_fatigue_prediction(self, task):
+    def one_task_fatigue_prediction(self, task, phy_fatigue_ce_dic, phy_recovery_ce_dic):
         """
         返回指定高层任务下所有子任务的疲劳预测值列表
         """
@@ -349,7 +356,7 @@ class Fatigue(object):
                 time = self.cfg.cutting_machine_oper_len * self.ONE_STEP_TIME * step_time_scale
             # 计算疲劳预测
             for i in range(0, int(time/self.ONE_STEP_TIME)):
-                F_0 = self.step_helper_delta_phy_fatigue(F_0, subtask, subtask, 0.1, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
+                F_0 = self.step_helper_delta_phy_fatigue(F_0, subtask, subtask, 0.1, phy_fatigue_ce_dic, phy_recovery_ce_dic, self.phy_free_state_dic)
                 predict_list.append(F_0)
         return predict_list
 
