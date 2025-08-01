@@ -156,6 +156,8 @@ class Fatigue(object):
         用于可视化时，初始化各类滤波器（PF/KF/EKF）
         """
         # 初始化KF和EKF的字典
+        self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_fatigue_ce_dic)
+        self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, self.phy_recovery_ce_dic)
         self.kfs_phy_fat = {}
         self.ekfs_phy_fat = {}
         random_percent = 0.3
