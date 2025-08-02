@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class ParticleFilter:
-    def __init__(self, dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v, lamda_init, upper_bound, lower_bound):
+    def __init__(self, dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v, lamda_init, upper_bound, lower_bound, resample_method='systematic'):
         self.dt = dt  # 时间间隔
         self.num_steps = num_steps  # 时间步数
         self.true_lambda = true_lambda  # 真实的 lambda 值
@@ -10,6 +10,7 @@ class ParticleFilter:
         self.num_particles = num_particles  # 粒子数量
         self.sigma_w = sigma_w  # 过程噪声标准差
         self.sigma_v = sigma_v  # 测量噪声标准差
+        self.resample_method = resample_method  # 重采样方法
 
         # 初始化粒子
         # np.random.seed(42)
@@ -44,12 +45,94 @@ class ParticleFilter:
         self.weights = self.weights * likelihood
         self.weights = self.weights / np.sum(self.weights)  # 归一化权重
 
+    def effective_sample_size(self):
+        """计算有效样本大小"""
+        return 1.0 / np.sum(self.weights**2)
+
+    def systematic_resample(self):
+        """系统重采样"""
+        # 计算累积权重
+        cumsum_weights = np.cumsum(self.weights)
+        
+        # 生成均匀分布的随机起始点
+        u = np.random.uniform(0, 1.0 / self.num_particles)
+        
+        # 生成系统重采样的索引
+        indices = np.zeros(self.num_particles, dtype=int)
+        j = 0
+        for i in range(self.num_particles):
+            u_i = u + i / self.num_particles
+            while u_i > cumsum_weights[j]:
+                j += 1
+            indices[i] = j
+        
+        return indices
+
+    def stratified_resample(self):
+        """分层重采样"""
+        # 计算累积权重
+        cumsum_weights = np.cumsum(self.weights)
+        
+        # 生成分层随机数
+        u = np.random.uniform(0, 1.0 / self.num_particles, self.num_particles)
+        u += np.arange(self.num_particles) / self.num_particles
+        
+        # 生成重采样索引
+        indices = np.zeros(self.num_particles, dtype=int)
+        j = 0
+        for i in range(self.num_particles):
+            while u[i] > cumsum_weights[j]:
+                j += 1
+            indices[i] = j
+        
+        return indices
+
+    def residual_resample(self):
+        """残差重采样"""
+        # 计算期望的粒子数量
+        expected_counts = self.weights * self.num_particles
+        
+        # 确定性重采样部分
+        deterministic_counts = np.floor(expected_counts).astype(int)
+        residual_weights = expected_counts - deterministic_counts
+        
+        # 归一化残差权重
+        residual_weights = residual_weights / np.sum(residual_weights)
+        
+        # 随机重采样剩余部分
+        remaining_particles = self.num_particles - np.sum(deterministic_counts)
+        random_indices = np.random.choice(self.num_particles, remaining_particles, p=residual_weights)
+        
+        # 构建最终索引
+        indices = []
+        for i in range(self.num_particles):
+            indices.extend([i] * deterministic_counts[i])
+        indices.extend(random_indices)
+        
+        return np.array(indices)
+
     def resample(self):
-        N_eff = 1 / np.sum(self.weights**2)
+        """改进的重采样方法"""
+        N_eff = self.effective_sample_size()
+        
+        # 只有当有效样本大小小于阈值时才重采样
         if N_eff < self.num_particles / 2:
-            indices = np.random.choice(self.num_particles, self.num_particles, p=self.weights)
+            if self.resample_method == 'systematic':
+                indices = self.systematic_resample()
+            elif self.resample_method == 'stratified':
+                indices = self.stratified_resample()
+            elif self.resample_method == 'residual':
+                indices = self.residual_resample()
+            else:  # 默认使用系统重采样
+                indices = self.systematic_resample()
+            
+            # 重采样粒子和权重
             self.particles = self.particles[indices]
             self.weights = np.ones(self.num_particles) / self.num_particles
+            
+            # 添加小的随机扰动以避免粒子退化
+            self.particles += np.random.normal(0, self.sigma_w * 0.1, self.num_particles)
+            self.particles = np.clip(self.particles, self.l_bound, self.u_bound)
 
     def step(self, measurement, true_F, time_step):
         self.measurements.append(measurement)
@@ -153,8 +236,10 @@ if __name__ == "__main__":
     sigma_w = 0.001
     sigma_v = 0.001
 
-    # 创建粒子滤波实例
-    pf = ParticleFilter(dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v)
+    # 创建粒子滤波实例，可以选择不同的重采样方法
+    # resample_method 可以是 'systematic', 'stratified', 'residual'
+    pf = ParticleFilter(dt, num_steps, true_lambda, F0, num_particles, sigma_w, sigma_v, 
+                       lamda_init=0.5, upper_bound=2.0, lower_bound=0.0, resample_method='systematic')
 
     # 运行粒子滤波
     times, F_estimates, lambda_estimates = pf.run()

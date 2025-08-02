@@ -119,7 +119,7 @@ class Fatigue(object):
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
 
         random_percent = 0.3
-        random_bound = 0.05
+        random_bound = 0.1
         random_per_for_pf = 0.1
         # self.random_percent = random_percent
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, random_bound, self.phy_fatigue_ce_dic)
@@ -131,7 +131,7 @@ class Fatigue(object):
             v_pf = self.pfs_phy_fat_ce_dic.get(key, v)
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.01, 
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.03, 
                     sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+random_per_for_pf), lower_bound=v_pf*(1-random_per_for_pf))
                 # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
                 self.pfs_phy_fat_ce_dic[key] = np.sum(self.pfs_phy_fat[key].particles * self.pfs_phy_fat[key].weights)
@@ -139,7 +139,9 @@ class Fatigue(object):
             v_pf = self.pfs_phy_rec_ce_dic.get(key, v)
             if v is not None:
                 # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
-                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.02, sigma_v=0.05, lamda_init = v_pf, upper_bound=v_pf*(1+random_percent), lower_bound=v_pf*(1-random_percent)) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.002, 
+                    sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+random_percent), lower_bound=v_pf*(1-random_percent)) 
+                self.pfs_phy_rec_ce_dic[key] = np.sum(self.pfs_phy_rec[key].particles * self.pfs_phy_rec[key].weights)
 
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
         self.task_psy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
