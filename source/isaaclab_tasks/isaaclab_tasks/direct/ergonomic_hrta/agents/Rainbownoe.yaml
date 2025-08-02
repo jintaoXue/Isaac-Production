@@ -1,4 +1,4 @@
-params:
+  mmm jjnbg params:
   seed: ${...seed}
   algo:
     name: rainbownoe
