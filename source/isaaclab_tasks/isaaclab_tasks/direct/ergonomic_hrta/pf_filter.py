@@ -17,7 +17,7 @@ class ParticleFilter:
         self.u_bound = upper_bound
         self.particles = np.random.uniform(lower_bound, upper_bound, num_particles)  # 初始粒子分布
         self.weights = np.ones(num_particles) / num_particles  # 初始权重
-
+        lamda_init = np.sum(self.particles * self.weights)
         self.prev_time_step = -2
         self.F_estimates = []
         self.lambda_estimates = [lamda_init]
@@ -72,16 +72,16 @@ class ParticleFilter:
         self.lambda_estimates.append(lambda_est)
 
         # 估计 F(t) 用于下一时刻
-        F_est = F_prev + (1 - F_prev) * (1 - np.exp(-lambda_est * self.dt))
+        F_est = measurement + (1 - measurement) * (1 - np.exp(-lambda_est * self.dt))
         self.F_estimates.append(F_est)
 
     def run(self):
         F_estimates = [self.F0]  # F(t) 的估计值列表，初始值为 F0
         lambda_estimates = []
         # 生成模拟数据
-        self.times = np.arange(0, num_steps * dt, dt)
-        self.true_F = 1 - (1 - self.F0) * np.exp(-true_lambda * self.times)  # 真实的 F(t)
-        self.measurements = self.true_F + np.random.normal(0, sigma_v, size=self.true_F.shape)  # 带噪声的测量
+        self.times = np.arange(0, self.num_steps * self.dt, self.dt)
+        self.true_F = 1 - (1 - self.F0) * np.exp(-self.true_lambda * self.times)  # 真实的 F(t)
+        self.measurements = self.true_F + np.random.normal(0, self.sigma_v, size=self.true_F.shape)  # 带噪声的测量
 
         for t in range(1, self.num_steps):
             # 预测步骤

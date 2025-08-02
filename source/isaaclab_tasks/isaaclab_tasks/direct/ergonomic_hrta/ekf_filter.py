@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class EkfFatigue:
-    def __init__(self, dt, num_steps, true_lambda, F0, Q, R, x0, P0):
+    def __init__(self, dt, num_steps, true_lambda, init_lambda, F0, Q, R, x0, P0):
         self.dt = dt  # 时间间隔
         self.num_steps = num_steps  # 时间步数
         self.true_lambda = true_lambda  # 真实的 lambda 值
@@ -15,7 +15,7 @@ class EkfFatigue:
         
         self.prev_time_step = -2
         self.F_estimates = []
-        self.lambda_estimates = []
+        self.lambda_estimates = [init_lambda]
         self.measurements = []
         self.true_F = []
         self.times = []
@@ -54,7 +54,7 @@ class EkfFatigue:
 
         self.predict()
         # 更新
-        z = np.array([measurement])
+        z = np.array(measurement)
         self.update(z)
 
         # 存储估计值和其他数据
@@ -114,7 +114,7 @@ class EkfFatigue:
         plt.savefig('ekf_class_results.png')
 
 class EKfRecover:
-    def __init__(self, dt, num_steps, true_mu, R0, Q, R, x0, P0):
+    def __init__(self, dt, num_steps, true_mu, init_mu, R0, Q, R, x0, P0):
         self.dt = dt  # 时间间隔
         self.num_steps = num_steps  # 时间步数
         self.true_mu = true_mu  # 真实的 mu 值
@@ -127,7 +127,7 @@ class EKfRecover:
         
         self.prev_time_step = -2
         self.R_estimates = []
-        self.mu_estimates = []
+        self.mu_estimates = [init_mu]
         self.measurements = []
         self.true_R = []
         self.times = []
@@ -166,7 +166,7 @@ class EKfRecover:
 
         self.predict()
         # 更新
-        z = np.array([measurement])
+        z = np.array(measurement)
         self.update(z)
 
         # 存储估计值和其他数据
