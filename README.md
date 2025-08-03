@@ -177,7 +177,7 @@ https://arxiv.org/pdf/1509.06461
     nomask_4090_rl_filter_2025-07-25_15-02-16
 
 2. D3QN with penalty 
-    penalty_rl_filter_2025-07-28_16-47-50
+    penalty_4070_rl_filter_2025-07-29_22-22-18
 3. PF-CD3Q
     rl_filter_2025-07-20_12-17-12 (4070)
     
@@ -196,7 +196,7 @@ https://arxiv.org/pdf/1509.06461
 7. PPO-dis (先不用做实验)
 
 8. PPO-dis with penalty
-    
+    4070_penalty_ppo_dis_2025-07-31_13-37-58
 9. PF-PPO-dis
     4090_ppo_dis_2025-07-30_13-18-07
 10. PPO-lag
@@ -258,4 +258,3 @@ KF的代码是否需要写 （已写）
 1.先把一个滤波器的画图所需所有参数做好接口 传给这个fatigue去画图，然后再变成多个滤波器的
 2.展示结果的类型分为总的曲线变化对比，包括真值和预测值（分为one-step, multi-step）
 
-3.再包括一个参数曲线的预测值，以及同类型参数的合并

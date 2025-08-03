@@ -21,7 +21,7 @@ parser.add_argument("--video_interval", type=int, default=2000, help="Interval b
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--algo", type=str, default=None, help="Name of the algorithm.")
-parser.add_argument("--test", type=bool, default=None, help="load model and test.")
+parser.add_argument("--test", action="store_true", default=False, help="load model and test.")
 parser.add_argument("--test_times", type=int, default=None, help="test times for one setting.")
 parser.add_argument("--load_dir", type=str, default=None, help="dir to model checkpoint.")
 parser.add_argument("--load_name", type=str, default=None, help="name of model checkpoint.")

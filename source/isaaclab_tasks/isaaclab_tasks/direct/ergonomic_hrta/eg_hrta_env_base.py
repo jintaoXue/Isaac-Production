@@ -122,9 +122,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         #TODO
         if self._test:
             if self._test_all_settings:
+                self.test_all_idx += 1
                 if self.test_all_idx in range(0, len(self.test_settings_list)):
                     acti_num_char, acti_num_robot = self.test_settings_list[self.test_all_idx]
-                self.test_all_idx += 1 
+                # self.test_all_idx += 1 
             self.task_manager.reset(acti_num_char, acti_num_robot)
             self.dynamic_episode_len = self.test_env_max_length
         else:
