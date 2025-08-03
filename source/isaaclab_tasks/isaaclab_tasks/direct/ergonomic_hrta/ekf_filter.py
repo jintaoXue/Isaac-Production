@@ -14,7 +14,7 @@ class EkfFatigue:
         self.H = np.array([[1, 0]])  # 测量矩阵
         
         self.prev_time_step = -2
-        self.F_estimates = []
+        self.F_estimates = [F0]
         self.lambda_estimates = [init_lambda]
         self.measurements = []
         self.true_F = []
@@ -34,7 +34,7 @@ class EkfFatigue:
     def jacobian(self, x, dt):
         F, lam = x
         return np.array([
-            [np.exp(-lam * dt), (1 - F) * (-dt * np.exp(-lam * dt))],
+            [np.exp(-lam * dt), (1 - F) * (lam*dt * np.exp(-lam * dt))],
             [0, 1]
         ])
 
@@ -51,7 +51,9 @@ class EkfFatigue:
         self.P = (np.eye(2) - K @ self.H) @ self.P_pred  # 更新协方差
     
     def step(self, measurement, true_F, time_step):
-
+        if time_step != self.prev_time_step + 1:
+            self.reinit(time_step, true_F, self.lambda_estimates[-1])
+            return
         self.predict()
         # 更新
         z = np.array(measurement)
@@ -126,7 +128,7 @@ class EKfRecover:
         self.H = np.array([[1, 0]])  # 测量矩阵
         
         self.prev_time_step = -2
-        self.R_estimates = []
+        self.R_estimates = [R0]
         self.mu_estimates = [init_mu]
         self.measurements = []
         self.true_R = []
@@ -163,7 +165,9 @@ class EKfRecover:
         self.P = (np.eye(2) - K @ self.H) @ self.P_pred  # 更新协方差
 
     def step(self, measurement, true_R, time_step):
-
+        if time_step != self.prev_time_step + 1:
+            self.reinit(time_step, true_R, self.mu_estimates[-1])
+            return
         self.predict()
         # 更新
         z = np.array(measurement)

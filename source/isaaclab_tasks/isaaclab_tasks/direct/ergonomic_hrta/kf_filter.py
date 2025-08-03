@@ -16,7 +16,7 @@ class KfFatigue:
         self.A = np.array([[1, self.dt * (1 - self.x_hat[0])], 
                           [0, 1]])  # 考虑F(t)对lambda的梯度
         self.prev_time_step = -2
-        self.F_estimates = []
+        self.F_estimates = [F0]
         self.lambda_estimates = [init_lambda]
         self.measurements = []
         self.true_F = []
@@ -47,10 +47,14 @@ class KfFatigue:
         self.P = (np.eye(2) - K @ self.H) @ self.P_pred  # 更新协方差
 
     def step(self, measurement, true_F, time_step):
+        if time_step != self.prev_time_step + 1:
+            self.reinit(time_step, true_F, self.lambda_estimates[-1])
+            return
         self.predict()
         z = np.array(measurement)
         self.update(z)
         self.F_estimates.append(self.x_hat[0])
+        # self.x_hat[0] = measurement
         self.lambda_estimates.append(self.x_hat[1])
         self.measurements.append(measurement)
         self.true_F.append(true_F)
@@ -107,7 +111,7 @@ class KfRecover:
         self.A = np.array([[1, -self.dt * self.x_hat[0]], 
                           [0, 1]])  # 考虑R(t)对mu的梯度
         self.prev_time_step = -2
-        self.R_estimates = []
+        self.R_estimates = [R0]
         self.mu_estimates = [init_mu]
         self.measurements = []
         self.true_R = []
@@ -138,6 +142,9 @@ class KfRecover:
         self.P = (np.eye(2) - K @ self.H) @ self.P_pred  # 更新协方差
 
     def step(self, measurement, true_R, time_step):
+        if time_step != self.prev_time_step + 1:
+            self.reinit(time_step, true_R, self.mu_estimates[-1])
+            return
         self.predict()
         z = np.array(measurement)
         self.update(z)

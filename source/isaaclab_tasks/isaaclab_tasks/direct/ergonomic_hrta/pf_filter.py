@@ -16,19 +16,21 @@ class ParticleFilter:
         # np.random.seed(42)
         self.l_bound = lower_bound
         self.u_bound = upper_bound
-        self.particles = np.random.uniform(lower_bound, upper_bound, num_particles)  # 初始粒子分布
+        # self.particles = np.random.uniform(lower_bound, upper_bound, num_particles)  # 初始粒子分布
+        self.particles = np.linspace(lower_bound, upper_bound, num_particles)  # 初始粒子分布
         self.weights = np.ones(num_particles) / num_particles  # 初始权重
         lamda_init = np.sum(self.particles * self.weights)
         self.prev_time_step = -2
         self.F_estimates = []
         self.lambda_estimates = [lamda_init]
-        self.measurements = []
+        self.measurements = [F0]
         self.true_F = []
         self.times = []
     
     def reinit(self, time_step, F0):
         
         self.F_estimates.append(F0)
+        self.measurements.append(F0)
         if len(self.lambda_estimates) > 0:
             self.lambda_estimates.append(self.lambda_estimates[-1])
         self.prev_time_step = time_step
@@ -40,7 +42,18 @@ class ParticleFilter:
 
     def update_weights(self, F_prev, measurement_t):
         F_pred = F_prev + (1 - F_prev) * (1 - np.exp(-self.particles * self.dt))
-        likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        errors = np.abs(measurement_t - F_pred)
+        error_min = np.min(errors)
+        error_max = np.max(errors)
+        #误差归一化到[0,1]
+        normalized_errors = (errors - error_min) / (error_max - error_min)
+        #使用指数函数放大误差
+        likelihood = np.exp(-2 * normalized_errors**2)
+        likelihood = likelihood/ sum(likelihood)
+        # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2)
+        # likelihood = likelihood/ sum(likelihood)
+        likelihood = np.clip(likelihood, 0, 1)
         # if likelihood.any():
         self.weights = self.weights * likelihood
         self.weights = self.weights / np.sum(self.weights)  # 归一化权重
@@ -135,7 +148,6 @@ class ParticleFilter:
             self.particles = np.clip(self.particles, self.l_bound, self.u_bound)
 
     def step(self, measurement, true_F, time_step):
-        self.measurements.append(measurement)
         self.true_F.append(true_F)
         self.times.append(time_step)
         if time_step != self.prev_time_step + 1:
@@ -144,11 +156,13 @@ class ParticleFilter:
         
         self.state_transition()
         # 更新权重
-        F_prev = self.F_estimates[-1]
+        # F_prev = self.F_estimates[-1]
+        F_prev = self.measurements[-1]
         self.update_weights(F_prev, measurement)
+        self.measurements.append(measurement)
 
         # 重采样
-        self.resample()
+        # self.resample()
 
         # 估计 lambda
         lambda_est = np.sum(self.particles * self.weights)
@@ -215,15 +229,26 @@ class ParticleFilter:
 
 
 class RecParticleFilter(ParticleFilter):
-    
+
     def update_weights(self, F_prev, measurement_t):
         F_pred = F_prev*np.exp(-self.particles * self.dt)
-        likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2 / self.sigma_v**2)
+        errors = np.abs(measurement_t - F_pred)
+        error_min = np.min(errors)
+        error_max = np.max(errors)
+        if error_max == error_min:
+            return
+        #误差归一化到[0,1]
+        normalized_errors = (errors - error_min) / (error_max - error_min)
+        #使用指数函数放大误差
+        likelihood = np.exp(-2 * normalized_errors**2)
+        likelihood = likelihood/ sum(likelihood)
+        # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2)
+        # likelihood = likelihood/ sum(likelihood)
+        likelihood = np.clip(likelihood, 0, 1)
         # if likelihood.any():
         self.weights = self.weights * likelihood
         self.weights = self.weights / np.sum(self.weights)  # 归一化权重
-
-
 
 # 使用示例
 if __name__ == "__main__":

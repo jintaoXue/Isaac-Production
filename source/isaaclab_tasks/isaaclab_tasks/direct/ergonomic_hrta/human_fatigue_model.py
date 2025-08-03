@@ -92,7 +92,7 @@ class Fatigue(object):
         return
 
     def reset(self):
-        self.visualize_another_filters = False
+        self.visualize_another_filters = True
         if self.time_step is not None and self.time_step > 100 and self.visualize_another_filters:
             self.plot_comprehensive_fatigue_analysis()  
             # if self.cfg.use_partial_filter:
@@ -117,8 +117,8 @@ class Fatigue(object):
         self.psy_recovery_ce_dic = self.scale_coefficient(scale_psy, self.raw_psy_recovery_ce_dic)
 
         random_percent = 0.2
-        random_bound = 0.05
-        random_per_for_pf = 0.1
+        random_bound = 0.1
+        random_per_for_pf = 0.3
         # self.random_percent = random_percent
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, random_bound, self.phy_fatigue_ce_dic)
         self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, 0.02, self.phy_recovery_ce_dic)
@@ -129,7 +129,7 @@ class Fatigue(object):
             v_pf = self.pfs_phy_fat_ce_dic.get(key, v)
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.03, 
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.00000003, 
                     sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+random_per_for_pf), lower_bound=v_pf*(1-random_per_for_pf))
                 # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
                 self.pfs_phy_fat_ce_dic[key] = np.sum(self.pfs_phy_fat[key].particles * self.pfs_phy_fat[key].weights)
@@ -137,8 +137,8 @@ class Fatigue(object):
             v_pf = self.pfs_phy_rec_ce_dic.get(key, v)
             if v is not None:
                 # self.pfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v, R0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0])) 
-                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.0002, 
-                    sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+0.1), lower_bound=v_pf*(1-0.1)) 
+                self.pfs_phy_rec[key] = RecParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.00000003, 
+                    sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+random_per_for_pf), lower_bound=v_pf*(1-random_per_for_pf)) 
                 self.pfs_phy_rec_ce_dic[key] = np.sum(self.pfs_phy_rec[key].particles * self.pfs_phy_rec[key].weights)
 
         self.task_phy_prediction_dic = {task: 0.  for (key, task) in high_level_task_dic.items()} 
@@ -179,11 +179,11 @@ class Fatigue(object):
                 v_pf = self.pfs_phy_fat_ce_dic.get(key, v_real)
                 # KF - 需要正确的参数维度
                 self.kfs_phy_fat[key] = KfFatigue(dt=0.1, num_steps=100, true_lambda=v_real, init_lambda=v_pf, F0=self.phy_fatigue, 
-                                                   Q=np.diag([0.005, 0.0001]), R=np.array([[0.05]]), 
+                                                   Q=np.diag([0.0005, 0.0001]), R=np.array([[0.0005]]), 
                                                    x0=np.array([self.phy_fatigue, v_pf]), P0=np.diag([1.0, 1.0]))
                 # EKF - 需要正确的参数维度
                 self.ekfs_phy_fat[key] = EkfFatigue(dt=0.1, num_steps=100, true_lambda=v_real, init_lambda=v_pf, F0=self.phy_fatigue, 
-                                                     Q=np.diag([0.005, 0.0001]), R=np.array([[0.05]]), 
+                                                     Q=np.diag([0.0005, 0.0001]), R=np.array([[0.0005]]), 
                                                      x0=np.array([self.phy_fatigue, v_pf]), P0=np.diag([1.0, 1.0]))
         
         for (key, v_real) in self.phy_recovery_ce_dic.items():
@@ -192,11 +192,11 @@ class Fatigue(object):
                 v_pf = self.pfs_phy_rec_ce_dic.get(key, v_real)
                 # KF recovery - 需要正确的参数维度
                 self.kfs_phy_rec[key] = KfRecover(dt=0.1, num_steps=100, true_mu=v_real, init_mu=v_pf, R0=self.phy_fatigue, 
-                                                   Q=np.diag([0.01, 0.001]), R=np.array([[0.01]]), 
+                                                   Q=np.diag([0.0005, 0.001]), R=np.array([[0.001]]), 
                                                    x0=np.array([self.phy_fatigue, v_pf]), P0=np.diag([1.0, 1.0]))
                 # EKF recovery - 需要正确的参数维度
                 self.ekfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v_real, init_mu=v_pf, R0=self.phy_fatigue, 
-                                                     Q=np.diag([0.01, 0.001]), R=np.array([[0.01]]), 
+                                                     Q=np.diag([0.0005, 0.001]), R=np.array([[0.001]]), 
                                                      x0=np.array([self.phy_fatigue, v_pf]), P0=np.diag([1.0, 1.0]))
         
         self.task_levle_f_history_kf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)]
@@ -332,6 +332,7 @@ class Fatigue(object):
     
     def add_measure_noise(self, F):
         random = np.random.normal(self.cfg.measure_noise_mu, self.cfg.measure_noise_sigma, 1)
+        # random = 0.
         # random = np.clip(random, -0.1, 0.1)
         F = np.clip(F + random, 0.0, 1.0) 
         return F
