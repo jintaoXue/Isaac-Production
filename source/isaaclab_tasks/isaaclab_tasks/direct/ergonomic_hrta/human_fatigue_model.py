@@ -1,5 +1,3 @@
-
-
 import random
 import numpy as np
 import torch
@@ -123,7 +121,7 @@ class Fatigue(object):
         random_per_for_pf = 0.1
         # self.random_percent = random_percent
         self.pfs_phy_fat_ce_dic = self.add_coefficient_randomness(random_percent, random_bound, self.phy_fatigue_ce_dic)
-        self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, random_bound, self.phy_recovery_ce_dic)
+        self.pfs_phy_rec_ce_dic = self.add_coefficient_randomness(random_percent, 0.02, self.phy_recovery_ce_dic)
         self.pfs_phy_fat = {}
         self.pfs_phy_rec = {}
 
@@ -236,6 +234,8 @@ class Fatigue(object):
             # 合并疲劳和恢复过滤器列表
             pf_filters = {**self.pfs_phy_fat, **self.pfs_phy_rec}
             esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, pf_filters)
+            # if np.isnan(esitmate_phy_fatigue_coe):
+            #     a = 1
             if self.visualize_another_filters:
                 # KF filter
                 kf_filters = {**self.kfs_phy_fat, **self.kfs_phy_rec}
@@ -283,11 +283,17 @@ class Fatigue(object):
             _filter.step(measure, F, self.time_step)
             # 根据过滤器类型更新相应的系数字典
             if isinstance(_filter, ParticleFilter):
-                self.pfs_phy_rec_ce_dic[state_type] = _filter.lambda_estimates[-1]
+                estimated_value = _filter.lambda_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.pfs_phy_rec_ce_dic[state_type] = estimated_value
             elif isinstance(_filter, KfRecover):
-                self.kfs_phy_rec_ce_dic[state_type] = _filter.mu_estimates[-1]
+                estimated_value = _filter.mu_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.kfs_phy_rec_ce_dic[state_type] = estimated_value
             elif isinstance(_filter, EKfRecover):
-                self.ekfs_phy_rec_ce_dic[state_type] = _filter.mu_estimates[-1]
+                estimated_value = _filter.mu_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.ekfs_phy_rec_ce_dic[state_type] = estimated_value
         else:
             assert subtask in fatigue_coe_dic.keys()
             _filter = filter_list[subtask]
@@ -297,11 +303,17 @@ class Fatigue(object):
             _filter.step(measure, F, self.time_step)
             # 根据过滤器类型更新相应的系数字典
             if isinstance(_filter, ParticleFilter):
-                self.pfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
+                estimated_value = _filter.lambda_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.pfs_phy_fat_ce_dic[subtask] = estimated_value
             elif isinstance(_filter, KfFatigue):
-                self.kfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
+                estimated_value = _filter.lambda_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.kfs_phy_fat_ce_dic[subtask] = estimated_value
             elif isinstance(_filter, EkfFatigue):
-                self.ekfs_phy_fat_ce_dic[subtask] = _filter.lambda_estimates[-1]
+                estimated_value = _filter.lambda_estimates[-1]
+                if not np.isnan(estimated_value):
+                    self.ekfs_phy_fat_ce_dic[subtask] = estimated_value
 
         # 根据过滤器类型返回相应的估计值
         if isinstance(_filter, ParticleFilter):
