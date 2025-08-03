@@ -258,3 +258,11 @@ KF的代码是否需要写 （已写）
 1.先把一个滤波器的画图所需所有参数做好接口 传给这个fatigue去画图，然后再变成多个滤波器的
 2.展示结果的类型分为总的曲线变化对比，包括真值和预测值（分为one-step, multi-step）
 
+
+
+
+
+### mount bug fix
+
+显示分区：  df -Th 
+最后执行：mount -o remount -w /factory (factory为文件夹所在分区名，这里替换成 /dev/sdd4）即可
