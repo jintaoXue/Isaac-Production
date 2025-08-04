@@ -92,7 +92,7 @@ class Fatigue(object):
         return
 
     def reset(self):
-        self.visualize_another_filters = True
+        self.visualize_another_filters = False
         if self.time_step is not None and self.time_step > 100 and self.visualize_another_filters:
             self.plot_comprehensive_fatigue_analysis()  
             # if self.cfg.use_partial_filter:

@@ -907,21 +907,25 @@ class DqnAgent():
         while True:
             self.epoch_num += 1
             if self._test:     
-                for w in range(self.config["max_num_worker"]):
-                    for r in range(self.config["max_num_robot"]):
-                        for i in range(self.config['test_times']):
-                            self.evaluate_epoch(test=True)
-                        if self.use_wandb:
-                            index = w*self.config["max_num_worker"]+r
-                            time_span = self.test_table.get_column("env_length")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            human_move = self.test_table.get_column("human_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            robot_move = self.test_table.get_column("robot_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
-                            self.test_table2.add_data(w+1, r+1, np.max(time_span), np.min(time_span), np.mean(time_span), np.mean(human_move), np.mean(robot_move))
-                if self.use_wandb:
-                    wandb.log({"Instances": self.test_table}) 
-                    wandb.log({"Instances2": self.test_table2}) 
-                    wandb.log({"Actions": self.test_table3}) 
-                    wandb.finish()
+                if self.config["test_all_settings"]:
+                    for w in range(self.config["max_num_worker"]):
+                        for r in range(self.config["max_num_robot"]):
+                            for i in range(self.config['test_times']):
+                                self.evaluate_epoch(test=True)
+                            if self.use_wandb:
+                                index = w*self.config["max_num_worker"]+r
+                                time_span = self.test_table.get_column("env_length")[index*self.config['test_times']: (index+1)*self.config['test_times']]
+                                human_move = self.test_table.get_column("human_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
+                                robot_move = self.test_table.get_column("robot_move")[index*self.config['test_times']: (index+1)*self.config['test_times']]
+                                self.test_table2.add_data(w+1, r+1, np.max(time_span), np.min(time_span), np.mean(time_span), np.mean(human_move), np.mean(robot_move))
+                    if self.use_wandb:
+                        wandb.log({"Instances": self.test_table}) 
+                        wandb.log({"Instances2": self.test_table2}) 
+                        wandb.log({"Actions": self.test_table3}) 
+                        wandb.finish()
+                else:
+                    for i in range(self.config['test_times']):
+                        self.evaluate_epoch(test=True)
                 break
             else:
                 for w in range(self.config["max_num_worker"]):

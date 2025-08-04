@@ -172,6 +172,20 @@ https://arxiv.org/pdf/1509.06461
 #### 算法记录
 对比算法：
 
+load_dir_list=(
+nomask_4090_rl_filter_2025-07-25_15-02-16
+penalty_4070_rl_filter_2025-07-29_22-22-18
+4070_rl_filter_2025-07-20_12-17-12
+mask_penalty_4090_rl_filter_2025-07-27_14-41-12
+penalty_4070_dqn_2025-07-27_11-39-32
+4090_dqn_2025-07-29_13-21-06
+4070_penalty_ppo_dis_2025-07-31_13-37-58
+4090_ppo_dis_2025-07-30_13-18-07
+nomask_4070_ppolag_filter_dis_2025-07-23_22-24-04
+4070_ppolag_filter_dis_2025-07-21_23-34-32
+)
+
+
 **DQN系列：**
 1. D3QN 
     nomask_4090_rl_filter_2025-07-25_15-02-16
@@ -179,8 +193,8 @@ https://arxiv.org/pdf/1509.06461
 2. D3QN with penalty 
     penalty_4070_rl_filter_2025-07-29_22-22-18
 3. PF-CD3Q
-    rl_filter_2025-07-20_12-17-12 (4070)
-    
+    4070_rl_filter_2025-07-20_12-17-12
+
     3.2
     mask_penalty_4090_rl_filter_2025-07-27_14-41-12
 
