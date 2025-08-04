@@ -23,6 +23,7 @@ parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--algo", type=str, default=None, help="Name of the algorithm.")
 parser.add_argument("--test", action="store_true", default=False, help="load model and test.")
 parser.add_argument("--test_times", type=int, default=None, help="test times for one setting.")
+parser.add_argument("--test_all_settings", action="store_true", default=False, help="test all settings.")
 parser.add_argument("--load_dir", type=str, default=None, help="dir to model checkpoint.")
 parser.add_argument("--load_name", type=str, default=None, help="name of model checkpoint.")
 parser.add_argument("--wandb_activate", action="store_true", default=None, help="Activate wandb logging.")
@@ -101,6 +102,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         agent_cfg["params"]["config"]['test'] = args_cli.test
     if args_cli.test_times:
         agent_cfg["params"]["config"]['test_times'] = args_cli.test_times
+    if args_cli.test_all_settings:
+        agent_cfg["params"]["config"]['test_all_settings'] = args_cli.test_all_settings
     if args_cli.load_dir:
         agent_cfg["params"]["config"]['load_dir'] = args_cli.load_dir
     if args_cli.load_name:

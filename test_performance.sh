@@ -15,7 +15,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --test_all_settings \
         --load_dir "/rl_filter_2025-07-25_15-02-16/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -27,7 +27,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --test_all_settings \
         --load_dir "/rl_filter_2025-07-29_22-22-18/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -38,7 +38,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --use_fatigue_mask \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
         --load_dir "/rl_filter_2025-07-20_12-17-12/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -50,7 +50,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --use_fatigue_mask \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
         --load_dir "/rl_filter_2025-07-27_14-41-12/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -62,7 +62,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --test \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --test --test_all_settings \
         --load_dir "/dqn_2025-07-27_11-39-32/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -73,7 +73,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --test --use_fatigue_mask\
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
         --load_dir "/dqn_2025-07-29_13-21-06/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done    
 
@@ -84,7 +84,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --test \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --test --test_all_settings \
         --load_dir "/ppo_dis_2025-07-31_13-37-58/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -95,7 +95,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --test --use_fatigue_mask\
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
         --load_dir "/ppo_dis_2025-07-30_13-18-07/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -106,7 +106,7 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --test \
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --test --test_all_settings \
         --load_dir "/ppolag_filter_dis_2025-07-23_22-24-04/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
 
@@ -117,6 +117,6 @@ list=(
 
 for num in $list
 do
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --test --use_fatigue_mask\
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
         --load_dir "/ppolag_filter_dis_2025-07-21_23-34-32/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 1
 done
