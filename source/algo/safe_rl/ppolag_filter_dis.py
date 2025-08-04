@@ -933,7 +933,7 @@ class SafeRlFilterAgentPPO():
                     wandb.log({f'Eval_avg_progress/{num_worker}_{num_robot}': self.eval_progress_avgs[num_worker-1][num_robot-1].get_mean()})
                     wandb.log({f'Eval_avg_env_len/{num_worker}_{num_robot}': self.eval_env_len_avgs[num_worker-1][num_robot-1].get_mean()})
                     if test:
-                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'].cpu())
+                        self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'], infos['human_move'], infos['agv_move'])
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
                 action_info_list = []
                 next_obs = self.env_reset(num_worker=reset_n_worker, num_robot=reset_n_robot, evaluate=True) 
