@@ -9,7 +9,8 @@ from .pf_filter import ParticleFilter, RecParticleFilter
 # from .pf_filter_improved import ParticleFilter, RecParticleFilter
 from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_task_rev_dic, BoxCapacity
 import random
-
+import os
+from matplotlib import gridspec
 
 ######### for human fatigue #####
 
@@ -92,7 +93,7 @@ class Fatigue(object):
         return
 
     def reset(self):
-        self.visualize_another_filters = False
+        self.visualize_another_filters = True
         if self.time_step is not None and self.time_step > 100 and self.visualize_another_filters:
             self.plot_comprehensive_fatigue_analysis()  
             # if self.cfg.use_partial_filter:
@@ -659,7 +660,7 @@ class Fatigue(object):
         # 计算子图布局：上半部分为task-level预测对比，下半部分为filter lambda估计
         if total_filters == 0:
             # 只有疲劳预测图
-            fig, axes = plt.subplots(1, 1, figsize=(20, 8), dpi=100)
+            fig, axes = plt.subplots(1, 1, figsize=(22, 8), dpi=100)
             ax1 = axes
         else:
             # 计算filter子图的布局
@@ -667,10 +668,13 @@ class Fatigue(object):
             rows = (total_filters + cols - 1) // cols  # 计算需要的行数
             
             # 创建子图：上半部分1个图，下半部分filter子图
-            fig = plt.figure(figsize=(20, 8 + 5*rows), dpi=100)
+            fig = plt.figure(figsize=(20, 12 + 2.5*rows), dpi=100)
+            
+            # 使用GridSpec来单独控制行高
+            gs = gridspec.GridSpec(rows + 1, cols, height_ratios=[1.2] + [1]*rows)
             
             # 上半部分：task-level疲劳预测对比图
-            ax1 = plt.subplot2grid((rows + 1, cols), (0, 0), colspan=cols)
+            ax1 = plt.subplot(gs[0, :])
         
         # ====== task-level预测曲线与真值对比 ======
         # 1. 构造PF预测曲线（分段画线）
@@ -702,7 +706,7 @@ class Fatigue(object):
             # 画KF预测
             for idx, (seg_x, seg_y) in enumerate(kf_pred_segments):
                 ax1.plot(seg_x, seg_y, color='green', linewidth=1.2, 
-                         marker='s', markevery=[0, -1], markersize=6, 
+                         marker='s', markevery=[0, -1], markersize=4, 
                          label='KF Task-level Predicted Fatigue' if idx==0 else "")
 
         # 3. 构造EKF预测曲线
@@ -718,7 +722,7 @@ class Fatigue(object):
             # 画EKF预测
             for idx, (seg_x, seg_y) in enumerate(ekf_pred_segments):
                 ax1.plot(seg_x, seg_y, color='orange', linewidth=1.2, 
-                         marker='^', markevery=[0, -1], markersize=6, 
+                         marker='^', markevery=[0, -1], markersize=2, 
                          label='EKF Task-level Predicted Fatigue' if idx==0 else "")
 
         # 4. 构造真值曲线
@@ -741,7 +745,7 @@ class Fatigue(object):
             for i, subtask in enumerate(fatigue_filters):
                 row = i // cols + 1  # +1 因为第一行是疲劳预测图
                 col = i % cols
-                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                ax = plt.subplot(gs[row, col])
                 
                 # PF过滤器
                 pf_filter = self.pfs_phy_fat[subtask]
@@ -781,7 +785,7 @@ class Fatigue(object):
                 idx = len(fatigue_filters) + i
                 row = idx // cols + 1  # +1 因为第一行是疲劳预测图
                 col = idx % cols
-                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                ax = plt.subplot(gs[row, col])
                 
                 # PF恢复过滤器
                 pf_filter = self.pfs_phy_rec[state_type]
@@ -820,12 +824,15 @@ class Fatigue(object):
             for i in range(total_filters, rows * cols):
                 row = i // cols + 1
                 col = i % cols
-                ax = plt.subplot2grid((rows + 1, cols), (row, col))
+                ax = plt.subplot(gs[row, col])
                 ax.set_visible(False)
         
         plt.suptitle(f'Comprehensive Fatigue Analysis - Human type: {self.human_type} (PF/KF/EKF)', fontsize=16)
         plt.tight_layout()
-        plt.show()
+        # plt.show()
+        # path = os.path.dirname(__file__)
+        path = '/home/xue/work/Isaac-Production/figs/filter'
+        fig.savefig('{}.pdf'.format(path), bbox_inches='tight')
         a=1
     
     def _plot_fatigue_prediction_only(self, ax):
