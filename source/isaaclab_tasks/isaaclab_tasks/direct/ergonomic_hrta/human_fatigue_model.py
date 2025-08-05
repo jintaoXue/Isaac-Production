@@ -641,6 +641,11 @@ class Fatigue(object):
         plt.show()
     
     def plot_comprehensive_fatigue_analysis(self):
+        fatigue_name_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": "Put flange into cage", "put_bending_tube_into_box": "Put bend duct into cage", 
+                        'put_hoop_on_table': "Put flange on side storage", 'Put bend duct on side storage': "Put bend duct on side storage", 'hoop_loading_inner': "Loading flange on welding station 1",
+                         "hoop_loading_outer": "Loading flange on welding station 2", 'bending_tube_loading_inner': "Loading bend duct on welding station 1", 
+                        'bending_tube_loading_outer': "Loading bend duct on welding station 2", "cutting_cube": "Activate station controlling code", "placing_product": "Place made product on storage"}
+        recover_name_dic = {"free": "Free", "waiting_box": "Waiting", "approaching": "Walking"}
         import matplotlib.pyplot as plt
         plt.style.use('seaborn-v0_8-white')
         plt.rcParams['pdf.fonttype'] = 42
@@ -735,7 +740,7 @@ class Fatigue(object):
         ax1.vlines(task_switch_times, ymin=min(true_fatigue+[y for _, y in pred_segments for y in y]), ymax=max(true_fatigue+[y for _, y in pred_segments for y in y]), linestyles='dashed', colors='silver', alpha=0.5, label='Task Switch')
         ax1.set_xlabel('Time Step', fontsize=15)
         ax1.set_ylabel('Fatigue Value', fontsize=15)
-        ax1.set_title('Task-level Fatigue Prediction vs True Value (PF/KF/EKF)', fontsize=18)
+        ax1.set_title('Task-level Fatigue Prediction vs True Value (PF/KF/EKF)', fontsize=18) 
         ax1.legend()
         ax1.grid(True, alpha=0.3)
         
@@ -774,7 +779,7 @@ class Fatigue(object):
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
                           label='True λ', linewidth=2)
-                ax.set_title(f'Fatigue Filter: {subtask}', fontsize=12)
+                ax.set_title(f'Fatigue Filter: {fatigue_name_dic[subtask]}', fontsize=12)
                 ax.set_xlabel('Time Step', fontsize=10)
                 ax.set_ylabel('λ Value', fontsize=10)
                 ax.legend(fontsize=8)
@@ -814,7 +819,7 @@ class Fatigue(object):
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
                           label='True λ', linewidth=2)
-                ax.set_title(f'Recovery Filter: {state_type}', fontsize=12)
+                ax.set_title(f'Recovery Filter: {recover_name_dic[state_type]}', fontsize=12)
                 ax.set_xlabel('Time Step', fontsize=10)
                 ax.set_ylabel('λ/μ Value', fontsize=10)
                 ax.legend(fontsize=8)
@@ -827,7 +832,7 @@ class Fatigue(object):
                 ax = plt.subplot(gs[row, col])
                 ax.set_visible(False)
         
-        plt.suptitle(f'Comprehensive Fatigue Analysis - Human type: {self.human_type} (PF/KF/EKF)', fontsize=16)
+        # plt.suptitle(f'Comprehensive Fatigue Analysis - Human type: {self.human_type} (PF/KF/EKF)', fontsize=16)
         plt.tight_layout()
         # plt.show()
         # path = os.path.dirname(__file__)
