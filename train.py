@@ -241,7 +241,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             if agent_cfg["params"]["config"]['env_rule_based_exploration']:
                 run_name = 'test_rule_'+ time_str
             else:
-                load_name = 'test'+ '_' + agent_cfg["params"]["config"]['load_name'].split('_')[-1][:-4] + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3]
+                load_name = agent_cfg["params"]["config"]['load_name'].split('_')[-1][:-4] + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3]
                 run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}"
         else:
             run_name = f"{agent_cfg['params']['algo']['name']}_{time_str}"
