@@ -277,9 +277,6 @@ filter图的mu 写成了lambda
 2.展示结果的类型分为总的曲线变化对比，包括真值和预测值（分为one-step, multi-step）
 
 
-
-
-
 ### mount bug fix
 
 显示分区：  df -Th 
