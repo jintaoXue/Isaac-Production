@@ -642,7 +642,7 @@ class Fatigue(object):
     
     def plot_comprehensive_fatigue_analysis(self):
         fatigue_name_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": "Put flange into cage", "put_bending_tube_into_box": "Put bend duct into cage", 
-                        'put_hoop_on_table': "Put flange on side storage", 'Put bend duct on side storage': "Put bend duct on side storage", 'hoop_loading_inner': "Loading flange on welding station 1",
+                        'put_hoop_on_table': "Put flange on side storage", 'put_bending_tube_on_table': "Put bend duct on side storage", 'hoop_loading_inner': "Loading flange on welding station 1",
                          "hoop_loading_outer": "Loading flange on welding station 2", 'bending_tube_loading_inner': "Loading bend duct on welding station 1", 
                         'bending_tube_loading_outer': "Loading bend duct on welding station 2", "cutting_cube": "Activate station controlling code", "placing_product": "Place made product on storage"}
         recover_name_dic = {"free": "Free", "waiting_box": "Waiting", "approaching": "Walking"}
