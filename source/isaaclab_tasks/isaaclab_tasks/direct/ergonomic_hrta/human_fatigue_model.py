@@ -88,12 +88,11 @@ class Fatigue(object):
         self.task_levle_f_history = None
         self.phy_history = None # value, state, time
         self.psy_history = None
-        # self.time_history = None 
-
+        # self.time_history = None
+        self.visualize_another_filters = False
         return
 
     def reset(self):
-        self.visualize_another_filters = False
         if self.time_step is not None and self.time_step > 100 and self.visualize_another_filters:
             self.plot_comprehensive_fatigue_analysis()  
             # if self.cfg.use_partial_filter:
@@ -510,142 +509,12 @@ class Fatigue(object):
         # path = os.path.dirname(__file__)
         # fig.savefig('{}.pdf'.format(path + '/' + 'polyline'), bbox_inches='tight')
     
-    def plot_fatigue_prediction_curve(self):
-        import matplotlib.pyplot as plt
-        plt.style.use('seaborn-v0_8-white')
-        plt.rcParams['pdf.fonttype'] = 42
-        params = {'legend.fontsize': 15,
-            'legend.handlelength': 2}
-        plt.rcParams.update(params)
-        
-        fig = plt.figure(figsize=(20,10), dpi=100)
-        ax = plt.subplot(111)
-        ax.set_title('Fatigue Prediction vs True Value, Human type:' + self.human_type, fontsize=20)
-        ax.set_xlabel('time step', fontsize=15)
-        ax.set_ylabel('fatigue value', fontsize=15)
-        ax.tick_params(axis='both', which='both', labelsize=15)
-        
-        # 提取time_step_level_f_history中的数据
-        if self.time_step_level_f_history is not None and len(self.time_step_level_f_history) > 0:
-            # 提取预测值、真值和时间步
-            prediction_values = []
-            true_values = []
-            time_steps = []
-            
-            for record in self.time_step_level_f_history:
-                # record格式: (state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step)
-                prediction_values.append(record[4])  # _phy_fatigue_prediction
-                true_values.append(record[5])       # self.phy_fatigue
-                time_steps.append(record[6])        # self.time_step
-            
-            # 绘制预测值和真值
-            ax.plot(time_steps, prediction_values, '-', color='blue', label='Predicted Fatigue', 
-                   linewidth=2, marker='o', markersize=4)
-            ax.plot(time_steps, true_values, '-', color='red', label='True Fatigue', 
-                   linewidth=2, marker='s', markersize=4)
-            
-            # 添加任务切换的垂直线
-            if self.task_levle_f_history is not None and len(self.task_levle_f_history) > 0:
-                task_switch_times = np.array(self.task_levle_f_history)[:, -1]
-                ax.vlines(task_switch_times.astype(np.int32), 0, 1, linestyles='dashed', 
-                         colors='silver', alpha=0.5, label='Task Switch')
-        
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-    
-    def plot_filter_lambda_estimates(self):
-        import matplotlib.pyplot as plt
-        plt.style.use('seaborn-v0_8-white')
-        plt.rcParams['pdf.fonttype'] = 42
-        params = {'legend.fontsize': 12,
-            'legend.handlelength': 2}
-        plt.rcParams.update(params)
-        
-        # 获取所有filter的subtask
-        fatigue_filters = list(self.pfs_phy_fat.keys())
-        recovery_filters = list(self.pfs_phy_rec.keys())
-        
-        # 计算子图布局
-        total_filters = len(fatigue_filters) + len(recovery_filters)
-        if total_filters == 0:
-            print("No filters available to plot")
-            return
-            
-        cols = 3  # 每行3个子图
-        rows = (total_filters + cols - 1) // cols  # 计算需要的行数
-        
-        fig, axes = plt.subplots(rows, cols, figsize=(20, 5*rows), dpi=100)
-        if total_filters == 1:
-            axes = [axes]
-        elif rows == 1:
-            axes = axes.reshape(1, -1)
-        
-        # 绘制疲劳filter的lambda估计
-        for i, subtask in enumerate(fatigue_filters):
-            row = i // cols
-            col = i % cols
-            ax = axes[row, col] if rows > 1 else axes[col]
-            
-            filter_obj = self.pfs_phy_fat[subtask]
-            true_lambda = filter_obj.true_lambda
-            
-            # 绘制lambda估计值
-            if len(filter_obj.lambda_estimates) > 1:
-                times = range(len(filter_obj.lambda_estimates))
-                ax.plot(times, filter_obj.lambda_estimates, '-o', color='green', 
-                       label='Estimated λ', linewidth=2, markersize=4)
-                ax.axhline(y=true_lambda, color='red', linestyle='--', 
-                          label='True λ', linewidth=2)
-                
-                ax.set_title(f'Fatigue Filter: {subtask}', fontsize=14)
-                ax.set_xlabel('Time Step', fontsize=12)
-                ax.set_ylabel('λ Value', fontsize=12)
-                ax.legend()
-                ax.grid(True, alpha=0.3)
-        
-        # 绘制恢复filter的lambda估计
-        for i, state_type in enumerate(recovery_filters):
-            idx = len(fatigue_filters) + i
-            row = idx // cols
-            col = idx % cols
-            ax = axes[row, col] if rows > 1 else axes[col]
-            
-            filter_obj = self.pfs_phy_rec[state_type]
-            true_lambda = filter_obj.true_lambda
-            
-            # 绘制lambda估计值
-            if len(filter_obj.lambda_estimates) > 1:
-                times = range(len(filter_obj.lambda_estimates))
-                ax.plot(times, filter_obj.lambda_estimates, '-s', color='blue', 
-                       label='Estimated λ', linewidth=2, markersize=4)
-                ax.axhline(y=true_lambda, color='red', linestyle='--', 
-                          label='True λ', linewidth=2)
-                
-                ax.set_title(f'Recovery Filter: {state_type}', fontsize=14)
-                ax.set_xlabel('Time Step', fontsize=12)
-                ax.set_ylabel('λ Value', fontsize=12)
-                ax.legend()
-                ax.grid(True, alpha=0.3)
-        
-        # 隐藏多余的子图
-        for i in range(total_filters, rows * cols):
-            row = i // cols
-            col = i % cols
-            ax = axes[row, col] if rows > 1 else axes[col]
-            ax.set_visible(False)
-        
-        plt.suptitle(f'Filter Lambda Estimates - Human type: {self.human_type}', fontsize=16)
-        plt.tight_layout()
-        plt.show()
-    
     def plot_comprehensive_fatigue_analysis(self):
-        fatigue_name_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": "Put flange into cage", "put_bending_tube_into_box": "Put bend duct into cage", 
-                        'put_hoop_on_table': "Put flange on side storage", 'put_bending_tube_on_table': "Put bend duct on side storage", 'hoop_loading_inner': "Loading flange on welding station 1",
-                         "hoop_loading_outer": "Loading flange on welding station 2", 'bending_tube_loading_inner': "Loading bend duct on welding station 1", 
-                        'bending_tube_loading_outer': "Loading bend duct on welding station 2", "cutting_cube": "Activate station controlling code", "placing_product": "Place made product on storage"}
-        recover_name_dic = {"free": "Free", "waiting_box": "Waiting", "approaching": "Walking"}
+        fatigue_name_dic = {"free": None, "waiting_box": None, "approaching": None, "put_hoop_into_box": "put flange into cage", "put_bending_tube_into_box": "put bend duct into cage", 
+                        'put_hoop_on_table': "put flange on side storage", 'put_bending_tube_on_table': "put bend duct on side storage", 'hoop_loading_inner': "load flange on welding station 1",
+                         "hoop_loading_outer": "load flange on welding station 2", 'bending_tube_loading_inner': "load bend duct on welding station 1", 
+                        'bending_tube_loading_outer': "load bend duct on welding station 2", "cutting_cube": "activate station controlling code", "placing_product": "place made product on storage"}
+        recover_name_dic = {"free": "free", "waiting_box": "waiting", "approaching": "walking"}
         import matplotlib.pyplot as plt
         plt.style.use('seaborn-v0_8-white')
         plt.rcParams['pdf.fonttype'] = 42
@@ -695,8 +564,8 @@ class Fatigue(object):
         for idx, (seg_x, seg_y) in enumerate(pred_segments):
             # 只画首尾marker
             ax1.plot(seg_x, seg_y, color='blue', linewidth=1.2, 
-                     marker='o', markevery=[0, -1], markersize=6, 
-                     label='PF Task-level Predicted Fatigue' if idx==0 else "")
+                     marker='o', markevery=[0, -1], markersize=8, 
+                     label='PF task-level predicted fatigue' if idx==0 else "")
 
         # 2. 构造KF预测曲线
         if has_kf and hasattr(self, 'task_levle_f_history_kf'):
@@ -711,8 +580,8 @@ class Fatigue(object):
             # 画KF预测
             for idx, (seg_x, seg_y) in enumerate(kf_pred_segments):
                 ax1.plot(seg_x, seg_y, color='green', linewidth=1.2, 
-                         marker='s', markevery=[0, -1], markersize=4, 
-                         label='KF Task-level Predicted Fatigue' if idx==0 else "")
+                         marker='s', markevery=[0, -1], markersize=6, 
+                         label='KF task-level predicted fatigue' if idx==0 else "")
 
         # 3. 构造EKF预测曲线
         if has_ekf and hasattr(self, 'task_levle_f_history_ekf'):
@@ -727,23 +596,28 @@ class Fatigue(object):
             # 画EKF预测
             for idx, (seg_x, seg_y) in enumerate(ekf_pred_segments):
                 ax1.plot(seg_x, seg_y, color='orange', linewidth=1.2, 
-                         marker='^', markevery=[0, -1], markersize=2, 
-                         label='EKF Task-level Predicted Fatigue' if idx==0 else "")
+                         marker='^', markevery=[0, -1], markersize=4, 
+                         label='EKF task-level predicted fatigue' if idx==0 else "")
 
         # 4. 构造真值曲线
         true_time_steps = [t for _, t in self.phy_history]
         true_fatigue = [v for v, _ in self.phy_history]
         # 5. 绘制真值
-        ax1.plot(true_time_steps, true_fatigue, label='True Fatigue', color='red', alpha=0.7, linewidth=1.2)
+        ax1.plot(true_time_steps, true_fatigue, label='True fatigue', color='red', alpha=0.7, linewidth=1.2)
         # 6. task切换的垂直线
         task_switch_times = [record[4] for record in self.task_levle_f_history]
-        ax1.vlines(task_switch_times, ymin=min(true_fatigue+[y for _, y in pred_segments for y in y]), ymax=max(true_fatigue+[y for _, y in pred_segments for y in y]), linestyles='dashed', colors='silver', alpha=0.5, label='Task Switch')
-        ax1.set_xlabel('Time Step', fontsize=15)
-        ax1.set_ylabel('Fatigue Value', fontsize=15)
-        ax1.set_title('Task-level Fatigue Prediction vs True Value (PF/KF/EKF)', fontsize=18) 
-        ax1.legend()
+        ax1.vlines(task_switch_times, ymin=min(true_fatigue+[y for _, y in pred_segments for y in y]), ymax=max(true_fatigue+[y for _, y in pred_segments for y in y]), linestyles='dashed', colors='silver', alpha=0.5, label='Task switch')
+        ax1.set_xlabel('Time step', fontsize=17)
+        ax1.set_ylabel('Fatigue value', fontsize=17)
+        ax1.set_title('Task-level fatigue prediction (PF/KF/EKF) vs true value, human type: ' + self.human_type, fontsize=17) 
+        ax1.legend(fontsize=15)
         ax1.grid(True, alpha=0.3)
         
+        # 添加缩写说明
+        ax1.text(0.66, 0.27, 'PF: Particle Filter\nKF: Kalman Filter\nEKF: Extended Kalman Filter', 
+                transform=ax1.transAxes, fontsize=12, verticalalignment='bottom', horizontalalignment='left',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
         # ====== 下半部分：filter lambda估计图 ======
         if total_filters > 0:
             # 绘制疲劳filter的lambda估计
@@ -779,10 +653,10 @@ class Fatigue(object):
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
                           label='True λ', linewidth=2)
-                ax.set_title(f'Fatigue Filter: {fatigue_name_dic[subtask]}', fontsize=12)
-                ax.set_xlabel('Time Step', fontsize=10)
-                ax.set_ylabel('λ Value', fontsize=10)
-                ax.legend(fontsize=8)
+                ax.set_title(f'Fatigue filter for subtask: {fatigue_name_dic[subtask]}', fontsize=17)
+                ax.set_xlabel('Time step', fontsize=15)
+                ax.set_ylabel('λ value', fontsize=15)
+                ax.legend(fontsize=13)
                 ax.grid(True, alpha=0.3)
             
             # 绘制恢复filter的lambda估计
@@ -819,10 +693,10 @@ class Fatigue(object):
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
                           label='True λ', linewidth=2)
-                ax.set_title(f'Recovery Filter: {recover_name_dic[state_type]}', fontsize=12)
-                ax.set_xlabel('Time Step', fontsize=10)
-                ax.set_ylabel('λ/μ Value', fontsize=10)
-                ax.legend(fontsize=8)
+                ax.set_title(f'Recovery filter for subtask: {recover_name_dic[state_type]}', fontsize=17)
+                ax.set_xlabel('Time step', fontsize=15)
+                ax.set_ylabel('λ/μ value', fontsize=15)
+                ax.legend(fontsize=13)
                 ax.grid(True, alpha=0.3)
             
             # 隐藏多余的子图
@@ -839,82 +713,6 @@ class Fatigue(object):
         path = '/home/xue/work/Isaac-Production/figs/filter'
         fig.savefig('{}.pdf'.format(path), bbox_inches='tight')
         a=1
-    
-    def _plot_fatigue_prediction_only(self, ax):
-        """绘制疲劳预测对比图的辅助函数"""
-        ax.set_title('Fatigue Prediction vs True Value', fontsize=14)
-        ax.set_xlabel('time step', fontsize=12)
-        ax.set_ylabel('fatigue value', fontsize=12)
-        ax.tick_params(axis='both', which='both', labelsize=10)
-        
-        # 提取time_step_level_f_history中的数据
-        if self.time_step_level_f_history is not None and len(self.time_step_level_f_history) > 0:
-            # 提取预测值、真值和时间步
-            prediction_values = []
-            true_values = []
-            time_steps = []
-            
-            for record in self.time_step_level_f_history:
-                # record格式: (state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step)
-                prediction_values.append(record[4])  # _phy_fatigue_prediction
-                true_values.append(record[5])       # self.phy_fatigue
-                time_steps.append(record[6])        # self.time_step
-            
-            # 绘制预测值和真值
-            ax.plot(time_steps, prediction_values, '-', color='blue', label='Predicted Fatigue', 
-                   linewidth=2, marker='x', markersize=4)
-            ax.plot(time_steps, true_values, '-', color='red', label='True Fatigue', 
-                   linewidth=1, marker='s', markersize=4)
-            
-            # 添加任务切换的垂直线
-            if self.task_levle_f_history is not None and len(self.task_levle_f_history) > 0:
-                task_switch_times = np.array(self.task_levle_f_history)[:, -1]
-                ax.vlines(task_switch_times.astype(np.int32), 0, 1, linestyles='dashed', 
-                         colors='silver', alpha=0.5, label='Task Switch')
-        
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-    
-    def plot_task_level_fatigue_prediction(self):
-        """
-        绘制task-level的疲劳预测曲线与真实值对比
-        """
-        import matplotlib.pyplot as plt
-        plt.style.use('seaborn-v0_8-white')
-        plt.rcParams['pdf.fonttype'] = 42
-        params = {'legend.fontsize': 15, 'legend.handlelength': 2}
-        plt.rcParams.update(params)
-
-        # 1. 构造预测曲线
-        pred_fatigue = []
-        pred_time_steps = []
-        cur_time = None
-        for record in self.task_levle_f_history:
-            # record: (state_type, task, phy_fatigue, psy_fatigue, time_step, predict_list)
-            _, _, _, _, time_step, predict_list = record
-            if cur_time is None:
-                cur_time = time_step
-            for v in predict_list:
-                pred_fatigue.append(v)
-                pred_time_steps.append(cur_time)
-                cur_time += 1
-
-        # 2. 构造真值曲线
-        # 用 self.phy_history 里的 (phy_fatigue, time_step)
-        true_time_steps = [t for _, t in self.phy_history]
-        true_fatigue = [v for v, _ in self.phy_history]
-
-        # 3. 绘图
-        plt.figure(figsize=(20, 8))
-        plt.plot(pred_time_steps, pred_fatigue, label='Task-level Predicted Fatigue', color='blue', marker='o')
-        plt.plot(true_time_steps, true_fatigue, label='True Fatigue', color='red', marker='s', alpha=0.7)
-        plt.xlabel('Time Step', fontsize=15)
-        plt.ylabel('Fatigue Value', fontsize=15)
-        plt.title('Task-level Fatigue Prediction vs True Value', fontsize=18)
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.show()
 
 
 class Characters(object):
