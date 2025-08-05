@@ -66,7 +66,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         '''test settings'''
         self._test = self.cfg.train_cfg['params']['config']['test']
         if self._test:
-            np.random.seed(self.cfg.train_cfg['params']['seed'])
+            # np.random.seed(self.cfg.train_cfg['params']['seed'])
+            np.random.seed(1)
             self.set_up_test_setting(self.cfg.train_cfg['params']['config'])
         self.train_env_len_settings = self.cfg.train_env_len_setting
         cube_list, hoop_list, bending_tube_list, upper_tube_list, product_list = [],[],[],[],[]
