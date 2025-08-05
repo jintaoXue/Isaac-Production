@@ -83,17 +83,18 @@ class Fatigue(object):
         self.phy_fatigue = None
         self.psy_fatigue = None
         self.time_step = None
-        self.time_step_level_f_history = None
+        # self.time_step_level_f_history = None
         self.subtask_level_f_history = None
         self.task_levle_f_history = None
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None
-        self.visualize_another_filters = False
+        self.visualize = False
+        self.activate_other_filters = train_cfg['other_filters']
         return
 
     def reset(self):
-        if self.time_step is not None and self.time_step > 100 and self.visualize_another_filters:
+        if self.time_step is not None and self.time_step > 100 and self.visualize and self.activate_other_filters:
             self.plot_comprehensive_fatigue_analysis()  
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
@@ -147,21 +148,24 @@ class Fatigue(object):
         self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
         self.update_ftg_mask()
         self.ftg_task_mask = torch.ones(len(high_level_task_dic))
-        
-        self.phy_history = [(0, self.time_step)] # value, time_step
-        self.psy_history = [(0, self.time_step)]
-        self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 
-        self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step
-        _predict_list = self.one_task_fatigue_prediction('none', self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
-        self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)] #state, task, time_step 
 
-        if self.visualize_another_filters:
-            self.reset_for_visualization(random_percent, _predict_list)
+        if self.visualize:
+            self.phy_history = [(0, self.time_step)] # value, time_step
+            self.psy_history = [(0, self.time_step)]
+            # self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 
+            self.subtask_level_f_history = [('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step
+            _predict_list = self.one_task_fatigue_prediction('none', self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
+            self.task_levle_f_history = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)] #state, task, time_step 
+            _predict_list_true = self.one_task_fatigue_prediction('none', self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic)
+            self.task_levle_f_history_true = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list_true)] #state, task, time_step 
+
+        if self.activate_other_filters:
+            self.reset_for_other_filters()
         return
 
-    def reset_for_visualization(self, random_percent, _predict_list):
+    def reset_for_other_filters(self):
         """
-        用于可视化时，初始化各类滤波器（PF/KF/EKF）
+        用于可视化或者对比时，初始化各类滤波器（PF/KF/EKF）
         """
         # 初始化KF和EKF的字典
         self.kfs_phy_fat_ce_dic = {k:v for k,v in self.pfs_phy_fat_ce_dic.items()}
@@ -172,7 +176,7 @@ class Fatigue(object):
         self.kfs_phy_rec = {}
         self.ekfs_phy_fat = {}
         self.ekfs_phy_rec = {}
-
+        
         for (key, v_real) in self.phy_fatigue_ce_dic.items():
             if v_real is not None:
                 # 从PF字典获取对应的值用于x0初始化
@@ -198,9 +202,14 @@ class Fatigue(object):
                 self.ekfs_phy_rec[key] = EKfRecover(dt=0.1, num_steps=100, true_mu=v_real, init_mu=v_pf, R0=self.phy_fatigue, 
                                                      Q=np.diag([0.0005, 0.001]), R=np.array([[0.001]]), 
                                                      x0=np.array([self.phy_fatigue, v_pf]), P0=np.diag([1.0, 1.0]))
+        self.task_filter_phy_prediction_dic_kf = self.update_filter_predict_dic(filter_type = 'kf')
+        self.task_filter_phy_prediction_dic_ekf = self.update_filter_predict_dic(filter_type = 'ekf')
         
-        self.task_levle_f_history_kf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)]
-        self.task_levle_f_history_ekf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)]
+        if self.visualize:
+            _predict_list = self.one_task_fatigue_prediction('none', self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
+            self.task_levle_f_history_kf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)]
+            self.task_levle_f_history_ekf = [('free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step, _predict_list)]
+
         return
 
     def have_overwork(self):
@@ -236,37 +245,42 @@ class Fatigue(object):
             esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, pf_filters)
             # if np.isnan(esitmate_phy_fatigue_coe):
             #     a = 1
-            if self.visualize_another_filters:
+            if self.activate_other_filters:
                 # KF filter
                 kf_filters = {**self.kfs_phy_fat, **self.kfs_phy_rec}
                 esitmate_phy_fatigue_coe_kf, _phy_fatigue_prediction_kf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic, kf_filters)
                 # EKF filter
                 ekf_filters = {**self.ekfs_phy_fat, **self.ekfs_phy_rec}
                 esitmate_phy_fatigue_coe_ekf, _phy_fatigue_prediction_ekf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic, ekf_filters)
-            recover_coe_accuracy = self.get_filter_recover_coe_accuracy()
+        
         self.phy_fatigue = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME,  self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
         self.task_phy_prediction_dic = self.update_predict_dic()
         self.task_filter_phy_prediction_dic = self.update_filter_predict_dic()
+        if self.activate_other_filters:
+            self.task_filter_phy_prediction_dic_kf = self.update_filter_predict_dic(filter_type = 'kf')
+            self.task_filter_phy_prediction_dic_ekf = self.update_filter_predict_dic(filter_type = 'ekf')
         # _phy_fatigue_prediction = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, 
         #     self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
         # self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
-        self.phy_history.append((self.phy_fatigue, self.time_step))
-        self.psy_history.append((self.psy_fatigue, self.time_step))
-        self.time_step_level_f_history.append((state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step))
-        pre_state_type, pre_subtask,_, _, _, _= self.subtask_level_f_history[-1]
-        if pre_state_type != state_type or pre_subtask != subtask:
-            self.subtask_level_f_history.append((state_type, task, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
-        _, pre_task, _ , _, _, _= self.task_levle_f_history[-1]
-        if pre_task != task:
-            predict_list = self.one_task_fatigue_prediction(task, self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
-            self.task_levle_f_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list)) #state, subtask, time_step
-            if self.visualize_another_filters:
-                predict_list_kf = self.one_task_fatigue_prediction(task, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic)
-                self.task_levle_f_history_kf.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_kf)) #state, subtask, time_step
-                predict_list_ekf = self.one_task_fatigue_prediction(task, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic)
-                self.task_levle_f_history_ekf.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_ekf)) #state, subtask, time_step
-        
+        if self.visualize:
+            self.phy_history.append((self.phy_fatigue, self.time_step))
+            self.psy_history.append((self.psy_fatigue, self.time_step))
+            # self.time_step_level_f_history.append((state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step))
+            pre_state_type, pre_subtask,_, _, _, _= self.subtask_level_f_history[-1]
+            if pre_state_type != state_type or pre_subtask != subtask:
+                self.subtask_level_f_history.append((state_type, task, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
+            _, pre_task, _ , _, _, _= self.task_levle_f_history[-1]
+            if pre_task != task:
+                predict_list = self.one_task_fatigue_prediction(task, self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
+                self.task_levle_f_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list)) #state, subtask, time_step
+                if self.visualize:
+                    predict_list_true = self.one_task_fatigue_prediction(task, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic)
+                    self.task_levle_f_history_true.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_true)) #state, subtask, time_step
+                    predict_list_kf = self.one_task_fatigue_prediction(task, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic)
+                    self.task_levle_f_history_kf.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_kf)) #state, subtask, time_step
+                    predict_list_ekf = self.one_task_fatigue_prediction(task, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic)
+                    self.task_levle_f_history_ekf.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_ekf)) #state, subtask, time_step
         if self.cfg.use_partial_filter == True:
             self.update_ftg_mask(self.task_filter_phy_prediction_dic)
         else:
@@ -336,26 +350,6 @@ class Fatigue(object):
         # random = np.clip(random, -0.1, 0.1)
         F = np.clip(F + random, 0.0, 1.0) 
         return F
-     
-    def get_filter_recover_coe_accuracy(self):
-        true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
-        filter_prediction = np.array(list(self.pfs_phy_rec_ce_dic.values()))
-        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
-
-    def get_filter_fat_predict_accuracy(self):
-        
-        true = np.array(list(self.task_phy_prediction_dic.values()))
-        true = true.ravel()[np.flatnonzero(true)]
-        filter_prediction = np.array(list(self.task_filter_phy_prediction_dic.values()))
-        filter_prediction = filter_prediction.ravel()[np.flatnonzero(filter_prediction)]
-        accu = np.sqrt(np.square((true - filter_prediction)/true).mean())
-        return accu
-    
-    def get_filter_fatigue_coe_accuracy(self):
-        none_type_num = 3
-        true_coe = np.array(list(self.phy_fatigue_ce_dic.values())[none_type_num:])
-        filter_prediction = np.array(list(self.pfs_phy_fat_ce_dic.values())[none_type_num:])
-        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
     
     def update_ftg_mask(self, prediction : dict = None):
 
@@ -391,10 +385,16 @@ class Fatigue(object):
         phy_predict = self.update_predict_helper(self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
         return phy_predict
     
-    def update_filter_predict_dic(self):
+    def update_filter_predict_dic(self, filter_type = 'pf'):
 
-        filter_phy_predict = self.update_predict_helper(self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
-
+        if filter_type == 'pf':
+            filter_phy_predict = self.update_predict_helper(self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
+        elif filter_type == 'kf':
+            filter_phy_predict = self.update_predict_helper(self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic, self.phy_free_state_dic)
+        elif filter_type == 'ekf':
+            filter_phy_predict = self.update_predict_helper(self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic, self.phy_free_state_dic)
+        else:
+            raise ValueError(f"Invalid filter type: {filter_type}")
         return filter_phy_predict
 
     def update_predict_helper(self, phy_ce_dic, phy_recover_ce_dic, phy_free_state_dic):
@@ -551,6 +551,21 @@ class Fatigue(object):
             ax1 = plt.subplot(gs[0, :])
         
         # ====== task-level预测曲线与真值对比 ======
+        #构造无系数误差的预测曲线
+        if hasattr(self, 'task_levle_f_history_true'):
+            true_pred_segments = []
+            for record in self.task_levle_f_history_true:
+                _, _, _, _, cur_time, predict_list = record
+                if len(predict_list) < 2:
+                    continue
+                seg_x = [cur_time + i for i in range(len(predict_list))]
+                seg_y = predict_list
+                true_pred_segments.append((seg_x, seg_y))
+            # 画无系数误差的预测曲线
+            for idx, (seg_x, seg_y) in enumerate(true_pred_segments):
+                ax1.plot(seg_x, seg_y, color='red', linewidth=1.2, 
+                         marker='x', markevery=[0, -1], markersize=6, 
+                         label='True task-level predicted fatigue' if idx==0 else "")
         # 1. 构造PF预测曲线（分段画线）
         pred_segments = []
         for record in self.task_levle_f_history:
@@ -713,6 +728,47 @@ class Fatigue(object):
         path = '/home/xue/work/Isaac-Production/figs/filter'
         fig.savefig('{}.pdf'.format(path), bbox_inches='tight')
         a=1
+    
+    def get_filter_recover_coe_accuracy(self, filter_type = 'pf'):
+        true_coe = np.array(list(self.phy_recovery_ce_dic.values()))
+        if filter_type == 'pf':
+            filter_prediction = np.array(list(self.pfs_phy_rec_ce_dic.values()))
+        elif filter_type == 'kf':
+            filter_prediction = np.array(list(self.kfs_phy_rec_ce_dic.values()))
+        elif filter_type == 'ekf':
+            filter_prediction = np.array(list(self.ekfs_phy_rec_ce_dic.values()))
+        else:
+            raise ValueError(f"Invalid filter type: {filter_type}")
+        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
+
+    def get_filter_fat_predict_accuracy(self, filter_type = 'pf'):
+        
+        true = np.array(list(self.task_phy_prediction_dic.values()))
+        true = true.ravel()[np.flatnonzero(true)]
+        if filter_type == 'pf':
+            filter_prediction = np.array(list(self.task_filter_phy_prediction_dic.values()))
+        elif filter_type == 'kf':
+            filter_prediction = np.array(list(self.task_filter_phy_prediction_dic_kf.values()))
+        elif filter_type == 'ekf':
+            filter_prediction = np.array(list(self.task_filter_phy_prediction_dic_ekf.values()))
+        else:
+            raise ValueError(f"Invalid filter type: {filter_type}")
+        filter_prediction = filter_prediction.ravel()[np.flatnonzero(filter_prediction)]
+        accu = np.sqrt(np.square((true - filter_prediction)/true).mean())
+        return accu
+    
+    def get_filter_fatigue_coe_accuracy(self, filter_type = 'pf'):
+        none_type_num = 3
+        true_coe = np.array(list(self.phy_fatigue_ce_dic.values())[none_type_num:])
+        if filter_type == 'pf':
+            filter_prediction = np.array(list(self.pfs_phy_fat_ce_dic.values())[none_type_num:])
+        elif filter_type == 'kf':
+            filter_prediction = np.array(list(self.kfs_phy_fat_ce_dic.values())[none_type_num:])
+        elif filter_type == 'ekf':
+            filter_prediction = np.array(list(self.ekfs_phy_fat_ce_dic.values())[none_type_num:])
+        else:
+            raise ValueError(f"Invalid filter type: {filter_type}")
+        return np.sqrt(np.square((true_coe - filter_prediction)/true_coe).mean())
 
 
 class Characters(object):

@@ -114,11 +114,24 @@ class TaskManager(object):
                 # self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
                 # self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32)
                 self.fatigue_data[task]['filter_phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_filter_phy_prediction_dic[task]], dtype=torch.float32)
-                self.fatigue_data[task]['filter_phy_fat_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fat_predict_accuracy(), dtype=torch.float32)
-                self.fatigue_data[task]['filter_phy_rec_coe_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_recover_coe_accuracy(), dtype=torch.float32)
-                self.fatigue_data[task]['filter_phy_fat_coe_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fatigue_coe_accuracy(), dtype=torch.float32)
+                # self.fatigue_data[task]['filter_phy_fat_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fat_predict_accuracy(filter_type = 'pf'), dtype=torch.float32)
+                self.fatigue_data[task]['filter_phy_rec_coe_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_recover_coe_accuracy(filter_type = 'pf'), dtype=torch.float32)
+                self.fatigue_data[task]['filter_phy_fat_coe_accuracy'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fatigue_coe_accuracy(filter_type = 'pf'), dtype=torch.float32)
                 self.fatigue_data[task]['phy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_phy_prediction_dic[task]], dtype=torch.float32) 
                 self.fatigue_data[task]['psy_delta_predict'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_psy_prediction_dic[task]], dtype=torch.float32)
+
+                self.fatigue_data['activate_other_filters'] = False
+                if self.characters.fatigue_list[charac_idx].activate_other_filters:
+                    self.fatigue_data['activate_other_filters'] = True
+                    self.fatigue_data[task]['filter_phy_delta_predict_kf'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_filter_phy_prediction_dic_kf[task]], dtype=torch.float32)
+                    # self.fatigue_data[task]['filter_phy_fat_accuracy_kf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fat_predict_accuracy(filter_type = 'kf'), dtype=torch.float32)
+                    self.fatigue_data[task]['filter_phy_rec_coe_accuracy_kf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_recover_coe_accuracy(filter_type = 'kf'), dtype=torch.float32)
+                    self.fatigue_data[task]['filter_phy_fat_coe_accuracy_kf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fatigue_coe_accuracy(filter_type = 'kf'), dtype=torch.float32)
+                    self.fatigue_data[task]['filter_phy_delta_predict_ekf'] = torch.tensor([self.characters.fatigue_list[charac_idx].task_filter_phy_prediction_dic_ekf[task]], dtype=torch.float32)
+                    # self.fatigue_data[task]['filter_phy_fat_accuracy_ekf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fat_predict_accuracy(filter_type = 'ekf'), dtype=torch.float32)
+                    self.fatigue_data[task]['filter_phy_rec_coe_accuracy_ekf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_recover_coe_accuracy(filter_type = 'ekf'), dtype=torch.float32)
+                    self.fatigue_data[task]['filter_phy_fat_coe_accuracy_ekf'] = torch.tensor(self.characters.fatigue_list[charac_idx].get_filter_fatigue_coe_accuracy(filter_type = 'ekf'), dtype=torch.float32)
+
             else:
                 return False
             # self.fatigue_data[task]['prediction_mask'] = torch.zeros((len(self.task_dic), 2), dtype=torch.float32)

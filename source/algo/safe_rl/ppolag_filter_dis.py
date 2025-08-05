@@ -283,13 +283,23 @@ class SafeRlFilterAgentPPO():
         wandb.define_metric("Evaluate/EpProgress", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpRetAction", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/Savepth", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpMoveHuman", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpMoveRobot", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
+
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpFilterPredictAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
+        if self.config['other_filters']:
+            wandb.define_metric("Evaluate/EpFilterPredictLoss_kf", step_metric="Evaluate/step_episode")
+            wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu_kf", step_metric="Evaluate/step_episode")
+            wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu_kf", step_metric="Evaluate/step_episode")
+            wandb.define_metric("Evaluate/EpFilterPredictLoss_ekf", step_metric="Evaluate/step_episode")
+            wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu_ekf", step_metric="Evaluate/step_episode")
+            wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu_ekf", step_metric="Evaluate/step_episode")
+        
 
         for i in range(0, self.config['max_num_worker']):
             for j in range(0, self.config['max_num_robot']):
@@ -657,13 +667,12 @@ class SafeRlFilterAgentPPO():
                             "Metrics/EpRetAction": self.current_rewards_action,
                         })
                     if len(fatigue_data_list)>0:
-                        EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                        EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter = self.get_fatigue_related_predtion_loss(fatigue_data_list)
                         if self.use_wandb:
                             wandb.log({
-                            "Metrics/EpFilterPredictLoss": EpFilterPredictLoss,
-                            "Metrics/EpFilterPredictAccu": EpFilterPredictAccu,
-                            "Metrics/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
-                            "Metrics/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
+                            "Metrics/EpFilterPredictLoss": dict_loss_pf_filter['EpFilterPredictLoss'],
+                            "Metrics/EpFilterRecoverCoeAccu": dict_loss_pf_filter['FilterRecoverCoeAccu'],
+                            "Metrics/EpFilterFatigueCoeAccu": dict_loss_pf_filter['FilterFatigueCoeAccu'],
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
@@ -793,15 +802,16 @@ class SafeRlFilterAgentPPO():
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
                 # assert len(fatigue_data_list)>0, "no fatigue data"
-                if len(fatigue_data_list)>0:
-                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
-                else: 
-                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = 9.9, 9.9, 9.9, 9.9, 9.9
                 print_info = infos['print_info']
-                # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
-                print(print_info + " | Warm_up:{},".format(random_exploration) + " Comp_loss:{:.3}".format(EpLossCompare) + \
-                      " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
+                if len(fatigue_data_list)>0:
+                    EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                    EpFilterPredictLoss = dict_loss_pf_filter['EpFilterPredictLoss']
+                    FilterRecoverCoeLoss = dict_loss_pf_filter['FilterRecoverCoeAccu']
+                    FilterFatigueCoeLoss = dict_loss_pf_filter['FilterFatigueCoeAccu']
+                    print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
                         " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
+                else: 
+                    print(print_info)
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -897,22 +907,34 @@ class SafeRlFilterAgentPPO():
             if dones_flag[0]:
                 print_info = infos['print_info']          
                 if len(fatigue_data_list)>0:
-                    EpLossCompare, EpFilterPredictLoss, EpFilterPredictAccu, FilterRecoverCoeLoss, FilterFatigueCoeLoss = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                    EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+                    EpFilterPredictLoss = dict_loss_pf_filter['EpFilterPredictLoss']
+                    FilterRecoverCoeLoss = dict_loss_pf_filter['FilterRecoverCoeAccu']
+                    FilterFatigueCoeLoss = dict_loss_pf_filter['FilterFatigueCoeAccu']
                     if self.use_wandb:                    
                         wandb.log({
                             "Evaluate/EpFilterPredictLoss": EpFilterPredictLoss,
-                            "Evaluate/EpFilterPredictAccu": EpFilterPredictAccu,
                             "Evaluate/EpFilterRecoverCoeAccu": FilterRecoverCoeLoss,
                             "Evaluate/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Evaluate/EpPredictLossCompare": EpLossCompare, 
                         })
+                        if self.config['other_filters']:
+                            wandb.log({
+                                "Evaluate/EpFilterPredictLoss_kf": dict_loss_kf_filter['EpFilterPredictLoss_kf'],
+                                "Evaluate/EpFilterRecoverCoeAccu_kf": dict_loss_kf_filter['FilterRecoverCoeAccu_kf'],
+                                "Evaluate/EpFilterFatigueCoeAccu_kf": dict_loss_kf_filter['FilterFatigueCoeAccu_kf'],
+                            })
+                            wandb.log({
+                                "Evaluate/EpFilterPredictLoss_ekf": dict_loss_ekf_filter['EpFilterPredictLoss_ekf'],
+                                "Evaluate/EpFilterRecoverCoeAccu_ekf": dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf'],
+                                "Evaluate/EpFilterFatigueCoeAccu_ekf": dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf'],
+                            })
                     print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
-                    " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + " Predict_accu:{:.3}".format(EpFilterPredictAccu) + \
+                    " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
                         " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
                 else:
                     print(print_info)
-                    # print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -1014,7 +1036,30 @@ class SafeRlFilterAgentPPO():
             delta_fatigue = fatigue_datas['next_phy_fatigue'] - fatigue_datas['phy_fatigue']
             EpLossCompare = self.loss_criterion(delta_fatigue, fatigue_datas['phy_delta_predict']).mean()
             EpFilterPredictLoss = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict']).mean()
-            EpFilterPredictAccu = fatigue_datas['filter_phy_fat_accuracy'].mean()
+            # EpFilterPredictAccu = fatigue_datas['filter_phy_fat_accuracy'].mean()
             FilterRecoverCoeAccu = fatigue_datas['filter_phy_rec_coe_accuracy'].mean()
             FilterFatigueCoeAccu = fatigue_datas['filter_phy_fat_coe_accuracy'].mean()
-        return torch.sqrt(EpLossCompare).item(), torch.sqrt(EpFilterPredictLoss).item(), EpFilterPredictAccu, FilterRecoverCoeAccu, FilterFatigueCoeAccu
+            if self.config['other_filters']:
+                EpFilterPredictLoss_kf = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict_kf']).mean()
+                # EpFilterPredictAccu_kf = fatigue_datas['filter_phy_fat_accuracy_kf'].mean()
+                FilterRecoverCoeAccu_kf = fatigue_datas['filter_phy_rec_coe_accuracy_kf'].mean()
+                FilterFatigueCoeAccu_kf = fatigue_datas['filter_phy_fat_coe_accuracy_kf'].mean()
+                EpFilterPredictLoss_ekf = self.loss_criterion(delta_fatigue, fatigue_datas['filter_phy_delta_predict_ekf']).mean()
+                # EpFilterPredictAccu_ekf = fatigue_datas['filter_phy_fat_accuracy_ekf'].mean()
+                FilterRecoverCoeAccu_ekf = fatigue_datas['filter_phy_rec_coe_accuracy_ekf'].mean()
+                FilterFatigueCoeAccu_ekf = fatigue_datas['filter_phy_fat_coe_accuracy_ekf'].mean() 
+            
+            else:
+                EpFilterPredictLoss_kf = 0
+                # EpFilterPredictAccu_kf = 0
+                FilterRecoverCoeAccu_kf = 0
+                FilterFatigueCoeAccu_kf = 0
+                EpFilterPredictLoss_ekf = 0
+                # EpFilterPredictAccu_ekf = 0
+                FilterRecoverCoeAccu_ekf = 0
+                FilterFatigueCoeAccu_ekf = 0
+    
+        dict_loss_pf_filter = {'EpFilterPredictLoss': EpFilterPredictLoss, 'FilterRecoverCoeAccu': FilterRecoverCoeAccu, 'FilterFatigueCoeAccu': FilterFatigueCoeAccu}
+        dict_loss_kf_filter = {'EpFilterPredictLoss_kf': EpFilterPredictLoss_kf, 'FilterRecoverCoeAccu_kf': FilterRecoverCoeAccu_kf, 'FilterFatigueCoeAccu_kf': FilterFatigueCoeAccu_kf}
+        dict_loss_ekf_filter = {'EpFilterPredictLoss_ekf': EpFilterPredictLoss_ekf, 'FilterRecoverCoeAccu_ekf': FilterRecoverCoeAccu_ekf, 'FilterFatigueCoeAccu_ekf': FilterFatigueCoeAccu_ekf}
+        return EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter
