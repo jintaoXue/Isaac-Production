@@ -85,7 +85,7 @@ class SafeRlFilterAgentPPO():
         #####
         self.actor_optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
         self.critic_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
-        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
+        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_cost, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
         self.gamma = 0.98
@@ -93,7 +93,7 @@ class SafeRlFilterAgentPPO():
         self.eps = 0.2
 
         #####lagrange
-        self._lagrange: Lagrange = Lagrange(cost_limit=25.0, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
+        self._lagrange: Lagrange = Lagrange(cost_limit=5, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -197,6 +197,8 @@ class SafeRlFilterAgentPPO():
         self.step_num_sfl = 0
         self.epoch_num = 0
         self.episode_num = 0
+        self.ep_cost = 0
+        self.game_ep_cost = torch_ext.AverageMeter(1, 20).to(self._device)
         self.update_time = 0
         self.last_mean_rewards = -1000000000
         self.play_time = 0
@@ -437,6 +439,10 @@ class SafeRlFilterAgentPPO():
             idxs, states, actions, actions_prob, returns, costs, next_states, nonterminals, weights = self.replay_buffer.sample(self.batch_size)
             states = data.stack_from_array(states.squeeze(), device=self._device)
             next_states = data.stack_from_array(next_states.squeeze(), device=self._device)
+            
+            # note that logger already uses MPI statistics across all processes..
+            if self.game_ep_cost.current_size > 0:
+                self._lagrange.update_lagrange_multiplier(self.game_ep_cost.get_mean())
 
             with torch.no_grad():
                 actions_prob = data.stack_from_array(actions_prob.squeeze(), device=self._device)['action_prob']
@@ -611,6 +617,7 @@ class SafeRlFilterAgentPPO():
             return step_time, None, total_update_time, total_time, loss
         for j in range(repeat_times):
             fatigue_data_list = []
+            self.ep_cost = 0
             for i in range(len(temporary_buffer)):
                 random_exploration = self.step_num < self.num_warmup_steps
                 self.set_train()
@@ -627,6 +634,7 @@ class SafeRlFilterAgentPPO():
                 assert self.num_agents == 1, ('only support num_agents == 1')
                 self.step_num += self.num_actors * 1
                 self.current_rewards += rewards+reward_extra
+                self.ep_cost += costs
                 # print("rewards: {}, reward_extra: {}, current_rewards: {}".format(rewards, reward_extra, self.current_rewards))
                 self.current_rewards_action += infos["rew_action"]
                 self.current_lengths += 1
@@ -654,7 +662,7 @@ class SafeRlFilterAgentPPO():
                         fatigue_data_list.append(_data)
                 if dones[0]:
                     self.episode_num += 1
-
+                    self.game_ep_cost.update(self.ep_cost)
                     if self.use_wandb:
                         wandb.log({
                             "Train/step": self.step_num,
@@ -704,23 +712,7 @@ class SafeRlFilterAgentPPO():
                 self.current_lengths = self.current_lengths * not_dones
                 self.current_ep_time = self.current_ep_time * not_dones
                 self.current_rewards_action = self.current_rewards_action * not_dones
-                # if isinstance(next_obs, dict):    
-                #     next_obs_processed = next_obs['obs']
 
-                # rewards = self.rewards_shaper(rewards)
-                ####TODO refine replay buffer
-                # self.replay_buffer.append(obs, action, torch.unsqueeze(rewards, 1), next_obs_processed, torch.unsqueeze(dones, 1))
-
-                # self.obs = next_obs.copy()
-            # obs_copy = {}
-            # infos_copy = {}
-            # for key, value in obs.items():
-            #     obs_copy[key] = value.copy()
-            # for key, value in infos.items():
-            #     infos_copy[key] = value.copy()
-            # action_cpu = action.squeeze().cpu()
-            # rewards_cpu = rewards.squeeze().cpu()
-            # dones_cpu = dones.squeeze().cpu()
                 update_time = 0
                 if not random_exploration:
                     self.replay_buffer.priority_weight = min(self.replay_buffer.priority_weight + self.priority_weight_increase, 1)
