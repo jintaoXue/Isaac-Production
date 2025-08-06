@@ -276,7 +276,7 @@ class SafeRlFilterAgent():
         wandb.define_metric("Evaluate/EpMoveHuman", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpMoveRobot", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpOverCost", step_metric="Evaluate/step_episode")
-        wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
+        #wandb.define_metric("Evaluate/EpPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpPredictLossCompare", step_metric="Evaluate/step_episode")
 
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
