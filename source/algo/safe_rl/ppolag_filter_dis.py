@@ -634,7 +634,10 @@ class SafeRlFilterAgentPPO():
                 assert self.num_agents == 1, ('only support num_agents == 1')
                 self.step_num += self.num_actors * 1
                 self.current_rewards += rewards+reward_extra
-                self.ep_cost += costs
+                if isinstance(costs, torch.Tensor):
+                    self.ep_cost += costs.item()
+                else:
+                    self.ep_cost += costs
                 # print("rewards: {}, reward_extra: {}, current_rewards: {}".format(rewards, reward_extra, self.current_rewards))
                 self.current_rewards_action += infos["rew_action"]
                 self.current_lengths += 1
@@ -662,7 +665,7 @@ class SafeRlFilterAgentPPO():
                         fatigue_data_list.append(_data)
                 if dones[0]:
                     self.episode_num += 1
-                    self.game_ep_cost.update(self.ep_cost)
+                    self.game_ep_cost.update(torch.tensor([self.ep_cost], dtype=torch.float32, device=self._device))
                     if self.use_wandb:
                         wandb.log({
                             "Train/step": self.step_num,
