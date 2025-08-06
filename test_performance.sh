@@ -104,7 +104,11 @@ run_test_7() {
 run_test_8() {
     echo "运行测试 8: PF-PPO-dis 4090_ppo_dis_2025-07-30_13-18-07"
     list=(49600)
-    for num in $list
+    for num in $list  File "/home/xue/work/Isaac-Production/source/algo/safe_rl/ppolag_filter_dis.py", line 665, in train_epoch
+    self.game_ep_cost.update(self.ep_cost)
+  File "/home/xue/Repos/miniconda3/envs/isaac-lab/lib/python3.10/site-packages/rl_games/algos_torch/torch_ext.py", line 289, in update
+    size = values.size()[0]
+
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --test --use_fatigue_mask --test_all_settings --other_filters \
             --load_dir "/ppo_dis_2025-07-30_13-18-07/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
