@@ -214,8 +214,8 @@ if __name__ == '__main__':
     fig = create_boxplot_figure(fig_data_dict, fig_names, "Filter Performance Comparison")
     
     # 保存图片
-    output_path = os.path.dirname(__file__) + "/filter_boxplot.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = os.path.dirname(__file__) + "/filter_boxplot.pdf"
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
     print(f"箱线图已保存到: {output_path}")
     
     # 显示图片

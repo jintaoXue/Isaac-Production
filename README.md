@@ -277,6 +277,12 @@ filter图的mu 写成了lambda
 2.展示结果的类型分为总的曲线变化对比，包括真值和预测值（分为one-step, multi-step）
 
 
+filter：1.filter 曲线 2.箱线图
+training： 四子图
+testing: 1. makespan, progress, overwork, (包括箱线图，还有这个表格整理) 2.human变化，overwork和makespan的变化
+task allocation result：low-level 暂定
+case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘特图 
+
 ### mount bug fix
 
 显示分区：  df -Th 
