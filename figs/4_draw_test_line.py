@@ -96,6 +96,224 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
     plt.tight_layout()
     return fig
 
+def create_human_robot_curves(metric_name_file_dir_list, data_algo_name_dict, groups):
+    """
+    绘制human/robot数量变化的曲线图
+    布局：
+    图1: human vs makespan (robot=1)
+    图2: human vs makespan (robot=2) 
+    图3: human vs overwork (robot=1)
+    图4: human vs overwork (robot=2)
+    图5: robot vs makespan (human=1)
+    图6: robot vs makespan (human=2)
+    图7: robot vs overwork (human=1)
+    图8: robot vs overwork (human=2)
+    """
+    from matplotlib.gridspec import GridSpec
+    
+    # 创建2行2列的子图
+    fig = plt.figure(figsize=(16, 12))
+    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1], height_ratios=[1, 1])
+    
+    # 定义human和robot的数量
+    human_nums = [1, 2, 3]
+    robot_nums = [1, 2, 3]
+    
+    # 定义分组颜色
+    group_colors = {
+        'A': '#1f77b4',  # 蓝色
+        'B': '#2ca02c',  # 绿色
+        'C': '#9467bd',  # 紫色
+        'D': '#e377c2'   # 粉色
+    }
+    
+    # 算法到分组的映射
+    algo_group_map = {}
+    for group_name, group_dict in groups:
+        for algo_key in group_dict:
+            algo_group_map[algo_key] = group_name
+    
+    # 算法到颜色的映射
+    algo_color_map = {}
+    for algo_key, algo_name in data_algo_name_dict.items():
+        group = algo_group_map.get(algo_key, None)
+        if group:
+            algo_color_map[algo_name] = group_colors[group]
+        else:
+            algo_color_map[algo_name] = '#333333'
+    
+    # 为每个metric计算统计数据
+    makespan_stats = {}
+    overwork_stats = {}
+    
+    # 处理makespan数据
+    makespan_file = metric_name_file_dir_list["Makespan (Test)"]
+    df_makespan = pd.read_csv(makespan_file)
+    
+    # 处理overwork数据  
+    overwork_file = metric_name_file_dir_list["Overwork (Test)"]
+    df_overwork = pd.read_csv(overwork_file)
+    
+    # 整理数据
+    def process_data(df):
+        data_dict = {}
+        for i, data_name in enumerate(df.columns):
+            if "step" in data_name or "MIN" in data_name or "MAX" in data_name:
+                continue
+            else:
+                data_dict[data_name.split(' ')[0]] = df.iloc[0:, i]
+        return data_dict
+    
+    makespan_data = process_data(df_makespan)
+    overwork_data = process_data(df_overwork)
+    
+    # 为每个算法计算不同human/robot组合的统计值
+    for algo_key, algo_name in data_algo_name_dict.items():
+        if algo_key not in makespan_data or algo_key not in overwork_data:
+            continue
+            
+        makespan_algo_data = makespan_data[algo_key].dropna()
+        overwork_algo_data = overwork_data[algo_key].dropna()
+        
+        if len(makespan_algo_data) != 450 or len(overwork_algo_data) != 450:
+            print(f"警告: {algo_name} 数据条数不是450: makespan={len(makespan_algo_data)}, overwork={len(overwork_algo_data)}")
+            continue
+        
+        # 计算makespan统计值
+        makespan_stats[algo_name] = {}
+        overwork_stats[algo_name] = {}
+        
+        for h_idx, human_num in enumerate(human_nums):
+            for r_idx, robot_num in enumerate(robot_nums):
+                # 计算数据索引
+                start_idx = h_idx * 150 + r_idx * 50
+                end_idx = start_idx + 50
+                
+                if end_idx <= len(makespan_algo_data):
+                    makespan_values = makespan_algo_data.iloc[start_idx:end_idx]
+                    overwork_values = overwork_algo_data.iloc[start_idx:end_idx]
+                    
+                    # makespan计算：平均值
+                    makespan_stats[algo_name][(human_num, robot_num)] = makespan_values.mean()
+                    
+                    # overwork计算：非零次数/总次数
+                    overwork_rate = (overwork_values != 0).sum() / len(overwork_values)
+                    overwork_stats[algo_name][(human_num, robot_num)] = overwork_rate
+    
+    # 绘制4张图：2行2列布局
+    # 图1: human vs makespan (所有robot情况取平均)
+    ax1 = fig.add_subplot(gs[0, 0])
+    for algo_name, stats in makespan_stats.items():
+        color = algo_color_map.get(algo_name, '#333333')
+        linestyle = '--' if 'PF' in algo_name else '-'
+        
+        x_values = []
+        y_values = []
+        for human_num in human_nums:
+            # 计算该human_num下所有robot情况的平均值
+            robot_vals = []
+            for robot_num in robot_nums:
+                if (human_num, robot_num) in stats:
+                    robot_vals.append(stats[(human_num, robot_num)])
+            if robot_vals:  # 如果有数据
+                x_values.append(human_num)
+                y_values.append(np.mean(robot_vals))
+        
+        if x_values and y_values:
+            ax1.plot(x_values, y_values, marker='o', label=algo_name, color=color, linewidth=2, markersize=6, linestyle=linestyle)
+    
+    ax1.set_xlabel('Human num')
+    ax1.set_ylabel('Makespan (Test)')
+    ax1.set_title('Makespan vs Human Number')
+    ax1.grid(True, alpha=0.3)
+    ax1.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    # 图2: human vs overwork (所有robot情况取平均)
+    ax2 = fig.add_subplot(gs[0, 1])
+    for algo_name, stats in overwork_stats.items():
+        color = algo_color_map.get(algo_name, '#333333')
+        linestyle = '--' if 'PF' in algo_name else '-'
+        
+        x_values = []
+        y_values = []
+        for human_num in human_nums:
+            # 计算该human_num下所有robot情况的平均值
+            robot_vals = []
+            for robot_num in robot_nums:
+                if (human_num, robot_num) in stats:
+                    robot_vals.append(stats[(human_num, robot_num)])
+            if robot_vals:  # 如果有数据
+                x_values.append(human_num)
+                y_values.append(np.mean(robot_vals))
+        
+        if x_values and y_values:
+            ax2.plot(x_values, y_values, marker='o', label=algo_name, color=color, linewidth=2, markersize=6, linestyle=linestyle)
+    
+    ax2.set_xlabel('Human num')
+    ax2.set_ylabel('Overwork (Test)')
+    ax2.set_title('Overwork vs Human Number')
+    ax2.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12, handlelength=4, handleheight=2)
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    # 图3: robot vs makespan (所有human情况取平均)
+    ax3 = fig.add_subplot(gs[1, 0])
+    for algo_name, stats in makespan_stats.items():
+        color = algo_color_map.get(algo_name, '#333333')
+        linestyle = '--' if 'PF' in algo_name else '-'
+        
+        x_values = []
+        y_values = []
+        for robot_num in robot_nums:
+            # 计算该robot_num下所有human情况的平均值
+            human_vals = []
+            for human_num in human_nums:
+                if (human_num, robot_num) in stats:
+                    human_vals.append(stats[(human_num, robot_num)])
+            if human_vals:  # 如果有数据
+                x_values.append(robot_num)
+                y_values.append(np.mean(human_vals))
+        
+        if x_values and y_values:
+            ax3.plot(x_values, y_values, marker='o', label=algo_name, color=color, linewidth=2, markersize=6, linestyle=linestyle)
+    
+    ax3.set_xlabel('Robot num')
+    ax3.set_ylabel('Makespan (Test)')
+    ax3.set_title('Makespan vs Robot Number')
+    ax3.grid(True, alpha=0.3)
+    ax3.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    # 图4: robot vs overwork (所有human情况取平均)
+    ax4 = fig.add_subplot(gs[1, 1])
+    for algo_name, stats in overwork_stats.items():
+        color = algo_color_map.get(algo_name, '#333333')
+        linestyle = '--' if 'PF' in algo_name else '-'
+        
+        x_values = []
+        y_values = []
+        for robot_num in robot_nums:
+            # 计算该robot_num下所有human情况的平均值
+            human_vals = []
+            for human_num in human_nums:
+                if (human_num, robot_num) in stats:
+                    human_vals.append(stats[(human_num, robot_num)])
+            if human_vals:  # 如果有数据
+                x_values.append(robot_num)
+                y_values.append(np.mean(human_vals))
+        
+        if x_values and y_values:
+            ax4.plot(x_values, y_values, marker='o', label=algo_name, color=color, linewidth=2, markersize=6, linestyle=linestyle)
+    
+    ax4.set_xlabel('Robot num')
+    ax4.set_ylabel('Overwork (Test)')
+    ax4.set_title('Overwork vs Robot Number')
+    ax4.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=12, handlelength=4, handleheight=2)
+    ax4.grid(True, alpha=0.3)
+    ax4.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    plt.tight_layout()
+    return fig
+
 if __name__ == '__main__':
     ## 3 metric for 3 subfigure, each subfigure has 9 algorithms, draw the boxplot
     ## data source
@@ -146,17 +364,27 @@ if __name__ == '__main__':
     # 定义groups
     groups = [('A', group_A), ('B', group_B), ('C', group_C), ('D', group_D)]
     
-    # 创建图表
-    fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_dict)
+    # # 创建原始箱线图
+    # fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_dict)
     
-    # 保存图表
-    output_path = os.path.dirname(__file__) + "/test_boxplot.pdf"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
-    print(f"图表已保存到: {output_path}")
+    # # 保存箱线图
+    # output_path = os.path.dirname(__file__) + "/test_boxplot.pdf"
+    # plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
+    # print(f"箱线图已保存到: {output_path}")
     
-    # 显示图表
+    # # 显示箱线图
+    # plt.show()
+    
+    # 创建human/robot曲线图
+    fig2 = create_human_robot_curves(metric_name_file_dir_list, data_algo_name_dict, groups)
+    
+    # 保存曲线图
+    output_path2 = os.path.dirname(__file__) + "/test_human_robot_curves.png"
+    plt.savefig(output_path2, dpi=300, bbox_inches='tight', format='png')
+    print(f"曲线图已保存到: {output_path2}")
+    
+    # 显示曲线图
     plt.show()
-    a = 1
     
     
     

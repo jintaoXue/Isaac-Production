@@ -23,7 +23,7 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
             if "step" in data_name or "MIN" in data_name or "MAX" in data_name:
                 continue
             else:
-                data_dict[data_name.split(' ')[0]] = df.iloc[1:, i]
+                data_dict[data_name.split(' ')[0]] = df.iloc[0:, i]
         
         # 根据data_dict和data_algo_name_dict匹配数据
         for algo_key, algo_name in data_algo_name_dict.items():
@@ -69,7 +69,7 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
             axes[idx].bar(algo_order, bar_vals, color=[algo_color_map[a] for a in algo_order])
             # 在柱子上显示数值
             for i, v in enumerate(bar_vals):
-                axes[idx].text(i, v, f'{v:.2f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+                axes[idx].text(i, v, f'{v:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
         else:
             # 箱线图，包含异常值
             box = sns.boxplot(x='Algorithm', y=metric_name, data=plot_df, ax=axes[idx], order=algo_order,
