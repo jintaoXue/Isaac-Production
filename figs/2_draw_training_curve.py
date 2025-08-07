@@ -414,8 +414,8 @@ if __name__ == '__main__':
     fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups)
     
     # 保存图表
-    output_path = os.path.dirname(__file__) + "/training_curves.png"
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    output_path = os.path.dirname(__file__) + "/training_curves.pdf"
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
     print(f"图表已保存到: {output_path}")
     
     # 显示图表
