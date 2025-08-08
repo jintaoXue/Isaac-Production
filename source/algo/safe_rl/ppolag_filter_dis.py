@@ -93,7 +93,7 @@ class SafeRlFilterAgentPPO():
         self.eps = 0.2
 
         #####lagrange
-        self._lagrange: Lagrange = Lagrange(cost_limit=1, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
+        self._lagrange: Lagrange = Lagrange(cost_limit=0.5, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
