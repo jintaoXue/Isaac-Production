@@ -93,7 +93,7 @@ class SafeRlFilterAgentPPO():
         self.eps = 0.2
 
         #####lagrange
-        self._lagrange: Lagrange = Lagrange(cost_limit=5, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
+        self._lagrange: Lagrange = Lagrange(cost_limit=1, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -244,6 +244,7 @@ class SafeRlFilterAgentPPO():
         wandb.define_metric("Train/MLen", step_metric="Train/step")
         wandb.define_metric("Metrics/step_episode", step_metric="Train/step")
         wandb.define_metric("Metrics/EpRet", step_metric="Metrics/step_episode")
+        wandb.define_metric("Metrics/EpCost", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpEnvLen", step_metric="Metrics/step_episode")
         wandb.define_metric("Metrics/EpFilterPredictLoss", step_metric="Metrics/step_episode")
@@ -671,6 +672,7 @@ class SafeRlFilterAgentPPO():
                             "Train/step": self.step_num,
                             'Metrics/step_episode': self.episode_num,
                             'Metrics/EpRet': self.current_rewards,
+                            'Metrics/EpCost': self.game_ep_cost.get_mean(),
                             'Metrics/EpLen': self.current_lengths,
                             'Metrics/EpEnvLen': infos['env_length'],
                             "Metrics/EpTime": self.current_ep_time,
