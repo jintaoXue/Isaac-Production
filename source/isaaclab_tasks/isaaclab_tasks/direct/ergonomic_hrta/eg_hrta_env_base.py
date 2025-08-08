@@ -591,8 +591,8 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     def save_gantt_chart(self):
         # plt.show()
         import os, pickle
-        # gant_path = os.getcwd() + '/omniisaacgymenvs/draw/gantt' + '/' + 'noe_data'
-        gant_path = os.getcwd() + '/figs/gantt/gantt_data.pkl'
+    
+        gant_path = os.getcwd() + '/figs/gantt/gantt_data_D3QN.pkl'
         dic = {}   
         dic['initial'] = [self.task_manager.ini_worker_pose ,self.task_manager.ini_agv_pose, self.task_manager.ini_box_pose]
         dic['worker'] = []
