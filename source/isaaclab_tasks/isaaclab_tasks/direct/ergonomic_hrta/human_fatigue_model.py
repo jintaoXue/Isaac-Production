@@ -264,7 +264,7 @@ class Fatigue(object):
         #     self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
         # self.psy_fatigue = self.step_helper_psy(self.psy_fatigue, state_type, subtask, self.ONE_STEP_TIME)
         self.time_step += 1
-        if self.visualize:
+        if self.visualize or self.gantt_chart_data:
             self.phy_history.append((self.phy_fatigue, self.time_step))
             self.psy_history.append((self.psy_fatigue, self.time_step))
             # self.time_step_level_f_history.append((state_type, task, subtask, esitmate_phy_fatigue_coe, _phy_fatigue_prediction, self.phy_fatigue, self.time_step))
@@ -273,11 +273,11 @@ class Fatigue(object):
                 self.subtask_level_f_history.append((state_type, task, subtask, self.phy_fatigue, self.psy_fatigue, self.time_step)) #state, subtask, time_step
             _, pre_task, _ , _, _, _= self.task_levle_f_history[-1]
             if pre_task != task:
+                predict_list_true = self.one_task_fatigue_prediction(task, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic)
+                self.task_levle_f_history_true.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_true))
                 predict_list = self.one_task_fatigue_prediction(task, self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic)
-                self.task_levle_f_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list)) #state, subtask, time_step
-                if self.visualize:
-                    predict_list_true = self.one_task_fatigue_prediction(task, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic)
-                    self.task_levle_f_history_true.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_true)) #state, subtask, time_step
+                self.task_levle_f_history.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list)) 
+                if self.activate_other_filters:
                     predict_list_kf = self.one_task_fatigue_prediction(task, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic)
                     self.task_levle_f_history_kf.append((state_type, task, self.phy_fatigue, self.psy_fatigue, self.time_step, predict_list_kf)) #state, subtask, time_step
                     predict_list_ekf = self.one_task_fatigue_prediction(task, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic)
