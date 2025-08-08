@@ -84,14 +84,28 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
                     elif idx == 0:
                         axes[idx].text(i, mean_val + (vals.max() - vals.min()) * 0.04, f'{mean_val:.2f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
                         axes[idx].scatter(i, mean_val, marker='>', color='red', s=120, zorder=5)
-                        axes[idx].plot([i-0.13, i+0.13], [mean_val, mean_val], color='red', linewidth=2, zorder=6)
+                        axes[idx].plot([i-0.13, i+0.13], [mean_val, mean_val], color='red', linewidth=1, zorder=6)
                     else:
                         axes[idx].text(i, mean_val, f'{mean_val:.2f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
         axes[idx].set_title(metric_name)
         axes[idx].set_xlabel('')
         axes[idx].set_ylabel(metric_name)
         axes[idx].tick_params(axis='x', rotation=30)
-        if idx == 0:  # 第一张图 Makespan
+        
+        # 只在第一个子图添加标记解释
+        if idx == 0:
+            # 在解释文本位置绘制示例图标
+            legend_x, legend_y = 0.02, 0.95
+            # 绘制示例三角形
+            axes[idx].scatter(legend_x + 0.05, legend_y, marker='>', color='red', s=80, 
+                             transform=axes[idx].transAxes, zorder=10)
+            # 绘制示例直线
+            axes[idx].plot([legend_x + 0.02, legend_x + 0.08], [legend_y, legend_y], 
+                          color='red', linewidth=1, transform=axes[idx].transAxes, zorder=10)
+            # 添加文字说明
+            axes[idx].text(legend_x + 0.12, legend_y, ': Mean value', 
+                          transform=axes[idx].transAxes, fontsize=10, verticalalignment='center',
+                          bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
             axes[idx].set_ylim(top=2000)
     plt.tight_layout()
     return fig

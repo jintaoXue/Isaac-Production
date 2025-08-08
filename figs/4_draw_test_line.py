@@ -112,7 +112,7 @@ def create_human_robot_curves(metric_name_file_dir_list, data_algo_name_dict, gr
     from matplotlib.gridspec import GridSpec
     
     # 创建2行2列的子图
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(16, 10))
     gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1], height_ratios=[1, 1])
     
     # 定义human和robot的数量
@@ -141,6 +141,9 @@ def create_human_robot_curves(metric_name_file_dir_list, data_algo_name_dict, gr
             algo_color_map[algo_name] = group_colors[group]
         else:
             algo_color_map[algo_name] = '#333333'
+    
+    # 为PF-CD3QP设置特殊颜色
+    algo_color_map['PF-CD3QP'] = '#ff7f0e'  # 橙色
     
     # 为每个metric计算统计数据
     makespan_stats = {}

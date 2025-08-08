@@ -91,16 +91,41 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
         for patch, color in zip(bp['boxes'], colors * (len(bp['boxes']) // len(colors) + 1)):
             patch.set_facecolor(color)
         
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=14)
         ax.set_ylabel('Value', fontsize=12)
         ax.tick_params(axis='x', rotation=45)
         ax.grid(True, alpha=0.3)
         
+        # 只在第一个子图添加标记解释
+        if plot_type == "predict_loss":
+            # 在解释文本位置绘制示例图标
+            legend_x, legend_y = 0.02, 0.95
+            # 绘制示例三角形
+            ax.scatter(legend_x + 0.05, legend_y, marker='>', color='red', s=80, 
+                      transform=ax.transAxes, zorder=10)
+            # 绘制示例直线
+            ax.plot([legend_x + 0.02, legend_x + 0.08], [legend_y, legend_y], 
+                   color='red', linewidth=1, transform=ax.transAxes, zorder=10)
+            # 添加文字说明
+            ax.text(legend_x + 0.12, legend_y, ': Mean value', 
+                   transform=ax.transAxes, fontsize=10, verticalalignment='center',
+                   bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+        
         # 添加平均值标记
         for i, (data, label) in enumerate(zip(box_data, labels)):
             mean_val = np.mean(data)
-            ax.text(i+1, mean_val, f'{mean_val:.3f}', 
-                   ha='center', va='bottom', fontsize=10, fontweight='bold')
+            # 根据数据类型调整显示精度
+            if plot_type == "predict_loss":
+                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.3f}', 
+                       ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+            else:
+                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.2f}', 
+                       ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+            
+            # 添加朝右的三角形标记
+            ax.scatter(i+1, mean_val, marker='>', color='red', s=120, zorder=5)
+            # 添加穿越三角形的直线
+            ax.plot([i+1-0.13, i+1+0.13], [mean_val, mean_val], color='red', linewidth=1, zorder=6)
     
     return ax
 
@@ -117,7 +142,7 @@ def create_boxplot_figure(fig_data_dict, fig_names, main_title):
         plot_type = plot_types[i] if i < len(plot_types) else "predict_loss"
         draw_one_sub_pic(axes[i], data_dict, fig_names[i], plot_type)
     
-    plt.suptitle(main_title, fontsize=16, fontweight='bold')
+    # plt.suptitle(main_title, fontsize=16, fontweight='bold')
     plt.tight_layout()
     return fig
 
@@ -211,7 +236,7 @@ if __name__ == '__main__':
     fig_names = ["Predict Loss Comparison", "Fatigue Coefficient Accuracy", "Recovery Coefficient Accuracy"]
     
     # 创建箱线图
-    fig = create_boxplot_figure(fig_data_dict, fig_names, "Filter Performance Comparison")
+    fig = create_boxplot_figure(fig_data_dict, fig_names, "")
     
     # 保存图片
     output_path = os.path.dirname(__file__) + "/filter_boxplot.pdf"
