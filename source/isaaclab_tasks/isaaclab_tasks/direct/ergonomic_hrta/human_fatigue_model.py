@@ -91,6 +91,7 @@ class Fatigue(object):
         # self.time_history = None
         self.visualize = False
         self.activate_other_filters = train_cfg['other_filters']
+        self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
 
     def reset(self):
@@ -149,7 +150,7 @@ class Fatigue(object):
         self.update_ftg_mask()
         self.ftg_task_mask = torch.ones(len(high_level_task_dic))
 
-        if self.visualize:
+        if self.visualize or self.gantt_chart_data:
             self.phy_history = [(0, self.time_step)] # value, time_step
             self.psy_history = [(0, self.time_step)]
             # self.time_step_level_f_history = [('free', 'free', 'none', self.pfs_phy_rec_ce_dic['free'], self.phy_fatigue, self.phy_fatigue, self.time_step)] #state, subtask, task, time_step 

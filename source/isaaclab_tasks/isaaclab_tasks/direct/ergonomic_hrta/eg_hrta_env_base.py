@@ -157,7 +157,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         if is_last_step or task_finished :
             self.reset_buf[0] = 1
             '''gantt chart'''
-            if self._test and self.generate_gantt_chart:
+            if self._test and self.gantt_chart_data:
                 self.save_gantt_chart() 
             '''end'''
             name = 'traning ' if not self.evaluate else 'evaluate '
@@ -363,12 +363,12 @@ class HRTaskAllocEnvBase(DirectRLEnv):
                         self.test_settings_list.append((w+1,r+1))
         '''test one setting, the task_manager class will handle'''
         '''gantt chart'''
-        self.generate_gantt_chart = train_sub_cfg['test_one']['gantt_chart']
-        if self.generate_gantt_chart:
-            self.actions_list = []
-            self.time_frames = []
-            self.gantt_charc = []
-            self.gantt_agv = []
+        self.gantt_chart_data = train_sub_cfg['gantt_chart_data']
+        # if self.gantt_chart_data:
+        #     self.actions_list = []
+        #     self.time_frames = []
+        #     self.gantt_charc = []
+        #     self.gantt_agv = []
     
     def reset_worker_random_time(self):
         self.temp_random_time = np.random.uniform(0,self.cfg.human_time_random)
@@ -592,14 +592,19 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         # plt.show()
         import os, pickle
         # gant_path = os.getcwd() + '/omniisaacgymenvs/draw/gantt' + '/' + 'noe_data'
-        gant_path = os.getcwd() + '/omniisaacgymenvs/draw/gantt' + '/' + 'n_data'
+        gant_path = os.getcwd() + '/figs/gantt/gantt_data.pkl'
         dic = {}   
-        dic['initial'] = [self.task_manager.ini_worker_pose ,self.task_manager.ini_agv_pose, self.task_manager.ini_box_pose] 
-        dic['action'] = self.actions_list
-        dic['charc'] = self.gantt_charc
-        dic['agv'] = self.gantt_agv
-        dic['time'] = self.time_frames
-
+        dic['initial'] = [self.task_manager.ini_worker_pose ,self.task_manager.ini_agv_pose, self.task_manager.ini_box_pose]
+        dic['worker'] = []
+        dic['worker_tasks_dic'] = set(self.task_manager.characters.fatigue_list[0].task_human_subtasks_dic.keys())
+        dic['agv'] = []
+        dic['agv_tasks_dic'] = self.task_manager.agvs.task_range
+        dic['agv_tasks_dic'].add('none')
+        for i in range(self.task_manager.characters.acti_num_charc):
+            #[('free', 'free', 'none', self.phy_fatigue, self.psy_fatigue, self.time_step)] #state, subtask, task, time_step
+            dic['worker'].append(self.task_manager.characters.fatigue_list[i].subtask_level_f_history)
+        for i in range(self.task_manager.agvs.acti_num_agv):
+            dic['agv'].append(self.task_manager.agvs.task_level_history[i])
         with open(gant_path, 'wb') as f:
             pickle.dump(dic, f)
         return

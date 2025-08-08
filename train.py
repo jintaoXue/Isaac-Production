@@ -37,7 +37,7 @@ parser.add_argument("--sigma", type=str, default=None, help="The policy's initia
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
 parser.add_argument("--use_fatigue_mask", action="store_true", default=False, help="Use fatigue mask.")
 parser.add_argument("--other_filters", action="store_true", default=False, help="Use other filters.")
-
+parser.add_argument("--gantt_chart_data", action="store_true", default=False, help="Generate gantt chart data.")
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -114,6 +114,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         agent_cfg["params"]["config"]['use_fatigue_mask'] = args_cli.use_fatigue_mask
     if args_cli.other_filters:
         agent_cfg["params"]["config"]['other_filters'] = args_cli.other_filters
+    if args_cli.gantt_chart_data:
+        agent_cfg["params"]["config"]['gantt_chart_data'] = args_cli.gantt_chart_data
     """Train with RL-Games agent."""
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs

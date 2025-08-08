@@ -41,7 +41,7 @@ class TaskManager(object):
     def __init__(self, character_list, agv_list, box_list, cuda_device, train_cfg) -> None:
         self.cuda_device = cuda_device
         self.characters = Characters(character_list=character_list, train_cfg=train_cfg)
-        self.agvs = Agvs(agv_list = agv_list)
+        self.agvs = Agvs(agv_list = agv_list, train_cfg=train_cfg)
         self.boxs = TransBoxs(box_list=box_list)
         self.task_dic =  {-1:'none', 0: 'hoop_preparing', 1:'bending_tube_preparing', 2:'hoop_loading_inner', 3:'bending_tube_loading_inner', 4:'hoop_loading_outer', 
                           5:'bending_tube_loading_outer', 6:'cutting_cube', 7:'collect_product', 8:'placing_product'}
@@ -53,8 +53,8 @@ class TaskManager(object):
         self._test = train_cfg['test']
         if self._test:
            self._eval_times = train_cfg['test_times']
-           self.acti_num_agv = train_cfg['test_one']['acti_agv']
-           self.acti_num_charc = train_cfg['test_one']['acti_charc']
+           self.acti_num_agv = train_cfg['acti_agv']
+           self.acti_num_charc = train_cfg['acti_charc']
         self.obs = None
         return
     
@@ -202,9 +202,6 @@ class TaskManager(object):
         if task not in self.task_in_dic.keys():
             return -1, -1, -1
         return self.task_in_dic[task]['charac_idx'], self.task_in_dic[task]['agv_idx'], self.task_in_dic[task]['box_idx']
-
-
-
 
     
 class Materials(object):
@@ -369,7 +366,7 @@ class Materials(object):
 
 class Agvs(object):
 
-    def __init__(self, agv_list) -> None:
+    def __init__(self, agv_list, train_cfg) -> None:
         self.agv_list = agv_list
         self.state_dic = {0:"free", 1:"moving_to_box", 2:"carrying_box", 3:"waiting"}
         self.sub_task_dic = {0:"free", 1:"carry_box_to_hoop", 2:"carry_box_to_bending_tube", 3:"carry_box_to_hoop_table", 4:"carry_box_to_bending_tube_table", 5:'collect_product', 6:'placing_product'}
@@ -406,6 +403,7 @@ class Agvs(object):
         self.picking_pose_table_bending_tube = [-33.55065, 5.71486, np.deg2rad(-90)] 
         self.collecting_product_pose = [-21.76757, 10.78427, np.deg2rad(0)]
         self.placing_product_pose = [-38.54638, 12.40097, np.deg2rad(0)]
+        self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
     
     def reset(self, acti_num_agv=None, random = None):
@@ -439,6 +437,12 @@ class Agvs(object):
                 self.agv_list[i].set_velocities(torch.zeros((1,6)))
 
         self.poses_str = initial_pose_str
+        if self.gantt_chart_data:
+            self.time_step = []
+            self.task_level_history = []
+            for i in range(acti_num_agv):
+                self.task_level_history.append([('free', "free", 'none', 0)]) #state, subtask, task, time_step
+                self.time_step.append(0)
         return initial_pose_str
 
     def update_pose_str(self, idx):
@@ -539,7 +543,13 @@ class Agvs(object):
         orientation = quaternion.eulerAnglesToQuaternion(euler_angles)
         self.movements[agv_idx] +=1
         return position, orientation, reaching_flag
-    
+
+    def step_gantt_chart(self, idx, state, subtask, task):
+        self.time_step[idx] += 1
+        if task == -1:
+            task = 'none'
+        self.task_level_history[idx].append((self.state_dic[state], self.sub_task_dic[subtask], task, self.time_step[idx]))
+        
     def reset_path(self, agv_idx):
         self.x_paths[agv_idx] = []
         self.y_paths[agv_idx] = []

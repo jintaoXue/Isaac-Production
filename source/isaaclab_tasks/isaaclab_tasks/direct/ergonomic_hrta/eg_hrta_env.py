@@ -121,11 +121,11 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         # task_id = torch.argmax(actions[0], dim=0) - 1
         task_id = actions[0] - 1
         task = self.task_manager.task_dic[task_id.item()]
-        '''gantt chart'''
-        if self._test and self.generate_gantt_chart:
-            self.actions_list.append(task)
-            self.time_frames.append(self.episode_length_buf[0].cpu().item())
-        '''end'''
+        # '''gantt chart'''
+        # if self._test and self.gantt_chart_data:
+        #     self.actions_list.append(task)
+        #     self.time_frames.append(self.episode_length_buf[0].cpu().item())
+        # '''end'''
         if task not in self.available_task_dic.keys(): #to ensure the safety of action 
             task = 'none'
         if task == 'none':
@@ -159,17 +159,17 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
                     self.materials.bending_tube_states[_index] = 3
                     self.materials.outer_bending_tube_loading_index = _index
 
-        '''gantt chart'''
-        if self._test and self.generate_gantt_chart:
-            def convert(sub_dic, low2high_dic, task_ids):
-                res = []
-                low2high_dic['free'] = 'free'
-                for id in task_ids:
-                    res.append([self.episode_length_buf[0].cpu().item(), sub_dic[id], low2high_dic[sub_dic[id]]])
-                return res
-            self.gantt_charc.append(convert(self.task_manager.characters.sub_task_character_dic, self.task_manager.characters.low2high_level_task_dic, self.task_manager.characters.tasks))
-            self.gantt_agv.append(convert(self.task_manager.agvs.sub_task_dic, self.task_manager.agvs.low2high_level_task_dic, self.task_manager.agvs.tasks))
-            '''end'''
+        # '''gantt chart'''
+        # if self._test and self.generate_gantt_chart:
+        #     def convert(sub_dic, low2high_dic, task_ids):
+        #         res = []
+        #         low2high_dic['free'] = 'free'
+        #         for id in task_ids:
+        #             res.append([self.episode_length_buf[0].cpu().item(), sub_dic[id], low2high_dic[sub_dic[id]]])
+        #         return res
+        #     self.gantt_charc.append(convert(self.task_manager.characters.sub_task_character_dic, self.task_manager.characters.low2high_level_task_dic, self.task_manager.characters.tasks))
+        #     self.gantt_agv.append(convert(self.task_manager.agvs.sub_task_dic, self.task_manager.agvs.low2high_level_task_dic, self.task_manager.agvs.tasks))
+        #     '''end'''
         self.task_manager.step()
         for charac_idx in range(0, self.task_manager.characters.acti_num_charc):
             self.post_character_step(charac_idx)
@@ -399,6 +399,8 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         task = self.task_manager.agvs.tasks[idx]
         high_level_task = self.task_manager.agvs.low2high_level_task_mapping(task)
         _, _, corresp_box_idx = self.task_manager.corresp_charac_agv_box_idx(high_level_task)
+        if self.gantt_chart_data:
+            self.task_manager.agvs.step_gantt_chart(idx, state, task, high_level_task)
         # corresp_charac_idx = self.task_manager.agvs.corresp_charac_idxs[idx] 
         # corresp_box_idx = self.task_manager.agvs.corresp_box_idxs[idx] 
         target_position = None
