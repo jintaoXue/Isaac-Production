@@ -91,7 +91,7 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
                     if current_task and current_task not in ['none', 'free']:
                         ax.barh(current_y_pos, time_step - task_start, left=task_start, 
                                 color=task_colors.get(current_task, 'gray'), 
-                                alpha=0.8, height=0.4, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
+                                alpha=0.8, height=0.5, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
                         legend_labels.add(current_task)
                     
                     current_task = task
@@ -101,7 +101,7 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
             if current_task and current_task not in ['none', 'free']:
                 ax.barh(current_y_pos, worker_data_current[-1][-1] - task_start, left=task_start, 
                         color=task_colors.get(current_task, 'gray'), 
-                        alpha=0.8, height=0.4, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
+                        alpha=0.8, height=0.5, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
                 legend_labels.add(current_task)
             
             current_y_pos += 1
@@ -122,7 +122,7 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
                     if current_task and current_task not in ['none', 'free']:
                         ax.barh(current_y_pos, time_step - task_start, left=task_start, 
                                 color=task_colors.get(current_task, 'gray'), 
-                                alpha=0.8, height=0.4, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
+                                alpha=0.8, height=0.5, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
                         legend_labels.add(current_task)
                     
                     current_task = task
@@ -132,13 +132,13 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
             if current_task and current_task not in ['none', 'free']:
                 ax.barh(current_y_pos, agv_data_current[-1][-1] - task_start, left=task_start, 
                         color=task_colors.get(current_task, 'gray'), 
-                        alpha=0.8, height=0.4, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
+                        alpha=0.8, height=0.5, label=fatigue_name_projection_dic.get(current_task, current_task) if current_task not in legend_labels else "")
                 legend_labels.add(current_task)
             
             current_y_pos += 1
     
     ax.set_xlabel('Time Step', fontsize=12)
-    ax.set_ylabel('Agent', fontsize=12)
+    # ax.set_ylabel('Robot', fontsize=12)
     ax.set_title(f'Task-Level Gantt Chart - {algorithm_name}', fontsize=14)
     
     # 设置Y轴标签
@@ -146,10 +146,14 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
     for i in range(num_worker):
         y_labels.append(f'Worker {i+1}')
     for i in range(num_agv):
-        y_labels.append(f'AGV {i+1}')
+        y_labels.append(f'Robot {i+1}')
     
     ax.set_yticks(range(total_agents))
     ax.set_yticklabels(y_labels)
+    # 反转Y轴，让Worker显示在第一行
+    ax.invert_yaxis()
+    # 设置Y轴范围，减小不同类型之间的间隔
+    ax.set_ylim(-0.3, total_agents - 0.3)
     ax.tick_params(axis='both', which='both', labelsize=12)
     ax.grid(True, alpha=0.3)
     
@@ -161,6 +165,11 @@ def plot_gantt_chart(ax, worker_data, agv_data, task_colors, algorithm_name, sho
 
 if __name__ == '__main__':
     import pickle
+    import matplotlib as mpl
+    
+    # 设置matplotlib不省略刻度值
+    mpl.rcParams['axes.formatter.useoffset'] = False
+    mpl.rcParams['axes.formatter.use_mathtext'] = False
     
     algorithm_name_dict = {'D3QN': 'figs/gantt/gantt_data_D3QN.pkl', 'PF-CD3Q': 'figs/gantt/gantt_data_PF-CD3Q.pkl'}
     
@@ -192,7 +201,7 @@ if __name__ == '__main__':
         exit()
 
     # 创建包含三个子图的图表花
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 14), sharex=True, height_ratios=[1.5, 1, 1])
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 14), height_ratios=[1.5, 1, 1])
     
     # 子图1：两个算法的疲劳值对比
     colors = ['blue', 'red']  # 为两个算法分配不同颜色
@@ -242,6 +251,13 @@ if __name__ == '__main__':
     ax1.set_ylabel('Fatigue Value', fontsize=12)
     ax1.set_title('Worker Fatigue Changes Comparison', fontsize=14)
     ax1.tick_params(axis='both', which='both', labelsize=12)
+    ax1.tick_params(axis='x', rotation=0)
+    # 设置X轴刻度不省略
+    ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x)}'))
+    # 确保X轴刻度不省略
+    ax1.xaxis.set_major_locator(plt.MaxNLocator(nbins=10))
+    # 强制显示X轴刻度
+    ax1.xaxis.set_tick_params(which='major', labelsize=12)
     ax1.legend(legend_handles, legend_labels, loc='center', bbox_to_anchor=(0.7, 0.4), fontsize=12)
     ax1.grid(True, alpha=0.3)
     
@@ -256,6 +272,10 @@ if __name__ == '__main__':
             ax = ax3
             
         plot_gantt_chart(ax, worker_data, agv_data, all_task_colors[alg_name], alg_name, show_legend=False)
+        # 为图二和图三设置X轴刻度
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x)}'))
+        ax.xaxis.set_major_locator(plt.MaxNLocator(nbins=10))
+        ax.xaxis.set_tick_params(which='major', labelsize=12)
     
     plt.tight_layout()
     plt.savefig('figs/gantt_chart_comparison.png', dpi=300, bbox_inches='tight')
