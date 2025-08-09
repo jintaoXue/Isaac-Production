@@ -293,3 +293,5 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 1.新训练了ppo-lag，所有test重跑
 2.改良了pf filter的性能
 3.可视化的所有图片要重新运行
+
+然后这个task allocation这个概念要怎么改一下？
