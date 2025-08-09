@@ -194,8 +194,8 @@ if __name__ == '__main__':
         "6_test_dqn_test_49600_2025-07-29_13-21-06": "PF-DQN",
         "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
         "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
-        "9_test_ppolag_filter_dis_49600_2025-07-23_22-24-04": "PPO-lag",
-        "10_test_ppolag_filter_dis_42800_2025-07-21_23-34-32": "PF-PPO-lag"
+        "9_test_ppolag_filter_dis_49600_2025-07-23_22-24-04": "PPO-Lag",
+        "10_test_ppolag_filter_dis_42800_2025-07-21_23-34-32": "PF-PPO-Lag"
     }
     
     ## Draw boxplot, three sub-figures

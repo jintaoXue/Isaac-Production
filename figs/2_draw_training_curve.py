@@ -400,8 +400,8 @@ if __name__ == '__main__':
         "4090_ppo_dis_2025-07-30_13-18-07": "PF-PPO",
     }
     group_D = {
-        "4070_9_ppolag_filter_dis_2025-08-08_13-49-16": "PPO-lag",
-        "4090_10_ppolag_filter_dis_2025-08-08_13-46-57": "PF-PPO-lag"
+        "4070_9_ppolag_filter_dis_2025-08-08_13-49-16": "PPO-Lag",
+        "4090_10_ppolag_filter_dis_2025-08-08_13-46-57": "PF-PPO-Lag"
     }
     
     # 合并所有算法字典

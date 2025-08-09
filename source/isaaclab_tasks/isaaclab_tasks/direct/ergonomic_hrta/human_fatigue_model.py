@@ -625,13 +625,14 @@ class Fatigue(object):
         ax1.vlines(task_switch_times, ymin=min(true_fatigue+[y for _, y in pred_segments for y in y]), ymax=max(true_fatigue+[y for _, y in pred_segments for y in y]), linestyles='dashed', colors='silver', alpha=0.5, label='Task switch')
         ax1.set_xlabel('Time step', fontsize=17)
         ax1.set_ylabel('Fatigue value', fontsize=17)
-        ax1.set_title('Task-level fatigue prediction (PF/KF/EKF) vs true value, human type: ' + self.human_type, fontsize=17) 
+        ax1.tick_params(axis='both', which='both', labelsize=15)
+        ax1.set_title('Task-level fatigue prediction (PF/KF/EKF) vs true value, human type: ' + self.human_type, fontsize=17, fontweight='bold') 
         ax1.legend(fontsize=15)
         ax1.grid(True, alpha=0.3)
         
         # 添加缩写说明
-        ax1.text(0.66, 0.27, 'PF: Particle Filter\nKF: Kalman Filter\nEKF: Extended Kalman Filter', 
-                transform=ax1.transAxes, fontsize=12, verticalalignment='bottom', horizontalalignment='left',
+        ax1.text(0.64, 0.3, 'PF: Particle Filter\nKF: Kalman Filter\nEKF: Extended Kalman Filter', 
+                transform=ax1.transAxes, fontsize=15, verticalalignment='bottom', horizontalalignment='left',
                 bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
         # ====== 下半部分：filter lambda估计图 ======
@@ -668,14 +669,15 @@ class Fatigue(object):
                 
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
-                          label='True λ', linewidth=2)
-                ax.set_title(f'Fatigue filter for subtask: {fatigue_name_dic[subtask]}', fontsize=17)
-                ax.set_xlabel('Time step', fontsize=15)
+                        label='True λ', linewidth=2)
+                ax.set_title(f'Subtask: {fatigue_name_dic[subtask]}', fontsize=17, fontweight='bold')
+                ax.set_xlabel('Estimation step', fontsize=15)
                 ax.set_ylabel('λ value', fontsize=15)
+                ax.tick_params(axis='both', which='both', labelsize=14)
                 ax.legend(fontsize=13)
                 ax.grid(True, alpha=0.3)
             
-            # 绘制恢复filter的lambda估计
+            # 绘制恢复filter的mu估计
             for i, state_type in enumerate(recovery_filters):
                 idx = len(fatigue_filters) + i
                 row = idx // cols + 1  # +1 因为第一行是疲劳预测图
@@ -688,7 +690,7 @@ class Fatigue(object):
                 if len(pf_filter.lambda_estimates) > 1:
                     times = range(len(pf_filter.lambda_estimates))
                     ax.plot(times, pf_filter.lambda_estimates, '-o', color='blue', 
-                           label='PF Estimated λ', linewidth=2, markersize=4)
+                           label='PF Estimated μ', linewidth=2, markersize=4)
                 
                 # KF恢复过滤器
                 if has_kf and state_type in self.kfs_phy_rec:
@@ -708,10 +710,11 @@ class Fatigue(object):
                 
                 # 真值线
                 ax.axhline(y=true_lambda, color='red', linestyle='--', 
-                          label='True λ', linewidth=2)
-                ax.set_title(f'Recovery filter for subtask: {recover_name_dic[state_type]}', fontsize=17)
-                ax.set_xlabel('Time step', fontsize=15)
-                ax.set_ylabel('λ/μ value', fontsize=15)
+                          label='True μ', linewidth=2)
+                ax.set_title(f'Subtask: {recover_name_dic[state_type]}', fontsize=17, fontweight='bold')
+                ax.set_xlabel('Estimation step', fontsize=15)
+                ax.set_ylabel('μ value', fontsize=15)
+                ax.tick_params(axis='both', which='both', labelsize=14)
                 ax.legend(fontsize=13)
                 ax.grid(True, alpha=0.3)
             
