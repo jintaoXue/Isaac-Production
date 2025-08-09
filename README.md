@@ -296,3 +296,4 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 4.然后这个task allocation这个概念要怎么改一下？
 5.实验1和4选一个的话，可能选1更好（暂不）
 6.filter可以加一个可视化结果，human数量增加，精度下降（暂不）
+7. PF-CD3QP可以不展示
