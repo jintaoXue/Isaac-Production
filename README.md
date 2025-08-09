@@ -295,3 +295,5 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 3.可视化的所有图片要重新运行
 
 然后这个task allocation这个概念要怎么改一下？
+
+1和4选一个的话，可能选1更好

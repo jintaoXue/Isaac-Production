@@ -242,9 +242,9 @@ class HRTaskAllocEnvBase(DirectRLEnv):
     
     def compute_cost_value(self):
         cost = 0.0
-        scale = 0.0001
+        scale = 0.005
         if self.task_manager.characters.have_overwork():
-            cost += 0.01
+            cost += 0.1
         cost += self.task_manager.characters.compute_fatigue_cost()*scale
         return cost
         
