@@ -49,7 +49,7 @@ class ParticleFilter:
         #误差归一化到[0,1]
         normalized_errors = (errors - error_min) / (error_max - error_min)
         #使用指数函数放大误差
-        likelihood = np.exp(-2 * normalized_errors**2)
+        likelihood = np.exp(-10 * normalized_errors**2)
         likelihood = likelihood/ sum(likelihood)
         # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2)
         # likelihood = likelihood/ sum(likelihood)
@@ -241,7 +241,7 @@ class RecParticleFilter(ParticleFilter):
         #误差归一化到[0,1]
         normalized_errors = (errors - error_min) / (error_max - error_min)
         #使用指数函数放大误差
-        likelihood = np.exp(-2 * normalized_errors**2)
+        likelihood = np.exp(-100 * normalized_errors**2)
         likelihood = likelihood/ sum(likelihood)
         # likelihood = np.exp(-0.5 * (measurement_t - F_pred)**2)
         # likelihood = likelihood/ sum(likelihood)

@@ -89,7 +89,7 @@ class Fatigue(object):
         self.phy_history = None # value, state, time
         self.psy_history = None
         # self.time_history = None
-        self.visualize = False
+        self.visualize = True
         self.activate_other_filters = train_cfg['other_filters']
         self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
