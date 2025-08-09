@@ -83,7 +83,7 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
     
     # 绘制箱线图
     if box_data:
-        bp = ax.boxplot(box_data, labels=labels, patch_artist=True)
+        bp = ax.boxplot(box_data, labels=labels, patch_artist=True, widths=0.65)
         
         # 设置颜色
         colors = ['lightblue', 'lightgreen', 'lightcoral', 'lightyellow', 
@@ -91,9 +91,11 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
         for patch, color in zip(bp['boxes'], colors * (len(bp['boxes']) // len(colors) + 1)):
             patch.set_facecolor(color)
         
-        ax.set_title(title, fontsize=14)
-        ax.set_ylabel('Value', fontsize=12)
-        ax.tick_params(axis='x', rotation=45)
+        ax.set_title(title, fontsize=16, fontweight='bold')
+        # ax.set_xlabel('Category', fontsize=14)
+        ax.set_ylabel('Value', fontsize=16)
+        ax.tick_params(axis='x', rotation=45, labelsize=14)
+        ax.tick_params(axis='y', labelsize=14)
         ax.grid(True, alpha=0.3)
         
         # 只在第一个子图添加标记解释
@@ -108,7 +110,7 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
                    color='red', linewidth=1, transform=ax.transAxes, zorder=10)
             # 添加文字说明
             ax.text(legend_x + 0.12, legend_y, ': Mean value', 
-                   transform=ax.transAxes, fontsize=10, verticalalignment='center',
+                   transform=ax.transAxes, fontsize=14, verticalalignment='center', fontweight='bold',
                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
         
         # 添加平均值标记
@@ -116,11 +118,11 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
             mean_val = np.mean(data)
             # 根据数据类型调整显示精度
             if plot_type == "predict_loss":
-                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.3f}', 
-                       ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.5f}', 
+                       ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
             else:
-                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.2f}', 
-                       ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+                ax.text(i+1, mean_val + (max(data) - min(data)) * 0.04, f'{mean_val:.4f}', 
+                       ha='center', va='bottom', fontsize=14, fontweight='bold', color='black')
             
             # 添加朝右的三角形标记
             ax.scatter(i+1, mean_val, marker='>', color='red', s=120, zorder=5)
@@ -234,7 +236,7 @@ if __name__ == '__main__':
         "Recovery Coefficient": fig_three_boxplot_data
     }
     
-    fig_names = ["Predict Loss Comparison", "Fatigue Coefficient Accuracy", "Recovery Coefficient Accuracy"]
+    fig_names = ["Predict loss comparison", "Fatigue parameter accuracy", "Recovery parameter accuracy"]
     
     # 创建箱线图
     fig = create_boxplot_figure(fig_data_dict, fig_names, "")
