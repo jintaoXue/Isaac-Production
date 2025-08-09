@@ -287,3 +287,9 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 
 显示分区：  df -Th 
 最后执行：mount -o remount -w /factory (factory为文件夹所在分区名，这里替换成 /dev/sdd4）即可
+
+
+### 8.9重新跑实验
+1.新训练了ppo-lag，所有test重跑
+2.改良了pf filter的性能
+3.可视化的所有图片要重新运行
