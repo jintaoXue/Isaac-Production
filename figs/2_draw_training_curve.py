@@ -389,7 +389,7 @@ if __name__ == '__main__':
     group_A = {
         "penalty_4070_rl_filter_2025-07-29_22-22-18": "D3QN",
         "4070_rl_filter_2025-07-20_12-17-12": "PF-CD3Q",
-        "mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
+        # "mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
     }
     group_B = {
         "penalty_4070_dqn_2025-07-27_11-39-32": "DQN",
@@ -400,8 +400,8 @@ if __name__ == '__main__':
         "4090_ppo_dis_2025-07-30_13-18-07": "PF-PPO",
     }
     group_D = {
-        "nomask_4070_ppolag_filter_dis_2025-07-23_22-24-04": "PPO-lag",
-        "4070_ppolag_filter_dis_2025-07-21_23-34-32": "PF-PPO-lag"
+        "4070_9_ppolag_filter_dis_2025-08-08_13-49-16": "PPO-lag",
+        "4090_10_ppolag_filter_dis_2025-08-08_13-46-57": "PF-PPO-lag"
     }
     
     # 合并所有算法字典

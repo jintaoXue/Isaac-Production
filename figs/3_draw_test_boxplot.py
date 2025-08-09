@@ -127,7 +127,7 @@ if __name__ == '__main__':
         # 1_test_rl_filter_test_49600_2025-07-25_15-02-16  D3QN
         "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
         "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
-        "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
+        # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
         "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
         "6_test_dqn_test_49600_2025-07-29_13-21-06": "PF-DQN",
         "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     group_A = {
         "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
         "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
-        "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
+        # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
     }
     group_B = {
         "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
