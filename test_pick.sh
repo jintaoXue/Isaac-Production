@@ -90,7 +90,7 @@ for num in "${to_run[@]}"; do
         --test \
         --test_all_settings \
         --other_filters \
-        --load_dir "$DIR" \
+        --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
         --load_name "/HRTA_direct_ep_${num}.pth" \
         --wandb_project test_HRTA_fatigue \
         --test_times 50
