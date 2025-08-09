@@ -11,42 +11,6 @@ fi
 
 GROUP=$1
 
-# 如果不是A/B组，尝试解析为编号列表（支持逗号或空格分隔）
-if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
-    TEST_IDS=()
-    for arg in "$@"; do
-        IFS=',' read -ra parts <<< "$arg"
-        for p in "${parts[@]}"; do
-            if [[ "$p" =~ ^[1-9]$|^10$ ]]; then
-                TEST_IDS+=("$p")
-            elif [ -n "$p" ]; then
-                echo "错误: 无效的测试序号 $p"
-                exit 1
-            fi
-        done
-    done
-
-    if [ ${#TEST_IDS[@]} -gt 0 ]; then
-        echo "运行测试序号列表: ${TEST_IDS[*]}"
-        for id in "${TEST_IDS[@]}"; do
-            case $id in
-                1) run_test_1 ;;
-                2) run_test_2 ;;
-                3) run_test_3 ;;
-                4) run_test_4 ;;
-                5) run_test_5 ;;
-                6) run_test_6 ;;
-                7) run_test_7 ;;
-                8) run_test_8 ;;
-                9) run_test_9 ;;
-                10) run_test_10 ;;
-            esac
-        done
-        echo "测试列表完成！"
-        exit 0
-    fi
-fi
-
 # 检查是否为数字（1-10）
 if [[ "$GROUP" =~ ^[1-9]$|^10$ ]]; then
     echo "运行单个测试序号: $GROUP"
@@ -54,7 +18,7 @@ if [[ "$GROUP" =~ ^[1-9]$|^10$ ]]; then
 else
     if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
         echo "错误: 参数必须是 A、B 或 1-10 中的数字"
-        echo "用法: $0 [A|B|1-10]"
+        echo "用法: $0 [A|B|1-10] [更多编号...]"
         exit 1
     fi
     SINGLE_TEST=false
@@ -85,10 +49,9 @@ run_test_3() {
     echo "运行测试 3: PF-CD3Q 4070_rl_filter_2025-07-20_12-17-12"
     # list=(49600)
     list=(
-        52800
         62400
-        71600
-        80400
+        # 71600
+        # 80400
     )
     for num in "${list[@]}"
     do
@@ -167,6 +130,42 @@ run_test_10() {
     done
 }
 
+# 支持多个编号（逗号或空格分隔）
+if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
+    TEST_IDS=()
+    for arg in "$@"; do
+        IFS=',' read -ra parts <<< "$arg"
+        for p in "${parts[@]}"; do
+            if [[ "$p" =~ ^[1-9]$|^10$ ]]; then
+                TEST_IDS+=("$p")
+            elif [ -n "$p" ]; then
+                echo "错误: 无效的测试序号 $p"
+                exit 1
+            fi
+        done
+    done
+
+    if [ ${#TEST_IDS[@]} -gt 0 ]; then
+        echo "运行测试序号列表: ${TEST_IDS[*]}"
+        for id in "${TEST_IDS[@]}"; do
+            case $id in
+                1) run_test_1 ;;
+                2) run_test_2 ;;
+                3) run_test_3 ;;
+                4) run_test_4 ;;
+                5) run_test_5 ;;
+                6) run_test_6 ;;
+                7) run_test_7 ;;
+                8) run_test_8 ;;
+                9) run_test_9 ;;
+                10) run_test_10 ;;
+            esac
+        done
+        echo "测试列表完成！"
+        exit 0
+    fi
+fi
+
 # 单个测试
 if [ "$SINGLE_TEST" = true ]; then
     case $GROUP in
@@ -189,21 +188,20 @@ fi
 # A组测试 (1-5)
 if [ "$GROUP" = "A" ]; then
     echo "=== 运行A组测试 (1-5) ==="
-    run_test_1
     run_test_2
     run_test_3
     run_test_4
-    run_test_5
+    run_test_9
     echo "A组测试完成！"
 fi
 
 # B组测试 (6-10)
 if [ "$GROUP" = "B" ]; then
     echo "=== 运行B组测试 (6-10) ==="
+    run_test_5
     run_test_6
     run_test_7
     run_test_8
-    run_test_9
     run_test_10
     echo "B组测试完成！"
 fi
