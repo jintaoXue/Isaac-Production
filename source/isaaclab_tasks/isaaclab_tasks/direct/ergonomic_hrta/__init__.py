@@ -22,7 +22,6 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.eg_hrta_env_cfg:HRTaskAllocEnvCfg",
-        "rainbowmini": f"{agents.__name__}:rainbowmini.yaml",
         "rl_filter": f"{agents.__name__}:rl_filter.yaml",
         "ppo_dis": f"{agents.__name__}:ppo_dis.yaml",
         "ppolag_filter_dis": f"{agents.__name__}:ppolag_filter_dis.yaml",
