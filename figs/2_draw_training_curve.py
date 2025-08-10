@@ -75,10 +75,10 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
         data_names = df.loc[0]
         
         # 设置图表属性
-        ax.set_title(title, fontsize=14, fontweight='bold')
-        ax.set_xlabel(x_label, fontsize=12)
-        ax.set_ylabel(y_label, fontsize=12)
-        ax.tick_params(axis='both', which='both', labelsize=12)
+        ax.set_title(title, fontsize=18, fontweight='bold')
+        ax.set_xlabel(x_label, fontsize=14)
+        ax.set_ylabel(y_label, fontsize=14)
+        ax.tick_params(axis='both', which='both', labelsize=14)
         ax.set_xlim(x_range)
         ax.set_ylim(y_range)
         
@@ -199,7 +199,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                         break
         
         # 创建新的图例
-        leg = ax.legend(new_handles, new_labels, ncol=2, fontsize=12, handlelength=3.0)
+        leg = ax.legend(new_handles, new_labels, ncol=2, fontsize=14, handlelength=3.0)
         for line in leg.get_lines():
             line.set_linewidth(2.0)
         
@@ -208,10 +208,10 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
         # 如果需要添加放大框
         if add_zoom and x_range[1] == 2100:  # 只对图二和图四添加放大框
             # 创建放大框
-            if title == "Progress (Evaluate)":
+            if title == "Progress (Evaluate during training)":
                 zoom_ax = ax.inset_axes([0.25, 0.45, 0.5, 0.3])  # 图四：放大尺寸，位置调整
             else:
-                if title == "Makespan (Evaluate)":
+                if title == "Makespan (Evaluate during training)":
                     zoom_ax = ax.inset_axes([0.3, 0.3, 0.6, 0.4])  # 图二：拉长宽度
                 else:
                     zoom_ax = ax.inset_axes([0.3, 0.3, 0.4, 0.4])  # 其他图：正常尺寸
@@ -237,7 +237,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                         linestyle = line.get_linestyle()
                         
                         # 图二的zoom框中减小线宽并进一步平滑
-                        if title == "Makespan (Evaluate)":
+                        if title == "Makespan (Evaluate during training)":
                             # 对图二的zoom框数据进一步平滑
                             y_zoom_series = pd.Series(y_zoom_data)
                             y_zoom_smoothed = smooth_line(y_zoom_series, alpha=0.06)  # 使用更小的alpha值
@@ -247,14 +247,14 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
             
             # 设置放大框的属性
             zoom_ax.set_xlim(500, 2000)
-            if title == "Makespan (Evaluate)":
+            if title == "Makespan (Evaluate during training)":
                 zoom_ax.set_ylim(1275, 1450)  # 图二的放大范围
-            elif title == "Progress (Evaluate)":
+            elif title == "Progress (Evaluate during training)":
                 zoom_ax.set_ylim(0.97, 1.02)  # 图四的放大范围
             
             zoom_ax.grid(True, alpha=0.3)
-            zoom_ax.tick_params(labelsize=8)
-            zoom_ax.set_title('Zoom', fontsize=10)
+            zoom_ax.tick_params(labelsize=10)
+            zoom_ax.set_title('Zoom', fontsize=12)
             
             # 添加连接线
             ax.indicate_inset_zoom(zoom_ax, edgecolor='black', alpha=0.5)
@@ -324,11 +324,11 @@ def create_figure(metric_data, algo_dict, groups=None):
         groups=groups
     )
     
-    # 子图2: Makespan (Evaluate)
+    # 子图2: Makespan (Evaluate during training)
     draw_training_curve(
         axes[1], 
-        metric_data["Makespan (Evaluate)"], 
-        "Makespan (Evaluate)",
+        metric_data["Makespan (Evaluate during training)"], 
+        "Makespan (Evaluate during training)",
         "Evaluate Episode", 
         "Makespan", 
         [0, 2100], 
@@ -340,11 +340,11 @@ def create_figure(metric_data, algo_dict, groups=None):
         add_zoom=True
     )
     
-    # 子图3: Overwork (Evaluate) - 曲线图
+    # 子图3: Overwork (Evaluate during training) - 曲线图
     draw_training_curve(
         axes[2], 
-        metric_data["Overwork (Evaluate)"], 
-        "Overwork (Evaluate)",
+        metric_data["Overwork (Evaluate during training)"], 
+        "Overwork (Evaluate during training)",
         "Evaluate Episode", 
         "Overwork", 
         [0, 2100], 
@@ -355,11 +355,11 @@ def create_figure(metric_data, algo_dict, groups=None):
         groups=groups
     )
     
-    # 子图4: Progress (Evaluate)
+    # 子图4: Progress (Evaluate during training)
     draw_training_curve(
         axes[3], 
-        metric_data["Progress (Evaluate)"], 
-        "Progress (Evaluate)",
+        metric_data["Progress (Evaluate during training)"], 
+        "Progress (Evaluate during training)",
         "Evaluate Episode", 
         "Progress", 
         [0, 2100], 
@@ -380,9 +380,9 @@ if __name__ == '__main__':
     ## data source
     metric_name_file_dir_list = {
         "Return (Training)": os.path.dirname(__file__) + "/train" + "/Mrewards.csv",
-        "Makespan (Evaluate)": os.path.dirname(__file__) + "/train" + "/EpEnvLen.csv",
-        "Overwork (Evaluate)": os.path.dirname(__file__) + "/train" + "/EpOverCost.csv",
-        "Progress (Evaluate)": os.path.dirname(__file__) + "/train" + "/EpProgress.csv"
+        "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpEnvLen.csv",
+        "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpOverCost.csv",
+        "Progress (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpProgress.csv"
     }
     
     # 定义算法分组
