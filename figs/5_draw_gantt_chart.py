@@ -214,7 +214,7 @@ if __name__ == '__main__':
         all_task_colors[alg_name] = task_colors
     
     # 添加疲劳阈值水平线
-    ax1.axhline(y=ftg_thresh_phy, color='red', linestyle='--', alpha=0.8, label=f'Fatigue Threshold ({ftg_thresh_phy})')
+    ax1.axhline(y=ftg_thresh_phy, color='red', linestyle='--', alpha=0.8, label=f'Fatigue threshold ({ftg_thresh_phy})')
     
     # 为图一添加所有任务的legend
     # 收集所有任务的颜色信息

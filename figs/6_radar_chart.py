@@ -32,7 +32,7 @@ def create_radar_chart(ax, data_dict, title="Algorithm Performance Radar Chart")
     
     # 设置刻度标签
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(metrics, fontsize=16, fontweight='bold', color='#2c3e50')
+    ax.set_xticklabels(metrics, fontsize=22, fontweight='bold', color='#2c3e50')
     
     # 设置网格样式 - 更现代的网格
     ax.grid(True, alpha=0.2, color='#34495e', linewidth=0.8)
@@ -40,17 +40,17 @@ def create_radar_chart(ax, data_dict, title="Algorithm Performance Radar Chart")
     
     # 设置Y轴标签
     ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8', '1.0'], fontsize=12, color='#7f8c8d')
+    ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8', '1.0'], fontsize=18, color='#7f8c8d')
     
     # 设置背景色
     ax.set_facecolor('#f8f9fa')
     
-    # 使用现代配色方案
+    # 使用与4_draw_test_line.py相同的颜色定义
     group_colors = {
-        'A': '#3498db',  # 现代蓝色
-        'B': '#2ecc71',  # 现代绿色
-        'C': '#9b59b6',  # 现代紫色
-        'D': '#e74c3c'   # 现代红色
+        'A': '#1f77b4',  # 蓝色
+        'B': '#2ca02c',  # 绿色
+        'C': '#9467bd',  # 紫色
+        'D': '#e377c2'   # 粉色
     }
     
     # 算法分组映射（与4_draw_test_line.py保持一致）
@@ -75,10 +75,12 @@ def create_radar_chart(ax, data_dict, title="Algorithm Performance Radar Chart")
     for algo_name, values in data_dict.items():
         # 标准化数据 - 放大性能差异
         progress_norm = 1.0  # Progress都设为1
-        # Makespan映射到0-1范围，最差到最好
+        # Makespan映射到0.1-1范围，最差到最好
         makespan_norm = normalize_data(values['Makespan'], 1281.86, 1360.39, reverse=True)   # Makespan越小越好，使用实际数据范围
-        # Overwork映射到0-1范围，最差到最好
+        makespan_norm = 0.1 + 0.9 * makespan_norm  # 映射到0.1-1范围
+        # Overwork映射到0.1-1范围，最差到最好
         overwork_norm = normalize_data(values['Overwork'], 0.0, 0.2667, reverse=True)  # Overwork越小越好，使用实际数据范围
+        overwork_norm = 0.1 + 0.9 * overwork_norm  # 映射到0.1-1范围
         
         # 创建雷达图数据点
         radar_values = [progress_norm, makespan_norm, overwork_norm]
@@ -94,10 +96,10 @@ def create_radar_chart(ax, data_dict, title="Algorithm Performance Radar Chart")
         ax.fill(angles, radar_values, alpha=0.15, color=color)
     
     # 添加图例
-    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), fontsize=16, handlelength=4, handleheight=2)
+    ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0), fontsize=22, handlelength=4, handleheight=2)
     
-    # 设置标题
-    ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
+    # 省略标题
+    # ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
     
     return ax
 
