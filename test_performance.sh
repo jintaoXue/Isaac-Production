@@ -123,7 +123,15 @@ run_test_8() {
 
 run_test_9() {
     echo "运行测试 9: PPO-lag 4070_9_ppolag_filter_dis_2025-08-08_13-49-16"
-    list=(49600)
+    list=(
+        # 49600
+        52400
+        52000
+        51600
+        51200
+        50800
+        50400
+    )
     for num in "${list[@]}"
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --test --test_all_settings --other_filters \
