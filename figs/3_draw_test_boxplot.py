@@ -116,20 +116,20 @@ if __name__ == '__main__':
     metric_name_file_dir_list = {
         "Makespan (Test)": os.path.dirname(__file__) + "/test" + "/EpEnvLen.csv",
         "Overwork (Test)": os.path.dirname(__file__) + "/test" + "/EpOverCost.csv",
-        "Progress (Test)": os.path.dirname(__file__) + "/test" + "/EpProgress.csv"
+        # "Progress (Test)": os.path.dirname(__file__) + "/test" + "/EpProgress.csv"
     }
     title_dict = {
         "Makespan (Test)": "Makespan (Test)",
         "Overwork (Test)": "Overwork (Test)",
-        "Progress (Test)": "Progress (Test)"
+        # "Progress (Test)": "Progress (Test)"
     }
     data_algo_name_dict = {
         # 1_test_rl_filter_test_49600_2025-07-25_15-02-16  D3QN
         "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
-        "3_test_rl_filter_54400_2025-07-20_12-17-12": "PF-CD3Q",
+        "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
         # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
         "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
-        "6_test_dqn_test_49600_2025-07-29_13-21-06": "PF-DQN",
+        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
         "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
         "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
         "9_test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
@@ -138,12 +138,12 @@ if __name__ == '__main__':
     # 定义算法分组
     group_A = {
         "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
-        "3_test_rl_filter_54400_2025-07-20_12-17-12": "PF-CD3Q",
+        "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
         # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
     }
     group_B = {
         "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
-        "6_test_dqn_test_49600_2025-07-29_13-21-06": "PF-DQN",
+        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
     }
     group_C = {
         "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
