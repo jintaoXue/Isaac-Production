@@ -75,7 +75,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
         data_names = df.loc[0]
         
         # 设置图表属性
-        ax.set_title(title, fontsize=18, fontweight='bold')
+        ax.set_title(title, fontsize=18)
         ax.set_xlabel(x_label, fontsize=14)
         ax.set_ylabel(y_label, fontsize=14)
         ax.tick_params(axis='both', which='both', labelsize=14)
@@ -292,7 +292,7 @@ def draw_boxplot(ax, data_dict, title, y_label):
         for patch, color in zip(bp['boxes'], colors * (len(bp['boxes']) // len(colors) + 1)):
             patch.set_facecolor(color)
         
-        ax.set_title(title, fontsize=14, fontweight='bold')
+        ax.set_title(title, fontsize=14)
         ax.set_ylabel(y_label, fontsize=12)
         ax.tick_params(axis='x', rotation=45, labelsize=12)
         ax.tick_params(axis='y', labelsize=12)

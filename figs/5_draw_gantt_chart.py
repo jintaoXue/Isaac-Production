@@ -278,6 +278,6 @@ if __name__ == '__main__':
         ax.xaxis.set_tick_params(which='major', labelsize=12)
     
     plt.tight_layout()
-    plt.savefig('figs/gantt_chart_comparison.png', dpi=300, bbox_inches='tight')
+    plt.savefig('figs/gantt_chart_comparison.pdf', dpi=300, bbox_inches='tight', format='pdf')
     plt.show()
 

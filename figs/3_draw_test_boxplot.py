@@ -104,7 +104,7 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
                           color='red', linewidth=1, transform=axes[idx].transAxes, zorder=10)
             # 添加文字说明
             axes[idx].text(legend_x + 0.12, legend_y, ': Mean value', 
-                          transform=axes[idx].transAxes, fontsize=10, verticalalignment='center',
+                          transform=axes[idx].transAxes, fontsize=10, verticalalignment='center', fontweight='bold',
                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
             axes[idx].set_ylim(top=2000)
     plt.tight_layout()

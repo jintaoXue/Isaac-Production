@@ -144,7 +144,7 @@ def create_boxplot_figure(fig_data_dict, fig_names, main_title):
         plot_type = plot_types[i] if i < len(plot_types) else "predict_loss"
         draw_one_sub_pic(axes[i], data_dict, fig_names[i], plot_type)
     
-    # plt.suptitle(main_title, fontsize=16, fontweight='bold')
+    plt.suptitle(main_title, fontsize=16, fontweight='bold')
     plt.tight_layout()
     return fig
 
