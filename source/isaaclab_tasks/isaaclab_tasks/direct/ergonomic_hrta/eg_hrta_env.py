@@ -399,7 +399,7 @@ class HRTaskAllocEnv(HRTaskAllocEnvBase):
         task = self.task_manager.agvs.tasks[idx]
         high_level_task = self.task_manager.agvs.low2high_level_task_mapping(task)
         _, _, corresp_box_idx = self.task_manager.corresp_charac_agv_box_idx(high_level_task)
-        if self.gantt_chart_data:
+        if self._test and self.gantt_chart_data:
             self.task_manager.agvs.step_gantt_chart(idx, state, task, high_level_task)
         # corresp_charac_idx = self.task_manager.agvs.corresp_charac_idxs[idx] 
         # corresp_box_idx = self.task_manager.agvs.corresp_box_idxs[idx] 
