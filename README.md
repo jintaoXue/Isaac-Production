@@ -301,3 +301,11 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 下一步，test 3找一个好的结果，重新画曲线
 
 修改gitignore, 把figs文件的东西都记录一下
+
+
+# 10.9 一审结果
+改变dk做sensitivity study
+加一个参数表格 以及添加算法RCPO
+网络结构的 ablation
+添加human的类型
+
