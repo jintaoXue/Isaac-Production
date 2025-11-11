@@ -103,7 +103,7 @@ class SafeRlFilterAgentCPO():
         self._lagrange: Lagrange = Lagrange(cost_limit=0.5, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         ###CPO
         self._fvp_obs = None
-        self.fvp_sample_freq = config.get('fvp_sample_freq', 1)
+        # self.fvp_sample_freq = config.get('fvp_sample_freq', 1)
         self.actor_proxy = nn.Module()
         self.actor_proxy.params = nn.ParameterList(self.online_net.trainable_params_rl)
         if self.use_wandb:
@@ -1308,9 +1308,9 @@ class SafeRlFilterAgentCPO():
         distribution = self.online_net(obs)
         logp_ = torch.log(act)
         # std = self.actor_proxy.std
-        ratio = torch.exp(logp_ - logp)
+        ratio = torch.exp(logp_ - logp.squeeze(-1))
         loss = -(ratio * adv).mean()
-        entropy = distribution.entropy().mean().item()
+        # entropy = distribution.entropy().mean().item()
         # self._logger.store(
         #     {
         #         'Train/Entropy': entropy,
@@ -1447,7 +1447,7 @@ class SafeRlFilterAgentCPO():
 
     def _update_actor(
         self,
-        obs: torch.Tensor,
+        obs: dict,
         act: torch.Tensor,
         logp: torch.Tensor,
         adv_r: torch.Tensor,
@@ -1471,7 +1471,8 @@ class SafeRlFilterAgentCPO():
             adv_r (torch.Tensor): The reward advantage tensor.
             adv_c (torch.Tensor): The cost advantage tensor.
         """
-        self._fvp_obs = obs[:: self.fvp_sample_freq]
+        # self._fvp_obs = obs[:: self.fvp_sample_freq]
+        self._fvp_obs = obs
         theta_old = get_flat_params_from(self.actor_proxy)
         self.actor_proxy.zero_grad()
         loss_reward = self._loss_pi(obs, act, logp, adv_r)
