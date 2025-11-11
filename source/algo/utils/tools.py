@@ -28,6 +28,7 @@ import torch
 import torch.backends.cudnn
 import yaml
 
+
 def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
     """This function is used to get the flattened parameters from the model.
 

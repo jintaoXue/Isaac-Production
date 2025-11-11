@@ -309,3 +309,5 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 网络结构的 ablation
 添加human的类型
 
+# 10.11 
+actor zero grad的顺序是否会影响性能？

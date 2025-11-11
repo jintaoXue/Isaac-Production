@@ -103,6 +103,9 @@ class SafeRlFilterAgentCPO():
         self._lagrange: Lagrange = Lagrange(cost_limit=0.5, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         ###CPO
         self._fvp_obs = None
+        self.fvp_sample_freq = config.get('fvp_sample_freq', 1)
+        self.actor_proxy = nn.Module()
+        self.actor_proxy.params = nn.ParameterList(self.online_net.trainable_params_rl)
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -480,7 +483,7 @@ class SafeRlFilterAgentCPO():
             self.critic_optimiser.step()
             self.cost_optimiser.step()
 
-            self._update_actor(states, actions, old_log_probs, advantage, advantage_cost)
+            actor_loss = self._update_actor(states, actions, old_log_probs, advantage, advantage_cost)
             # self.replay_buffer.update_priorities(idxs, critic_loss.detach().cpu().numpy())  # Update priorities of sampled transitions
 
             if self.use_wandb:
@@ -1272,6 +1275,52 @@ class SafeRlFilterAgentCPO():
         ratio = torch.exp(logp_ - logp)
         return (ratio * adv_c).mean()
 
+    def _loss_pi(
+        self,
+        obs: dict,
+        act: torch.Tensor,
+        logp: torch.Tensor,
+        adv: torch.Tensor,
+    ) -> torch.Tensor:
+        r"""Computing pi/actor loss.
+
+        In Policy Gradient, the loss is defined as:
+
+        .. math::
+
+            L = -\underset{s_t \sim \rho_{\theta}}{\mathbb{E}} [
+                \sum_{t=0}^T ( \frac{\pi^{'}_{\theta}(a_t|s_t)}{\pi_{\theta}(a_t|s_t)} )
+                 A^{R}_{\pi_{\theta}}(s_t, a_t)
+            ]
+
+        where :math:`\pi_{\theta}` is the policy network, :math:`\pi^{'}_{\theta}`
+        is the new policy network, :math:`A^{R}_{\pi_{\theta}}(s_t, a_t)` is the advantage.
+
+        Args:
+            obs (torch.Tensor): The ``observation`` sampled from buffer.
+            act (torch.Tensor): The ``action`` sampled from buffer.
+            logp (torch.Tensor): The ``log probability`` of action sampled from buffer.
+            adv (torch.Tensor): The ``advantage`` processed. ``reward_advantage`` here.
+
+        Returns:
+            The loss of pi/actor.
+        """
+        distribution = self.online_net(obs)
+        logp_ = torch.log(act)
+        # std = self.actor_proxy.std
+        ratio = torch.exp(logp_ - logp)
+        loss = -(ratio * adv).mean()
+        entropy = distribution.entropy().mean().item()
+        # self._logger.store(
+        #     {
+        #         'Train/Entropy': entropy,
+        #         'Train/PolicyRatio': ratio,
+        #         'Train/PolicyStd': std,
+        #         'Loss/Loss_pi': loss.mean().item(),
+        #     },
+        # )
+        return loss
+
     def _determine_case(
         self,
         b_grads: torch.Tensor,
@@ -1422,12 +1471,12 @@ class SafeRlFilterAgentCPO():
             adv_r (torch.Tensor): The reward advantage tensor.
             adv_c (torch.Tensor): The cost advantage tensor.
         """
-        self._fvp_obs = obs[:: self._cfgs.algo_cfgs.fvp_sample_freq]
-        theta_old = get_flat_params_from(self._actor_critic.actor)
-        self._actor_critic.actor.zero_grad()
+        self._fvp_obs = obs[:: self.fvp_sample_freq]
+        theta_old = get_flat_params_from(self.actor_proxy)
+        self.actor_proxy.zero_grad()
         loss_reward = self._loss_pi(obs, act, logp, adv_r)
         loss_reward_before = distributed.dist_avg(loss_reward)
-        p_dist = self._actor_critic.actor(obs)
+        p_dist = self.online_net(obs)
 
         loss_reward.backward()
         distributed.avg_grads(self._actor_critic.actor)
@@ -1499,23 +1548,24 @@ class SafeRlFilterAgentCPO():
             loss_cost = self._loss_pi_cost(obs, act, logp, adv_c)
             loss = loss_reward + loss_cost
 
-        self._logger.store(
-            {
-                'Loss/Loss_pi': loss.item(),
-                'Misc/AcceptanceStep': accept_step,
-                'Misc/Alpha': alpha.item(),
-                'Misc/FinalStepNorm': step_direction.norm().mean().item(),
-                'Misc/xHx': xHx.mean().item(),
-                'Misc/H_inv_g': x.norm().item(),  # H^-1 g
-                'Misc/gradient_norm': torch.norm(grads).mean().item(),
-                'Misc/cost_gradient_norm': torch.norm(b_grads).mean().item(),
-                'Misc/Lambda_star': lambda_star.item(),
-                'Misc/Nu_star': nu_star.item(),
-                'Misc/OptimCase': int(optim_case),
-                'Misc/A': A.item(),
-                'Misc/B': B.item(),
-                'Misc/q': q.item(),
-                'Misc/r': r.item(),
-                'Misc/s': s.item(),
-            },
-        )
+        # self._logger.store(
+        #     {
+        #         'Loss/Loss_pi': loss.item(),
+        #         'Misc/AcceptanceStep': accept_step,
+        #         'Misc/Alpha': alpha.item(),
+        #         'Misc/FinalStepNorm': step_direction.norm().mean().item(),
+        #         'Misc/xHx': xHx.mean().item(),
+        #         'Misc/H_inv_g': x.norm().item(),  # H^-1 g
+        #         'Misc/gradient_norm': torch.norm(grads).mean().item(),
+        #         'Misc/cost_gradient_norm': torch.norm(b_grads).mean().item(),
+        #         'Misc/Lambda_star': lambda_star.item(),
+        #         'Misc/Nu_star': nu_star.item(),
+        #         'Misc/OptimCase': int(optim_case),
+        #         'Misc/A': A.item(),
+        #         'Misc/B': B.item(),
+        #         'Misc/q': q.item(),
+        #         'Misc/r': r.item(),
+        #         'Misc/s': s.item(),
+        #     },
+        # )
+        return loss
