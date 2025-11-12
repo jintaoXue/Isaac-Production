@@ -1100,11 +1100,7 @@ class SafeRlFilterAgentCPO():
         q_dist_probs = self.online_net(self._fvp_obs)
         with torch.no_grad():
             p_dist_probs = self.online_net(self._fvp_obs)
-        # Convert probability tensors to Categorical distributions
-        p_dist = torch.distributions.Categorical(probs=p_dist_probs)
-        q_dist = torch.distributions.Categorical(probs=q_dist_probs)
-        kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean()
-        # kl = torch.nn.KLDivLoss(q_dist_probs.log(), p_dist_probs.log())
+        kl = F.kl_div(q_dist_probs.softmax(dim=-1).log(), p_dist_probs.softmax(dim=-1), reduction='sum')
 
         params_list = self.online_net.trainable_params_rl
         grads = torch.autograd.grad(    
