@@ -1305,10 +1305,10 @@ class SafeRlFilterAgentCPO():
         Returns:
             The loss of pi/actor.
         """
-        distribution = self.online_net(obs)
-        logp_ = torch.log(act)
+        # distribution = self.online_net(obs)
+        logp_ = self.online_net(obs).gather(1, act.unsqueeze(-1))
         # std = self.actor_proxy.std
-        ratio = torch.exp(logp_ - logp.squeeze(-1))
+        ratio = torch.exp(logp_ - logp)
         loss = -(ratio * adv).mean()
         # entropy = distribution.entropy().mean().item()
         # self._logger.store(
