@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch import optim
 from torch.nn.utils import clip_grad_norm_
+import torch.nn.functional as F
 from torch import nn
 
 from rl_games.common import vecenv
@@ -100,6 +101,7 @@ class SafeRlFilterAgentCPO():
         self.eps = 0.2
 
         #####lagrange
+        self.cost_limit = 0.5
         self._lagrange: Lagrange = Lagrange(cost_limit=self.cost_limit, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         ###CPO
         self._fvp_obs = None
@@ -112,7 +114,7 @@ class SafeRlFilterAgentCPO():
         self.cg_damping = config.get('cg_damping', 0.1)
         # target kl divergence
         self.target_kl = config.get('target_kl', 0.01)
-        self.cost_limit = 0.5
+        
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -1095,25 +1097,39 @@ class SafeRlFilterAgentCPO():
             The Fisher vector product.
         """
         self.actor_proxy.zero_grad()
-        q_dist = self.actor_proxy(self._fvp_obs)
+        q_dist_probs = self.online_net(self._fvp_obs)
         with torch.no_grad():
-            p_dist = self.actor_proxy(self._fvp_obs)
+            p_dist_probs = self.online_net(self._fvp_obs)
+        # Convert probability tensors to Categorical distributions
+        p_dist = torch.distributions.Categorical(probs=p_dist_probs)
+        q_dist = torch.distributions.Categorical(probs=q_dist_probs)
         kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean()
+        # kl = torch.nn.KLDivLoss(q_dist_probs.log(), p_dist_probs.log())
 
+
+        params_list = list(self.actor_proxy.parameters())
         grads = torch.autograd.grad(    
             kl,
-            tuple(self.actor_proxy.parameters()),
+            params_list,
             create_graph=True,
+            allow_unused=True,
         )
         flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
 
         kl_p = (flat_grad_kl * params).sum()
         grads = torch.autograd.grad(
             kl_p,
-            tuple(self.actor_proxy.parameters()),
+            params_list,
             retain_graph=False,
+            allow_unused=True,
         )
-
+         # 打印梯度为None的张量对应的参数名称
+        for i, grad in enumerate(grads):
+            if grad is None:
+                param_name = list(self.actor_proxy.named_parameters())[i][0]
+                print(f"Gradient for parameter '{param_name}' is None")
+                # Replace None gradients with zero tensors
+        grads = [grad if grad is not None else torch.zeros_like(param) for grad, param in zip(grads, params_list)]
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
         distributed.avg_tensor(flat_grad_grad_kl)
 
@@ -1199,7 +1215,9 @@ class SafeRlFilterAgentCPO():
                 # loss of cost of policy cost from real/expected reward
                 loss_cost = self._loss_pi_cost(obs=obs, act=act, logp=logp, adv_c=adv_c)
                 # compute KL distance between new and old policy
-                q_dist = self.actor_proxy(obs)
+                q_dist_probs = self.online_net(obs)
+                # Convert probability tensors to Categorical distributions
+                q_dist = torch.distributions.Categorical(probs=q_dist_probs)
                 kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean()
             # compute improvement of reward
             loss_reward_improve = loss_reward_before - loss_reward
@@ -1477,7 +1495,9 @@ class SafeRlFilterAgentCPO():
         self.actor_proxy.zero_grad()
         loss_reward = self._loss_pi(obs, act, logp, adv_r)
         loss_reward_before = distributed.dist_avg(loss_reward)
-        p_dist = self.online_net(obs)
+        p_dist_probs = self.online_net(obs)
+        # Convert probability tensor to Categorical distribution
+        p_dist = torch.distributions.Categorical(probs=p_dist_probs)
 
         loss_reward.backward()
         distributed.avg_grads(self.actor_proxy)
