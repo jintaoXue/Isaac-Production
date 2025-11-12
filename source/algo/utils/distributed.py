@@ -25,6 +25,7 @@ import numpy as np
 import torch
 import torch.distributed as dist
 from torch.distributed import ReduceOp
+from torch import nn
 
 
 def setup_distributed() -> None:
@@ -164,7 +165,7 @@ def avg_tensor(value: torch.Tensor) -> None:
         value[:] = avg_x[:]
 
 
-def avg_grads(module: torch.nn.Module) -> None:
+def avg_grads(module: list[nn.Parameter]) -> None:
     """Average contents of gradient buffers across MPI processes.
 
     .. note::
@@ -188,17 +189,17 @@ def avg_grads(module: torch.nn.Module) -> None:
         tensor(3.)
 
     Args:
-        module (torch.nn.Module): The module in which grad need to be averaged.
+        module (list[nn.Parameter]): The module in which grad need to be averaged.
     """
     if world_size() > 1:
-        for parameter in module.parameters():
+        for parameter in module:
             if parameter.grad is not None:
                 p_grad = parameter.grad
                 avg_p_grad = dist_avg(parameter.grad)
                 p_grad[:] = avg_p_grad[:]
 
 
-def sync_params(module: torch.nn.Module) -> None:
+def sync_params(module: list[nn.Parameter]) -> None:
     """Sync all parameters of module across all MPI processes.
 
     .. note::
@@ -220,15 +221,15 @@ def sync_params(module: torch.nn.Module) -> None:
         tensor([[1.]])
 
     Args:
-        module (torch.nn.Module): The module to be synchronized.
+        module (list[nn.Parameter]): The module to be synchronized.
     """
     if world_size() > 1:
-        for parameter in module.parameters():
+        for parameter in module:
             p_numpy = parameter.data
             broadcast(p_numpy, src=0)
 
 
-def avg_params(module: torch.nn.Module) -> None:
+def avg_params(module: list[nn.Parameter]) -> None:
     """Average contents of all parameters across MPI processes.
 
     Examples:
@@ -247,10 +248,10 @@ def avg_params(module: torch.nn.Module) -> None:
         tensor([[1.5]])
 
     Args:
-        module (torch.nn.Module): The module in which parameters need to be averaged.
+        module (list[nn.Parameter]): The module in which parameters need to be averaged.
     """
     if world_size() > 1:
-        for parameter in module.parameters():
+        for parameter in module:
             param_tensor = parameter.data
             avg_param_tensor = dist_avg(param_tensor)
             param_tensor[:] = avg_param_tensor[:]

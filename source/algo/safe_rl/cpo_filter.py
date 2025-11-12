@@ -106,8 +106,8 @@ class SafeRlFilterAgentCPO():
         ###CPO
         self._fvp_obs = None
         # self.fvp_sample_freq = config.get('fvp_sample_freq', 1)
-        self.actor_proxy = nn.Module()
-        self.actor_proxy.params = nn.ParameterList(self.online_net.trainable_params_rl)
+        # self.actor_proxy = nn.Module()
+        # self.actor_proxy.params = nn.ParameterList(self.online_net.trainable_params_rl)
         # Number of conjugate gradient iterations
         self.cg_iters = config.get('cg_iters', 15)
         # Damping value for conjugate gradient
@@ -1096,7 +1096,7 @@ class SafeRlFilterAgentCPO():
         Returns:
             The Fisher vector product.
         """
-        self.actor_proxy.zero_grad()
+        self.optimiser.zero_grad()
         q_dist_probs = self.online_net(self._fvp_obs)
         with torch.no_grad():
             p_dist_probs = self.online_net(self._fvp_obs)
@@ -1107,7 +1107,7 @@ class SafeRlFilterAgentCPO():
         # kl = torch.nn.KLDivLoss(q_dist_probs.log(), p_dist_probs.log())
 
 
-        params_list = list(self.actor_proxy.parameters())
+        params_list = self.online_net.trainable_params_rl
         grads = torch.autograd.grad(    
             kl,
             params_list,
@@ -1124,12 +1124,12 @@ class SafeRlFilterAgentCPO():
             allow_unused=True,
         )
          # 打印梯度为None的张量对应的参数名称
-        for i, grad in enumerate(grads):
-            if grad is None:
-                param_name = list(self.actor_proxy.named_parameters())[i][0]
-                print(f"Gradient for parameter '{param_name}' is None")
-                # Replace None gradients with zero tensors
-        grads = [grad if grad is not None else torch.zeros_like(param) for grad, param in zip(grads, params_list)]
+        # for i, grad in enumerate(grads):
+        #     if grad is None:
+        #         param_name = list(self.actor_proxy.named_parameters())[i][0]
+        #         print(f"Gradient for parameter '{param_name}' is None")
+        #         # Replace None gradients with zero tensors
+        # grads = [grad if grad is not None else torch.zeros_like(param) for grad, param in zip(grads, params_list)]
         flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
         distributed.avg_tensor(flat_grad_grad_kl)
 
@@ -1191,7 +1191,7 @@ class SafeRlFilterAgentCPO():
         # get distance each time theta goes towards certain direction
         step_frac = 1.0
         # get and flatten parameters from pi-net
-        theta_old = get_flat_params_from(self.actor_proxy)
+        theta_old = get_flat_params_from(self.online_net.trainable_params_rl)
         # reward improvement, g-flat as gradient of reward
         expected_reward_improve = grads.dot(step_direction)
 
@@ -1491,7 +1491,7 @@ class SafeRlFilterAgentCPO():
         """
         # self._fvp_obs = obs[:: self.fvp_sample_freq]
         self._fvp_obs = obs
-        theta_old = get_flat_params_from(self.actor_proxy)
+        theta_old = get_flat_params_from(self.online_net.trainable_params_rl)
         self.actor_proxy.zero_grad()
         loss_reward = self._loss_pi(obs, act, logp, adv_r)
         loss_reward_before = distributed.dist_avg(loss_reward)

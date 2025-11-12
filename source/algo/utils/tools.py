@@ -27,9 +27,10 @@ import numpy as np
 import torch
 import torch.backends.cudnn
 import yaml
+from torch import nn
 
 
-def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
+def get_flat_params_from(model: list[nn.Parameter]) -> torch.Tensor:
     """This function is used to get the flattened parameters from the model.
 
     .. note::
@@ -53,7 +54,7 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
         AssertionError: If no gradients were found in model parameters.
     """
     flat_params = []
-    for _, param in model.named_parameters():
+    for param in model:
         if param.requires_grad:
             data = param.data
             data = data.view(-1)  # flatten tensor
@@ -62,7 +63,7 @@ def get_flat_params_from(model: torch.nn.Module) -> torch.Tensor:
     return torch.cat(flat_params)
 
 
-def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
+def get_flat_gradients_from(model: list[nn.Parameter]) -> torch.Tensor:
     """This function is used to get the flattened gradients from the model.
 
     .. note::
@@ -71,7 +72,7 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
         and then used to calculate the loss.
 
     Args:
-        model (torch.nn.Module): The model to be flattened.
+        model (list[nn.Parameter]): The model to be flattened.
 
     Returns:
         Flattened gradients.
@@ -80,7 +81,7 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
         AssertionError: If no gradients were found in model parameters.
     """
     grads = []
-    for _, param in model.named_parameters():
+    for param in model:
         if param.requires_grad and param.grad is not None:
             grad = param.grad
             grads.append(grad.view(-1))  # flatten tensor and append
@@ -88,7 +89,7 @@ def get_flat_gradients_from(model: torch.nn.Module) -> torch.Tensor:
     return torch.cat(grads)
 
 
-def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> None:
+def set_param_values_to_model(model: list[nn.Parameter], vals: torch.Tensor) -> None:
     """This function is used to set the parameters to the model.
 
     .. note::
@@ -105,7 +106,7 @@ def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> Non
                 [3., 4.]])
 
     Args:
-        model (torch.nn.Module): The model to be set.
+        model (list[nn.Parameter]): The model to be set.
         vals (torch.Tensor): The parameters to be set.
 
     Raises:
@@ -114,7 +115,7 @@ def set_param_values_to_model(model: torch.nn.Module, vals: torch.Tensor) -> Non
     """
     assert isinstance(vals, torch.Tensor)
     i: int = 0
-    for _, param in model.named_parameters():
+    for param in model:
         if param.requires_grad:  # param has grad and, hence, must be set
             orig_size = param.size()
             size = np.prod(list(param.size()))

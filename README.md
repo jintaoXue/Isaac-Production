@@ -313,3 +313,5 @@ case study：D3QN和PF-CD3Q，上半部分是fatigue曲线，下半部分是甘�
 actor zero grad的顺序是否会影响性能？
 
 action prob 好像有问题
+
+修改方法：把函数接口全部改成parmeter list
