@@ -1096,7 +1096,7 @@ class SafeRlFilterAgentCPO():
         Returns:
             The Fisher vector product.
         """
-        self.optimiser.zero_grad()
+        self.actor_optimiser.zero_grad()
         q_dist_probs = self.online_net(self._fvp_obs)
         with torch.no_grad():
             p_dist_probs = self.online_net(self._fvp_obs)
@@ -1105,7 +1105,6 @@ class SafeRlFilterAgentCPO():
         q_dist = torch.distributions.Categorical(probs=q_dist_probs)
         kl = torch.distributions.kl.kl_divergence(p_dist, q_dist).mean()
         # kl = torch.nn.KLDivLoss(q_dist_probs.log(), p_dist_probs.log())
-
 
         params_list = self.online_net.trainable_params_rl
         grads = torch.autograd.grad(    
