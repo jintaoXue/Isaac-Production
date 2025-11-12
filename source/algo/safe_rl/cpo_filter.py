@@ -1492,7 +1492,7 @@ class SafeRlFilterAgentCPO():
         # self._fvp_obs = obs[:: self.fvp_sample_freq]
         self._fvp_obs = obs
         theta_old = get_flat_params_from(self.online_net.trainable_params_rl)
-        self.actor_proxy.zero_grad()
+        self.actor_optimiser.zero_grad()
         loss_reward = self._loss_pi(obs, act, logp, adv_r)
         loss_reward_before = distributed.dist_avg(loss_reward)
         p_dist_probs = self.online_net(obs)
@@ -1500,23 +1500,23 @@ class SafeRlFilterAgentCPO():
         p_dist = torch.distributions.Categorical(probs=p_dist_probs)
 
         loss_reward.backward()
-        distributed.avg_grads(self.actor_proxy)
+        distributed.avg_grads(self.online_net.trainable_params_rl)
 
-        grads = -get_flat_gradients_from(self.actor_proxy)
+        grads = -get_flat_gradients_from(self.online_net.trainable_params_rl)
         x = conjugate_gradients(self._fvp, grads, self.cg_iters)
         assert torch.isfinite(x).all(), 'x is not finite'
         xHx = x.dot(self._fvp(x))
         assert xHx.item() >= 0, 'xHx is negative'
         alpha = torch.sqrt(2 * self.target_kl / (xHx + 1e-8))
 
-        self.actor_proxy.zero_grad()
+        self.actor_optimiser.zero_grad()
         loss_cost = self._loss_pi_cost(obs, act, logp, adv_c)
         loss_cost_before = distributed.dist_avg(loss_cost)
 
         loss_cost.backward()
-        distributed.avg_grads(self.actor_proxy)
+        distributed.avg_grads(self.online_net.trainable_params_rl)
 
-        b_grads = get_flat_gradients_from(self.actor_proxy)
+        b_grads = get_flat_gradients_from(self.online_net.trainable_params_rl)
         ep_costs = self.game_ep_cost.get_mean() - self.cost_limit
 
         p = conjugate_gradients(self._fvp, b_grads, self.cg_iters)
@@ -1562,7 +1562,7 @@ class SafeRlFilterAgentCPO():
         )
 
         theta_new = theta_old + step_direction
-        set_param_values_to_model(self.actor_proxy, theta_new)
+        set_param_values_to_model(self.online_net.trainable_params_rl, theta_new)
 
         with torch.no_grad():
             loss_reward = self._loss_pi(obs, act, logp, adv_r)
