@@ -85,6 +85,9 @@ def get_flat_gradients_from(model: list[nn.Parameter]) -> torch.Tensor:
         if param.requires_grad and param.grad is not None:
             grad = param.grad
             grads.append(grad.view(-1))  # flatten tensor and append
+        else:
+            # print(f"Gradient for parameter '{param.name}' is None")
+            grads.append(torch.zeros_like(param).view(-1))
     assert grads, 'No gradients were found in model parameters.'
     return torch.cat(grads)
 

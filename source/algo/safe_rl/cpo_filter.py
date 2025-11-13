@@ -1079,6 +1079,19 @@ class SafeRlFilterAgentCPO():
 
 
 ############### CPO algorithm related functions ###############
+    def replace_none_grads(self, params_list: list[nn.Parameter], name_lookup: dict[int, str], grads: list[torch.Tensor]) -> list[torch.Tensor]:
+        processed_grads = []
+        for param, grad in zip(params_list, grads):
+            if grad is None:
+                param_name = name_lookup.get(id(param), 'unknown_param')
+                # print(f"Gradient for parameter '{param_name}' is None")
+                processed_grads.append(torch.zeros_like(param).view(-1))
+            else:
+                param_name = name_lookup.get(id(param), 'unknown_param')
+                # print(f"Gradient for parameter '{param_name}' is not None")
+                processed_grads.append(grad)
+        return processed_grads
+
     def _fvp(self, params: torch.Tensor) -> torch.Tensor:
         """Build the Hessian-vector product.
 
@@ -1103,13 +1116,16 @@ class SafeRlFilterAgentCPO():
         kl = F.kl_div(q_dist_probs.softmax(dim=-1).log(), p_dist_probs.softmax(dim=-1), reduction='sum')
 
         params_list = self.online_net.trainable_params_rl
+        name_lookup = {id(param): name for name, param in self.online_net.named_parameters()}
         grads = torch.autograd.grad(    
             kl,
             params_list,
             create_graph=True,
             allow_unused=True,
         )
-        flat_grad_kl = torch.cat([grad.view(-1) for grad in grads])
+        # Replace None gradients with zeros to keep dimensions aligned
+        processed_grads = self.replace_none_grads(params_list, name_lookup, grads)
+        flat_grad_kl = torch.cat([grad.view(-1) for grad in processed_grads])
 
         kl_p = (flat_grad_kl * params).sum()
         grads = torch.autograd.grad(
@@ -1118,14 +1134,8 @@ class SafeRlFilterAgentCPO():
             retain_graph=False,
             allow_unused=True,
         )
-         # 打印梯度为None的张量对应的参数名称
-        # for i, grad in enumerate(grads):
-        #     if grad is None:
-        #         param_name = list(self.actor_proxy.named_parameters())[i][0]
-        #         print(f"Gradient for parameter '{param_name}' is None")
-        #         # Replace None gradients with zero tensors
-        # grads = [grad if grad is not None else torch.zeros_like(param) for grad, param in zip(grads, params_list)]
-        flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in grads])
+        processed_grads = self.replace_none_grads(params_list, name_lookup, grads)
+        flat_grad_grad_kl = torch.cat([grad.contiguous().view(-1) for grad in processed_grads])
         distributed.avg_tensor(flat_grad_grad_kl)
 
         # self._logger.store(
@@ -1196,7 +1206,7 @@ class SafeRlFilterAgentCPO():
             # get new theta
             new_theta = theta_old + step_frac * step_direction
             # set new theta as new actor parameters
-            set_param_values_to_model(self.actor_proxy, new_theta)
+            set_param_values_to_model(self.online_net.trainable_params_rl, new_theta)
             # the last acceptance steps to next step
             acceptance_step = step + 1
 
@@ -1253,7 +1263,7 @@ class SafeRlFilterAgentCPO():
 
         print(f'Train/KL: {kl}')
 
-        set_param_values_to_model(self.actor_proxy, theta_old)
+        set_param_values_to_model(self.online_net.trainable_params_rl, theta_old)
         return step_frac * step_direction, acceptance_step
 
 
