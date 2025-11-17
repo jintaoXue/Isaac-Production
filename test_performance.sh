@@ -2,23 +2,23 @@
 
 # 检查命令行参数
 if [ $# -eq 0 ]; then
-    echo "用法: $0 [A|B|1-10] [更多编号...]"
+    echo "用法: $0 [A|B|1-11] [更多编号...]"
     echo "  A: 运行A组测试 (1-5)"
     echo "  B: 运行B组测试 (6-10)"
-    echo "  1-10: 运行单个或多个测试序号 (支持逗号或空格分隔, 例如: '3,9,10' 或 '3 9 10')"
+    echo "  1-11: 运行单个或多个测试序号 (支持逗号或空格分隔, 例如: '3,9,10' 或 '3 9 10')"
     exit 1
 fi
 
 GROUP=$1
 
-# 检查是否为数字（1-10）
-if [[ "$GROUP" =~ ^[1-9]$|^10$ ]]; then
+# 检查是否为数字（1-11）
+if [[ "$GROUP" =~ ^([1-9]|10|11)$ ]]; then
     echo "运行单个测试序号: $GROUP"
     SINGLE_TEST=true
 else
     if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
-        echo "错误: 参数必须是 A、B 或 1-10 中的数字"
-        echo "用法: $0 [A|B|1-10] [更多编号...]"
+        echo "错误: 参数必须是 A、B 或 1-11 中的数字"
+        echo "用法: $0 [A|B|1-11] [更多编号...]"
         exit 1
     fi
     SINGLE_TEST=false
@@ -156,13 +156,23 @@ run_test_10() {
     done
 }
 
+run_test_11() {
+    echo "运行测试 11: CPO 4090_cpo_filter_2025-11-13_20-16-30_ep_400"
+    list=(400)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo cpo_filter --headless --wandb_activate --test --test_all_settings \
+            --load_dir "/cpo_filter_2025-11-13_20-16-30/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+    done
+}
+
 # 支持多个编号（逗号或空格分隔）
 if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
     TEST_IDS=()
     for arg in "$@"; do
         IFS=',' read -ra parts <<< "$arg"
         for p in "${parts[@]}"; do
-            if [[ "$p" =~ ^[1-9]$|^10$ ]]; then
+            if [[ "$p" =~ ^([1-9]|10|11)$ ]]; then
                 TEST_IDS+=("$p")
             elif [ -n "$p" ]; then
                 echo "错误: 无效的测试序号 $p"
@@ -185,6 +195,7 @@ if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
                 8) run_test_8 ;;
                 9) run_test_9 ;;
                 10) run_test_10 ;;
+                11) run_test_11 ;;
             esac
         done
         echo "测试列表完成！"
@@ -205,6 +216,7 @@ if [ "$SINGLE_TEST" = true ]; then
         8) run_test_8 ;;
         9) run_test_9 ;;
         10) run_test_10 ;;
+        11) run_test_11 ;;
         *) echo "错误: 无效的测试序号 $GROUP" ;;
     esac
     echo "测试 $GROUP 完成！"
