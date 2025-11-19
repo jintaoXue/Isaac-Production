@@ -317,3 +317,6 @@ action prob 好像有问题
 修改方法：把函数接口全部改成parmeter list
 
 https://zhuanlan.zhihu.com/p/700607830
+
+#10.19
+fatigue measurement noise的 这里可能还是要加一个zero shot performance的实验
