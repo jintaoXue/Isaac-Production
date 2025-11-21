@@ -25,7 +25,7 @@ run_test_3() {
             --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
             --load_name "/HRTA_direct_ep_${num}.pth" \
             --wandb_project test_ftg_sensitivity \
-            --test_times 1 \
+            --test_times 10 \
             --ftg_thresh_phy "${ftg_value}"
     done
 }
@@ -46,7 +46,7 @@ run_test_9() {
             --load_dir "/ppolag_filter_dis_2025-08-08_13-49-16/nn" \
             --load_name "/HRTA_direct_ep_${num}.pth" \
             --wandb_project test_ftg_sensitivity \
-            --test_times 1 \
+            --test_times 10 \
             --ftg_thresh_phy "${ftg_value}"
     done
 }
