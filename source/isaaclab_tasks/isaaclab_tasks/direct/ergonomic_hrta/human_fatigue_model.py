@@ -44,10 +44,10 @@ def find_closest_pose(pose_dic, ego_pose, in_dis=5):
 
 class Fatigue(object):
 
-    def __init__(self, human_idx, human_types, train_cfg) -> None:
+    def __init__(self, human_idx, human_types, env_cfg : HRTaskAllocEnvCfg, train_cfg) -> None:
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
-        self.cfg = HRTaskAllocEnvCfg()
+        self.cfg = env_cfg
         self._test = train_cfg['test']
         self.hyper_param_time = self.cfg.hyper_param_time
         self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*BoxCapacity.hoop, 
@@ -777,7 +777,7 @@ class Fatigue(object):
 
 class Characters(object):
 
-    def __init__(self, character_list, train_cfg) -> None:
+    def __init__(self, character_list, env_cfg : HRTaskAllocEnvCfg, train_cfg) -> None:
         self.character_list = character_list
         self.state_character_dic = {0:"free", 1:"approaching", 2:"waiting_box", 3:"putting_in_box", 4:"putting_on_table", 5:"loading", 6:"cutting_machine"}
         self.task_range = {'hoop_preparing', 'bending_tube_preparing', 'hoop_loading_inner', 'bending_tube_loading_inner', 'hoop_loading_outer', 'bending_tube_loading_outer', "cutting_cube", 
@@ -822,20 +822,20 @@ class Characters(object):
         self.cutting_cube_pose = [-29.83212, -1.54882, np.deg2rad(0)]
 
         self.placing_product_pose = [-40.47391, 12.91755, np.deg2rad(0)]
-        _cfg = HRTaskAllocEnvCfg()
-        self.cfg = _cfg
+        # _cfg = HRTaskAllocEnvCfg
+        self.cfg = env_cfg
         self.train_cfg = train_cfg
-        self.PUTTING_TIME = _cfg.human_putting_time
-        self.LOADING_TIME = _cfg.human_loading_time
-        self.CUTTING_MACHINE_TIME = _cfg.cutting_machine_oper_len
-        self.RANDOM_TIME = _cfg.human_time_random
-        self.hyper_param_time = _cfg.hyper_param_time
+        self.PUTTING_TIME = env_cfg.human_putting_time
+        self.LOADING_TIME = env_cfg.human_loading_time
+        self.CUTTING_MACHINE_TIME = env_cfg.cutting_machine_oper_len
+        self.RANDOM_TIME = env_cfg.human_time_random
+        self.hyper_param_time = env_cfg.hyper_param_time
 
-        self.n_max_human = _cfg.n_max_human
+        self.n_max_human = env_cfg.n_max_human
         self.fatigue_list : list[Fatigue] = []
         self.human_types = ["strong", "normal", "weak"]
         for i in range(0,len(self.character_list)):
-            self.fatigue_list.append(Fatigue(i, self.human_types, self.train_cfg))
+            self.fatigue_list.append(Fatigue(i, self.human_types, env_cfg, self.train_cfg))
         self.fatigue_task_masks = None
         return
     

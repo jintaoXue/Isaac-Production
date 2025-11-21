@@ -38,6 +38,12 @@ parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy 
 parser.add_argument("--use_fatigue_mask", action="store_true", default=False, help="Use fatigue mask.")
 parser.add_argument("--other_filters", action="store_true", default=False, help="Use other filters.")
 parser.add_argument("--gantt_chart_data", action="store_true", default=False, help="Generate gantt chart data.")
+parser.add_argument(
+    "--ftg_thresh_phy",
+    type=float,
+    default=0.95,
+    help="Override the physical fatigue threshold (0-1).",
+)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -81,9 +87,9 @@ from isaaclab.utils.io import dump_pickle, dump_yaml
 import isaaclab_tasks  # noqa: F401
 from isaaclab_tasks.utils.hydra import hydra_task_config
 import wandb
-from source.isaaclab_tasks.isaaclab_tasks.direct import human_robot_task_allocation
+# from source.isaaclab_tasks.isaaclab_tasks.direct import human_robot_task_allocation
 # from source.isaaclab_tasks.isaaclab_tasks.direct.human_robot_task_allocation.rl_games_env import RlGamesGpuEnvHRTA
-
+from source.isaaclab_tasks.isaaclab_tasks.direct.ergonomic_hrta.eg_hrta_env_cfg import HRTaskAllocEnvCfg
 
 @hydra_task_config(args_cli.task, args_cli.algo)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: dict):
@@ -115,7 +121,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
-
+    if args_cli.ftg_thresh_phy is not None:
+        env_cfg.ftg_thresh_phy = args_cli.ftg_thresh_phy
     # randomly sample a seed if seed = -1
     if args_cli.seed == -1:
         args_cli.seed = random.randint(0, 10000)

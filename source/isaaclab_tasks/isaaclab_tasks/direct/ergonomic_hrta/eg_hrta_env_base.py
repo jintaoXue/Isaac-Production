@@ -84,7 +84,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         '''for humans workers (characters), robots (agv+boxs) and task manager'''
         character_list =self.set_up_human(num=self.cfg.n_max_human)
         agv_list, box_list = self.set_up_robot(num=self.cfg.n_max_robot)
-        self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self.cfg.train_cfg['params']['config'])
+        self.task_manager : TaskManager = TaskManager(character_list, agv_list, box_list, self.cuda_device, self.cfg, self.cfg.train_cfg['params']['config'])
         map_route = MapRoute(self.cfg)
         self.task_manager.characters.routes_dic, self.task_manager.agvs.routes_dic = map_route.load_pre_def_routes()
         self.task_manager.boxs.routes_dic = self.task_manager.agvs.routes_dic

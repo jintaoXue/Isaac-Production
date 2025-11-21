@@ -320,3 +320,7 @@ https://zhuanlan.zhihu.com/p/700607830
 
 #10.19
 fatigue measurement noise的 这里可能还是要加一个zero shot performance的实验
+
+#10.21
+加一个sensitive的实验
+关于这个cost limit

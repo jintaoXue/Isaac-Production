@@ -38,18 +38,18 @@ def find_closest_pose(pose_dic, ego_pose, in_dis=5):
     return key
 
 class TaskManager(object):
-    def __init__(self, character_list, agv_list, box_list, cuda_device, train_cfg) -> None:
+    def __init__(self, character_list, agv_list, box_list, cuda_device, env_cfg, train_cfg) -> None:
         self.cuda_device = cuda_device
-        self.characters = Characters(character_list=character_list, train_cfg=train_cfg)
-        self.agvs = Agvs(agv_list = agv_list, train_cfg=train_cfg)
-        self.boxs = TransBoxs(box_list=box_list)
+        self.characters = Characters(character_list=character_list, env_cfg=env_cfg, train_cfg=train_cfg)
+        self.agvs = Agvs(agv_list = agv_list, env_cfg=env_cfg, train_cfg=train_cfg)
+        self.boxs = TransBoxs(box_list=box_list, env_cfg=env_cfg)
         self.task_dic =  {-1:'none', 0: 'hoop_preparing', 1:'bending_tube_preparing', 2:'hoop_loading_inner', 3:'bending_tube_loading_inner', 4:'hoop_loading_outer', 
                           5:'bending_tube_loading_outer', 6:'cutting_cube', 7:'collect_product', 8:'placing_product'}
         self.task_in_set = set()
         self.task_in_dic = {}
         # self.task_mask = torch.zeros(len(self.task_dic), device=cuda_device)
         self.task_dic_inverse = {value: key for key, value in self.task_dic.items()}
-        self.cfg = HRTaskAllocEnvCfg()
+        self.cfg = env_cfg
         self._test = train_cfg['test']
         if self._test:
            self._eval_times = train_cfg['test_times']
@@ -366,7 +366,7 @@ class Materials(object):
 
 class Agvs(object):
 
-    def __init__(self, agv_list, train_cfg) -> None:
+    def __init__(self, agv_list, env_cfg : HRTaskAllocEnvCfg, train_cfg) -> None:
         self.agv_list = agv_list
         self.state_dic = {0:"free", 1:"moving_to_box", 2:"carrying_box", 3:"waiting"}
         self.sub_task_dic = {0:"free", 1:"carry_box_to_hoop", 2:"carry_box_to_bending_tube", 3:"carry_box_to_hoop_table", 4:"carry_box_to_bending_tube_table", 5:'collect_product', 6:'placing_product'}
@@ -568,7 +568,7 @@ class Agvs(object):
 
 class TransBoxs(object):
 
-    def __init__(self, box_list) -> None:
+    def __init__(self, box_list, env_cfg : HRTaskAllocEnvCfg) -> None:
         self.box_list = box_list
         self.state_dic = {0:"free", 1:"waiting", 2:"moving"}
         self.sub_task_dic = {0:"free", 1:"waiting_agv", 2:"moving_with_box", 3: "collect_product"}
@@ -591,7 +591,7 @@ class TransBoxs(object):
         # self.initial_pose_list = []
         # for obj in self.list:
         #     self.initial_pose_list.append(obj.get_world_poses())
-        _cfg = HRTaskAllocEnvCfg()
+        self.cfg = env_cfg
         self.capacity = BoxCapacity()
         self.routes_dic = None
         self.reset()
