@@ -54,7 +54,7 @@ run_test_9() {
 for ftg in "${FTG_VALUES[@]}"; do
     echo "===== 开始疲劳阈值 ${ftg} ====="
     run_test_3 "${ftg}"
-    run_test_9 "${ftg}"
+    # run_test_9 "${ftg}"
     echo "===== 完成疲劳阈值 ${ftg} ====="
 done
 
