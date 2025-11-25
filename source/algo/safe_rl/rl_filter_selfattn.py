@@ -13,7 +13,7 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemory, CostfuncMemory
-from .model import OnlySelfAttention
+from .model_ablation import OnlySelfAttention
 from tqdm import trange
 import time
 from omegaconf import DictConfig

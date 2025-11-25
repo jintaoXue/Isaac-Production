@@ -13,7 +13,7 @@ from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
 from .memory import ReplayMemory, CostfuncMemory
-from .model_ablation import SafeDqnMLP
+from .model_ablation import noNoisyDQNTrans
 from tqdm import trange
 import time
 from omegaconf import DictConfig
@@ -22,7 +22,7 @@ import wandb
 import copy
 
 
-class SafeRlFilterAgentMLP():
+class SafeRlFilterAgentNoNoisy():
     def __init__(self, base_name, params):
 
         self.config : DictConfig = params['config']
@@ -50,13 +50,13 @@ class SafeRlFilterAgentMLP():
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
         #########debug
-        # self.update_frequency = config.get('update_frequency', 100)
-        # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
-        # self.evaluate_interval = config.get('evaluate_interval', 20)
-        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
-        # self.batch_size = 64
-        # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
-        # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
+        self.update_frequency = config.get('update_frequency', 100)
+        self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
+        self.evaluate_interval = config.get('evaluate_interval', 20)
+        self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        self.batch_size = 64
+        self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
+        self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
 
         self.demonstration_steps = config.get('demonstration_steps', int(0))
@@ -71,13 +71,13 @@ class SafeRlFilterAgentMLP():
         ####### net
         self.only_train_cost_net = self.config['only_train_cost']
 
-        self.online_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
+        self.online_net = noNoisyDQNTrans(config, self.actions_num).to(device=self._device)
         if self._test and not self.env_rule_based_exploration:
             weights = torch.load(self.train_dir + self._load_dir + self._load_name, weights_only=True)
             self.online_net.load_state_dict(weights['net'])
         self.online_net.train()
         # self.target_net = DQN(config, self.actions_num).to(device=self._device)
-        self.target_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
+        self.target_net = noNoisyDQNTrans(config, self.actions_num).to(device=self._device)
         self.update_target_net()
         self.target_net.train()
         for param in self.target_net.parameters():
@@ -321,7 +321,12 @@ class SafeRlFilterAgentMLP():
 
     # Acts with an ε-greedy policy (used for evaluation only)
     def act_e_greedy(self, state, epsilon=0.001):  # High ε can reduce evaluation scores drastically
-        return self.act_random(state) if np.random.random() < epsilon else self.act(state)
+        assert self.use_prediction_net == False, "no noisy dqn trans only support use_prediction_net False"
+        if np.random.random() < epsilon:
+            return self.act_random(state)
+        else:
+            action, cost_mask = self.act(state)
+            return action
     
     def act_random(self, state):
         action_mask = state['action_mask']
@@ -691,8 +696,8 @@ class SafeRlFilterAgentMLP():
                     action = self.act_random(obs)
             else:
                 with torch.no_grad():
-                    action, cost_mask = self.act(obs)
-                    action_extra['cost_mask'] = cost_mask
+                    action = self.act_e_greedy(obs)
+                    action_extra['cost_mask'] = None
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
 
