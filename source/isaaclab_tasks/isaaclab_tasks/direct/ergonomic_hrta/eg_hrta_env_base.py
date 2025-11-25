@@ -251,8 +251,10 @@ class HRTaskAllocEnvBase(DirectRLEnv):
 
     def get_fatigue_data(self):
         self.extras['overwork'] = self.task_manager.characters.have_overwork()
+        self.extras['overwork_phy_values'] = []
         if self.extras['overwork']:
             self.have_over_work = True
+            self.extras['overwork_phy_values'] = self.task_manager.characters.get_overwork_phy_values()
         if len(self.task_manager.fatigue_data_list)>0:
             self.extras['fatigue_data'] = self.task_manager.fatigue_data_list
             self.task_manager.fatigue_data_list = []

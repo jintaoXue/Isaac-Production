@@ -1042,6 +1042,13 @@ class Characters(object):
                 return True
         return False
     
+    def get_overwork_phy_values(self):
+        overwork_phy_values = []
+        for i in range(self.acti_num_charc):
+            if self.fatigue_list[i].have_overwork():
+                overwork_phy_values.append(self.fatigue_list[i].phy_fatigue)
+        return overwork_phy_values
+    
     def compute_fatigue_cost(self):
         cost = []
         for i in range(self.acti_num_charc):

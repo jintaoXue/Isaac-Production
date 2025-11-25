@@ -282,6 +282,7 @@ class SafeRlFilterAgent():
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate/EpOverworkPhyValues")
         if self.config['other_filters']:
             wandb.define_metric("Evaluate/EpFilterPredictLoss_kf", step_metric="Evaluate/step_episode")
             wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu_kf", step_metric="Evaluate/step_episode")
@@ -699,6 +700,14 @@ class SafeRlFilterAgent():
                 fatigue_data = infos['fatigue_data']
                 for _data in fatigue_data:
                     fatigue_data_list.append(_data)
+            
+            if 'overwork_phy_values' in infos:
+                overwork_phy_values = infos['overwork_phy_values']
+                for _value in overwork_phy_values:
+                    if self.use_wandb:
+                        wandb.log({
+                                "SuperviseTrain/overwork_phy_values": _value,
+                            })
 
             if self.use_prediction_net:
                 if self.step_num_sfl >= self.cost_num_warmup_steps:
