@@ -1027,7 +1027,7 @@ class Characters(object):
         state_type = self.state_character_dic[state]
         subtask = self.sub_task_character_dic[subtask]
         fatigue : Fatigue = self.fatigue_list[idx]
-        if task is -1:
+        if task == -1:
             task = 'none'
         fatigue.step(state_type, subtask, task, ftg_prediction)
         self.fatigue_task_masks[idx] = fatigue.ftg_task_mask
