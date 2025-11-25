@@ -121,6 +121,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     # override configurations with non-hydra CLI arguments
     env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    agent_cfg["params"]["config"]["device"] = args_cli.device if args_cli.device is not None else agent_cfg["params"]["config"]["device"]
+    agent_cfg["params"]["config"]["device_name"] = args_cli.device if args_cli.device is not None else agent_cfg["params"]["config"]["device_name"]
+    env_cfg.cuda_device_str = args_cli.device if args_cli.device is not None else env_cfg.cuda_device_str
     if args_cli.ftg_thresh_phy is not None:
         env_cfg.ftg_thresh_phy = args_cli.ftg_thresh_phy
     # randomly sample a seed if seed = -1

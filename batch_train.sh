@@ -2,14 +2,18 @@
 
 # 检查命令行参数
 if [ $# -eq 0 ]; then
-    echo "用法: $0 [A|B|1-10]"
+    echo "用法: $0 [A|B|1-10] [cuda:N]"
     echo "  A: 运行A组训练 (1-5)"
     echo "  B: 运行B组训练 (6-10)"
     echo "  1-10: 运行单个训练序号"
+    echo "  cuda:N: 可选，指定CUDA设备，默认cuda:0"
     exit 1
 fi
 
 GROUP=$1
+DEVICE=${2:-cuda:0}
+DEVICE_ARG="--device ${DEVICE}"
+echo "使用设备: ${DEVICE}"
 
 # 检查是否为数字（1-10）
 if [[ "$GROUP" =~ ^[1-9]$|^10$ ]]; then
@@ -28,70 +32,70 @@ fi
 
 run_test_2() {
     echo "运行训练 2: D3QN penalty"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate ${DEVICE_ARG}
 }
 
 run_test_1() {
     echo "运行训练 1: D3QN"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate ${DEVICE_ARG}
 }
 
 run_test_3() {
     echo "运行训练 3: PF-CD3Q"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_5() {
     echo "运行训练 5: DQN with penalty"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate 
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate ${DEVICE_ARG}
 
 }
 
 run_test_6() {
     echo "运行训练 6: PF-DQN"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo dqn --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_7() {
     echo "运行训练 7: PPO-dis with penalty"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate ${DEVICE_ARG}
 }
 
 run_test_8() {
     echo "运行训练 8: PF-PPO-dis"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppo_dis --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_9() {
     echo "运行训练 9: PPO-lag"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate ${DEVICE_ARG}
 }
 
 run_test_10() {
     echo "运行训练 10: PF-PPO-lag"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 
 ##### ablation study #####
 run_test_11() {
     echo "运行训练 11: rl_filter_no_noisy"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_12() {
     echo "运行训练 12: rl_filter_no_dueling"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_13() {
     echo "运行训练 13: rl_filter_selfattn"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 run_test_14() {
     echo "运行训练 14: rl_filter_mlp"
-    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --use_fatigue_mask
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
 }
 
 

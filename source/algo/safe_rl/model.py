@@ -65,7 +65,7 @@ class DimState :
     src_seq_len: int = 16 + 2*3*max_num_entity + 1*(5+10)*max_num_entity
     #action_embedding 10 + phy 1 + psy 1 + idx 1 + coefficients 10
     cost_seq_len: int = 23
-    device_str = "cuda:0" 
+    # device_str = "cuda:0" 
 
 # Factorised NoisyLinear layer with bias
 class NoisyLinear(nn.Module):
@@ -575,14 +575,13 @@ class CostFeatureEmbeddingBlock(nn.Module):
         nn.Linear(dimstate.worker_fatigue_dim, hidden_size), nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
     )
-    self.action = torch.arange(dimstate.action_mask, dtype = torch.int32, device=dimstate.device_str).unsqueeze(0)
+    self.action = torch.arange(dimstate.action_mask, dtype = torch.int32).unsqueeze(0)
     self.action_embedding= nn.Embedding(dimstate.action_mask, hidden_size)
     self.worker_idx_embedding= nn.Embedding(dimstate.max_num_entity, hidden_size)
     self.phy_fatigue_coe_embedding= nn.Sequential(
         nn.Linear(dimstate.fatigue_coe_dim, hidden_size), nn.ReLU(),
         nn.Linear(hidden_size, hidden_size),
     )
-    self.device = dimstate.device_str
     self.max_n_human = max_num_worker
 
   def forward(self, state, **kwargs):
@@ -610,7 +609,7 @@ class CostFeatureEmbeddingBlock(nn.Module):
     predict_list = []
     
     for i in range(self.max_n_human):
-        worker_idx_embedding = self.worker_idx_embedding(torch.tensor([i], device=self.device).repeat(batch_size))
+        worker_idx_embedding = self.worker_idx_embedding(torch.tensor([i]).repeat(batch_size))
         worker_phy_fatigue_embd = self.worker_phy_fatigue_embd(state['worker_fatigue_phy'][:,i])
         worker_psy_fatigue_embd = self.worker_psy_fatigue_embd(state['worker_fatigue_psy'][:,i])
         fatigue_coe = state['phy_fatigue_coe'][:,i]
