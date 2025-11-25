@@ -390,7 +390,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.c_machine_oper_len = self.cfg.cutting_machine_oper_len
         #gripper
         speed = 0.6
-        self.operator_gripper = torch.tensor([speed]*10, device='cuda:0')
+        self.operator_gripper = torch.tensor([speed]*10, device=self.cuda_device)
         self.gripper_inner_task_dic = {0: "reset", 1:"pick_cut", 2:"place_cut_to_inner_station", 3:"place_cut_to_outer_station", 
                                     4:"pick_product_from_inner", 5:"pick_product_from_outer", 6:"place_product_from_inner", 7:"place_product_from_outer"}
         self.gripper_inner_task = 0
@@ -407,7 +407,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         self.welder_inner_oper_time = 0
         self.welder_outer_oper_time = 0
         self.welding_once_time = self.cfg.welding_once_time
-        self.operator_welder = torch.tensor([0.4], device='cuda:0')
+        self.operator_welder = torch.tensor([0.4], device=self.cuda_device)
         self.welder_task_dic = {0: "reset", 1:"weld_left", 2:"weld_right", 3:"weld_middle",}
         self.welder_state_dic = {0: "free_empty", 1: "moving_left", 2:"welding_left", 3:"welded_left", 4:"moving_right",
                                  5:"welding_right", 6:"rotate_and_welding", 7:"welded_right", 8:"welding_middle" , 9:"welded_upper"}
@@ -418,7 +418,7 @@ class HRTaskAllocEnvBase(DirectRLEnv):
         
         #station
         # self.welder_inner_oper_time = 10
-        self.operator_station = torch.tensor([0.3, 0.3, 0.3, 0.3], device='cuda:0')
+        self.operator_station = torch.tensor([0.3, 0.3, 0.3, 0.3], device=self.cuda_device)
         self.station_task_left_dic = {0: "reset", 1:"weld"}
         self.station_state_left_dic = {0: "reset_empty", 1:"loading", 2:"rotating", 3:"waiting", 4:"welding", 5:"welded", 6:"finished", -1:"resetting"}
         self.station_task_inner_left = 0
