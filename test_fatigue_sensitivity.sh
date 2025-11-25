@@ -70,6 +70,14 @@ else
     done
 fi
 
+describe_algo() {
+    case "$1" in
+        run_test_3) echo "PF-CD3Q" ;;
+        run_test_9) echo "PPO-lag" ;;
+        *) echo "$1" ;;
+    esac
+}
+
 if [[ ${#SELECTED_FTGS[@]} -eq 0 ]]; then
     SELECTED_FTGS=("${FTG_VALUES[@]}")
 fi
@@ -117,12 +125,15 @@ run_test_9() {
     done
 }
 
-for ftg in "${SELECTED_FTGS[@]}"; do
-    echo "===== 开始疲劳阈值 ${ftg} ====="
-    for test_fn in "${ACTIVE_TESTS[@]}"; do
+for test_fn in "${ACTIVE_TESTS[@]}"; do
+    algo_name="$(describe_algo "${test_fn}")"
+    echo "===== 开始算法 ${algo_name} ====="
+    for ftg in "${SELECTED_FTGS[@]}"; do
+        echo "--- 开始疲劳阈值 ${ftg} (${algo_name}) ---"
         "${test_fn}" "${ftg}"
+        echo "--- 完成疲劳阈值 ${ftg} (${algo_name}) ---"
     done
-    echo "===== 完成疲劳阈值 ${ftg} ====="
+    echo "===== 完成算法 ${algo_name} ====="
 done
 
 echo "所有疲劳敏感性测试完成！"
