@@ -16,7 +16,7 @@ EOF
 }
 
 FTG_VALUES=($(python - <<'PY'
-vals = [f"{i/10:.1f}" for i in range(11)]
+vals = [f"{i/20:.2f}".rstrip('0').rstrip('.') for i in range(21)]
 print(" ".join(vals))
 PY
 ))
