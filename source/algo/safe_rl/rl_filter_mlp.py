@@ -12,9 +12,8 @@ from rl_games.common import vecenv
 from rl_games.algos_torch import torch_ext
 from datetime import datetime
 from torch.utils.tensorboard import SummaryWriter
-from .memory import ReplayMemoryPPO, CostfuncMemory
-from .model import SafePPOTrans
-from .lagrange import Lagrange
+from .memory import ReplayMemory, CostfuncMemory
+from .model import SafeDqnMLP
 from tqdm import trange
 import time
 from omegaconf import DictConfig
@@ -23,7 +22,7 @@ import wandb
 import copy
 
 
-class SafeRlFilterAgentRCPO():
+class SafeRlFilterAgentMLP():
     def __init__(self, base_name, params):
 
         self.config : DictConfig = params['config']
@@ -43,19 +42,19 @@ class SafeRlFilterAgentRCPO():
         # self.update_frequency_sfl = config.get('update_frequency', 100)
         self.evaluate_interval = config.get('evaluate_interval', 400)
         self.target_update = config.get('target_update', int(2e3))
-        self.max_steps = config.get("max_steps", int(2e6))
+        self.max_steps = config.get("max_steps", int(2.8e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
         self.batch_size = config.get('batch_size', 512)
         self.num_warmup_steps = config.get('num_warmup_steps', int(5e4))
         self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(5e3))
         self.use_cost_num_steps = config.get('use_cost_num_steps', int(1.5e5))
         self.use_prediction_net = config.get('use_prediction_net', False)
-        self.ppo_each_train_epochs = config.get('ppo_each_train_epochs', 1)
         #########debug
         # self.update_frequency = config.get('update_frequency', 100)
         # self.update_frequency_sfl = config.get('update_frequency_sfl', 200)
         # self.evaluate_interval = config.get('evaluate_interval', 20)
-        self.num_warmup_steps = config.get('num_warmup_steps', int(1000))
+        # self.num_warmup_steps = config.get('num_warmup_steps', int(300))
+        # self.batch_size = 64
         # self.cost_num_warmup_steps = config.get('cost_num_warmup_steps', int(200))
         # self.use_cost_num_steps = config.get('use_cost_num_steps', int(3000))
         '''End of agent training'''
@@ -67,33 +66,28 @@ class SafeRlFilterAgentRCPO():
         print("Number of Agents", self.num_actors, "Batch Size", self.batch_size)
         #########buffer
         self.priority_weight_increase = (1 - config['priority_weight']) / (self.max_steps - self.num_warmup_steps)
-        self.replay_buffer = ReplayMemoryPPO(config, config["replay_buffer_size"])
+        self.replay_buffer = ReplayMemory(config, config["replay_buffer_size"])
         # self.costfunc_buffer = CostfuncMemory(config["replay_buffer_size"])
         ####### net
         self.only_train_cost_net = self.config['only_train_cost']
 
-        self.online_net = SafePPOTrans(config, self.actions_num).to(device=self._device)
+        self.online_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
         if self._test and not self.env_rule_based_exploration:
             weights = torch.load(self.train_dir + self._load_dir + self._load_name, weights_only=True)
             self.online_net.load_state_dict(weights['net'])
         self.online_net.train()
-        # self.target_net = SafePPOFilterTrans(config, self.actions_num).to(device=self._device)
-        # self.update_target_net()
-        # self.target_net.train()
-        # for param in self.target_net.parameters():
-        #     param.requires_grad = False
+        # self.target_net = DQN(config, self.actions_num).to(device=self._device)
+        self.target_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
+        self.update_target_net()
+        self.target_net.train()
+        for param in self.target_net.parameters():
+            param.requires_grad = False
         #####
-        self.actor_optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
-        self.critic_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
-        self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
+        self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
+        # self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
+        # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
-        self.gamma = 0.98
-        self.lmbda = 0.95
-        self.eps = 0.2
-
-        #####lagrange
-        self._lagrange: Lagrange = Lagrange(cost_limit=25.0, lagrangian_multiplier_init=0.001, lambda_lr=0.035, lambda_optimizer = "Adam")
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -109,9 +103,8 @@ class SafeRlFilterAgentRCPO():
 
         self.setdefault(self.config, key='device', default='cuda:0')
         ########for replay buffer args initialize
-        self.setdefault(self.config, key='replay_buffer_size', default=int(1e4))
+        self.setdefault(self.config, key='replay_buffer_size', default=int(5e5))
         self.setdefault(self.config, key='history_length', default=1)
-        self.setdefault(self.config, key='discount', default=0.99)
         self.setdefault(self.config, key='gamma', default=0.99)
         self.setdefault(self.config, key='multi_step', default=1)
         self.setdefault(self.config, key='priority_exponent', default=0.5)
@@ -257,9 +250,6 @@ class SafeRlFilterAgentRCPO():
         wandb.define_metric("Train/step")
         wandb.define_metric("Train/buffer_size", step_metric="Train/step")
         wandb.define_metric("Train/loss", step_metric="Train/step")
-        wandb.define_metric("Train/actor_loss", step_metric="Train/step")
-        wandb.define_metric("Train/critic_loss", step_metric="Train/step")
-        wandb.define_metric("Train/cost_loss", step_metric="Train/step")
         wandb.define_metric("Train/train_epoch", step_metric="Train/step")
         
         for i in range(0, self.config['max_num_worker']):
@@ -292,6 +282,7 @@ class SafeRlFilterAgentRCPO():
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate2/EpOverworkPhyValues")
         if self.config['other_filters']:
             wandb.define_metric("Evaluate/EpFilterPredictLoss_kf", step_metric="Evaluate/step_episode")
             wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu_kf", step_metric="Evaluate/step_episode")
@@ -321,18 +312,12 @@ class SafeRlFilterAgentRCPO():
     def act(self, state):
         with torch.no_grad():
             if self.use_prediction_net:
-                action_prob, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
-                return action_prob.argmax(1).unsqueeze(0), action_prob, cost_mask
+                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
+                return action.argmax(1).unsqueeze(0), cost_mask
             else:
-                action_prob = self.online_net(data.func(state, 'unsqueeze', 0))
-                return action_prob.argmax(1).unsqueeze(0), action_prob
+                action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0))
+                return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
-
-    # def act(self, state):
-    #     with torch.no_grad():
-    #         prob = self.actor(data.func(state, 'unsqueeze', 0))
-    #         action = prob.argmax(1)
-    #         return action.unsqueeze(0), prob
 
     # Acts with an ε-greedy policy (used for evaluation only)
     def act_e_greedy(self, state, epsilon=0.001):  # High ε can reduce evaluation scores drastically
@@ -403,7 +388,7 @@ class SafeRlFilterAgentRCPO():
         state = self.get_weights()
 
         state['epoch'] = self.epoch_num
-        state['optimizer'] = self.actor_optimiser.state_dict()       
+        state['optimizer'] = self.optimiser.state_dict()       
 
         return state
 
@@ -413,7 +398,7 @@ class SafeRlFilterAgentRCPO():
         if set_epoch:
             self.epoch_num = weights['epoch']
 
-        self.actor_optimiser.load_state_dict(weights['optimizer'])
+        self.optimiser.load_state_dict(weights['optimizer'])
         self.last_mean_rewards = weights.get('last_mean_rewards', -1000000000)
 
         if self.vec_env is not None:
@@ -430,94 +415,34 @@ class SafeRlFilterAgentRCPO():
             target_param.data.copy_(tau * param.data +
                                     (1.0 - tau) * target_param.data)
 
-    def update(self, step):
+    def update(self, _):
         # Sample transitions
+        idxs, states, actions, returns, next_states, nonterminals, weights = self.replay_buffer.sample(self.batch_size)
+        states = data.stack_from_array(states.squeeze(), device=self._device)
+        next_states = data.stack_from_array(next_states.squeeze(), device=self._device)
+        # Calculate current state probabilities (online network noise already sampled)
+        # log_ps = self.online_net(states, log=True)  # Log probabilities log p(s_t, ·; θonline)
+        # log_ps_a = log_ps[range(self.batch_size), actions]  # log p(s_t, a_t; θonline)
+        q, _ = self.online_net(states, use_cost_function=False)  # probabilities log p(s_t, ·; θonline)
+        q_a = q[range(self.batch_size), actions]  # p(s_t, a_t; θonline)
+        
+        with torch.no_grad():
+            # Calculate nth next state probabilities
+            qns, _ = self.online_net(next_states, use_cost_function=False)  # Probabilities p(s_t+n, ·; θonline)
+            argmax_indices_ns = qns.argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θonline))]
+            self.target_net.reset_noise()  # Sample new target net noise
+            qns, _ = self.target_net(next_states, use_cost_function=False)  # Probabilities p(s_t+n, ·; θtarget)
+            qns_a = qns[range(self.batch_size), argmax_indices_ns]  # Double-Q probabilities p(s_t+n, argmax_a[(z, p(s_t+n, a; θonline))]; θtarget)
+            y = returns + self.gamma*qns_a*nonterminals.squeeze() 
+            
+        loss = self.loss_criterion(q_a ,y).mean(dim=0)
+        self.online_net.zero_grad()
+        (weights * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
+        clip_grad_norm_(self.online_net.parameters(), self.norm_clip)  # Clip gradients by L2 norm
+        self.optimiser.step()
 
-        for i in range(self.ppo_each_train_epochs):
-            idxs, states, actions, actions_prob, returns, costs, next_states, nonterminals, weights = self.replay_buffer.sample(self.batch_size)
-            states = data.stack_from_array(states.squeeze(), device=self._device)
-            next_states = data.stack_from_array(next_states.squeeze(), device=self._device)
-
-            with torch.no_grad():
-                actions_prob = data.stack_from_array(actions_prob.squeeze(), device=self._device)['action_prob']
-                old_log_probs = torch.log(actions_prob.gather(1, actions.unsqueeze(-1)))
-                terminals = torch.where(nonterminals == 1.0, 0., 1.0)
-                td_target = returns.unsqueeze(-1) + self.gamma * self.online_net.forward_critic(next_states) * (1 - terminals)
-                td_delta = td_target - self.online_net.forward_critic(states)
-                advantage = self.compute_advantage(self.gamma, self.lmbda, td_delta.cpu()).to(self._device)
-
-                #compute cost advantage
-
-                td_target_cost = costs.unsqueeze(-1) + self.gamma * self.online_net.forward_cost(next_states) * (1 - terminals)
-                td_delta_cost = td_target_cost - self.online_net.forward_cost(states)
-                advantage_cost = self.compute_advantage(self.gamma, self.lmbda, td_delta_cost.cpu()).to(self._device)
-
-                advantage = self._compute_adv_surrogate(advantage, advantage_cost)
-            log_probs = torch.log(self.online_net(states).gather(1, actions.unsqueeze(-1)))
-            ratio = torch.exp(log_probs - old_log_probs)
-            surr1 = ratio * advantage
-            surr2 = torch.clamp(ratio, 1 - self.eps, 1 + self.eps) * advantage  # 截断
-            actor_loss = torch.mean(-torch.min(surr1, surr2))  # PPO损失函数
-            critic_loss = torch.mean(self.loss_criterion(self.online_net.forward_critic(states), td_target.detach()))
-            cost_loss = torch.mean(self.loss_criterion(self.online_net.forward_cost(states), td_target_cost.detach()))
-            self.actor_optimiser.zero_grad()
-            self.critic_optimiser.zero_grad()
-            self.cost_optimiser.zero_grad()
-            actor_loss.backward()
-            critic_loss.backward()
-            cost_loss.backward()
-            self.actor_optimiser.step()
-            self.critic_optimiser.step()
-            self.cost_optimiser.step()
-
-            # self.replay_buffer.update_priorities(idxs, critic_loss.detach().cpu().numpy())  # Update priorities of sampled transitions
-
-            if self.use_wandb:
-                wandb.log({
-                        'Train/step': self.step_num,
-                        "Train/actor_loss": actor_loss.mean().item(),
-                        "Train/critic_loss": critic_loss.mean().item(),
-                        "Train/cost_loss": cost_loss.mean().item(),
-                    })
-            time_now = datetime.now().strftime("_%d-%H-%M-%S")   
-            print("time_now:{}".format(time_now) +" traning actor_loss:{}, critic_loss:{}, cost_loss:{}".format(actor_loss.mean().item(), critic_loss.mean().item(), cost_loss.mean().item()))
-
-        return
-
-
-
-    def _compute_adv_surrogate(self, adv_r: torch.Tensor, adv_c: torch.Tensor) -> torch.Tensor:
-        r"""Compute surrogate loss.
-
-        PPOLag uses the following surrogate loss:
-
-        .. math::
-
-            L = \frac{1}{1 + \lambda} [
-                A^{R}_{\pi_{\theta}} (s, a)
-                - \lambda A^C_{\pi_{\theta}} (s, a)
-            ]
-
-        Args:
-            adv_r (torch.Tensor): The ``reward_advantage`` sampled from buffer.
-            adv_c (torch.Tensor): The ``cost_advantage`` sampled from buffer.
-
-        Returns:
-            The advantage function combined with reward and cost.
-        """
-        penalty = self._lagrange.lagrangian_multiplier.item()
-        return (adv_r - penalty * adv_c) / (1 + penalty)
-
-
-    def compute_advantage(self, gamma, lmbda, td_delta):
-        td_delta = td_delta.detach().numpy()
-        advantage_list = []
-        advantage = 0.0
-        for delta in td_delta[::-1]:
-            advantage = gamma * lmbda * advantage + delta
-            advantage_list.append(advantage.item())
-        advantage_list.reverse()
-        return torch.tensor(advantage_list, dtype=torch.float)
+        self.replay_buffer.update_priorities(idxs, loss.detach().cpu().numpy())  # Update priorities of sampled transitions
+        return loss
 
     def update_cost_func(self):
         # Sample transitions
@@ -619,7 +544,7 @@ class SafeRlFilterAgentRCPO():
                 #debug TODO
                 # action = None
                 step_start = time.time()
-                obs, action, action_prob, rewards, costs, dones, infos = temporary_buffer[i]
+                obs, action, rewards, dones, infos = temporary_buffer[i]
                 # if self.reward_clip > 0:
                 #     reward = max(min(reward, self.reward_clip), -self.reward_clip)  # Clip rewards
                 step_end = time.time()
@@ -644,10 +569,9 @@ class SafeRlFilterAgentRCPO():
                 for key, value in obs.items():
                     obs_cpu[key] = value.cpu()
                 action_cpu = action.squeeze().cpu()
-                action_prob_cpu = action_prob.squeeze().cpu()
                 rewards_cpu = rewards.squeeze().cpu()
                 dones_cpu = dones.squeeze().cpu()
-                self.replay_buffer.append(obs_cpu, action_cpu, {'action_prob': action_prob_cpu}, rewards_cpu+reward_extra, costs, dones_cpu)
+                self.replay_buffer.append(obs_cpu, action_cpu, rewards_cpu+reward_extra, dones_cpu)
                 if 'fatigue_data' in infos:
                     fatigue_data = infos['fatigue_data']
                     for _data in fatigue_data:
@@ -677,6 +601,7 @@ class SafeRlFilterAgentRCPO():
                             "Metrics/EpPredictLossCompare": EpLossCompare, 
                         })
                     # next_obs = self.env_reset()   
+                    # if not random_exploration and self.episode_num % self.evaluate_interval == 0:
                     if self.episode_num % self.evaluate_interval == 0:
                     # if True:
                         #TODO debug
@@ -727,8 +652,20 @@ class SafeRlFilterAgentRCPO():
                     if self.step_num % self.update_frequency == 0:
                         self.set_train()
                         update_time_start = time.time()
-                        # loss = self.update(self.step_num_sfl > self.use_cost_num_steps)
-                        self.update(self.step_num)
+                        loss = self.update(self.step_num_sfl > self.use_cost_num_steps)
+                        update_time_end = time.time()
+                        update_time = update_time_end - update_time_start
+                        if self.use_wandb:
+                            wandb.log({
+                                    'Train/step': self.step_num,
+                                    "Train/loss": loss.mean().item(),
+                                })
+                        time_now = datetime.now().strftime("_%d-%H-%M-%S")   
+                        print("RL traning loss:{}".format(loss.mean().item()) + "time_now:{}".format(time_now))
+
+                # Update target network
+                if self.step_num % self.target_update == 0:
+                    self.update_target_net()
 
                 total_update_time += update_time
 
@@ -747,14 +684,18 @@ class SafeRlFilterAgentRCPO():
             self.set_train()
             action_extra = {}
 
-
-            with torch.no_grad():
-                action, action_prob = self.act(obs)
-                # action_extra['cost_mask'] = cost_mask
+            if random_exploration:
+                if self.step_num < self.demonstration_steps:
+                    action = None
+                else: 
+                    action = self.act_random(obs)
+            else:
+                with torch.no_grad():
+                    action, cost_mask = self.act(obs)
+                    action_extra['cost_mask'] = cost_mask
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action, action_extra)
-            
-            cost_value = infos['cost_value']
+
             if 'fatigue_data' in infos:
                 fatigue_data = infos['fatigue_data']
                 for _data in fatigue_data:
@@ -801,20 +742,19 @@ class SafeRlFilterAgentRCPO():
             if not self.config['use_fatigue_mask']:
                 cost_value = infos['cost_value']
                 rewards -= cost_value
-            temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(action_prob), copy.deepcopy(rewards), cost_value, copy.deepcopy(dones), copy.deepcopy(infos)))
+            temporary_buffer.append((copy.deepcopy(obs), copy.deepcopy(action), copy.deepcopy(rewards), copy.deepcopy(dones), copy.deepcopy(infos)))
             done_flag = copy.deepcopy(dones) 
             if done_flag[0]:
                 # assert len(fatigue_data_list)>0, "no fatigue data"
-                print_info = infos['print_info']
-                if len(fatigue_data_list)>0:
+                if len(fatigue_data_list) > 0:
                     EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter = self.get_fatigue_related_predtion_loss(fatigue_data_list)
-                    EpFilterPredictLoss = dict_loss_pf_filter['EpFilterPredictLoss']
-                    FilterRecoverCoeLoss = dict_loss_pf_filter['FilterRecoverCoeAccu']
-                    FilterFatigueCoeLoss = dict_loss_pf_filter['FilterFatigueCoeAccu']
-                    print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
-                        " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
-                else: 
-                    print(print_info)
+                    print_info = infos['print_info']
+                    # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
+                    print(print_info + " | Warm_up:{},".format(random_exploration) + " Comp_loss:{:.3}".format(EpLossCompare) + \
+                        " Fat_predict_loss:{:.3}".format(dict_loss_pf_filter['EpFilterPredictLoss'])  + \
+                            " Fat_coe_accu:{:.3}".format(dict_loss_pf_filter['FilterFatigueCoeAccu']) + " Rec_coe_accu:{:.3}".format(dict_loss_pf_filter['FilterRecoverCoeAccu']))
+                else:
+                    print(infos['print_info'])
                 if self.use_wandb:
                     wandb.log({
                             'SuperviseTrain/step': self.step_num_sfl,
@@ -838,12 +778,11 @@ class SafeRlFilterAgentRCPO():
             reward_extra = -0.01
             repeat_times = 1
             if done_flag[0]:
-                _,_,_,_,_, _, _infos = temporary_buffer[-1]
+                _,_,_,_,_infos = temporary_buffer[-1]
                 goal_finished = _infos['env_length'] < _infos['max_env_len']-1 and _infos['progress'] == 1
                 # if self.current_overworks > 0:
                 #     reward_extra += -0.03
                 if goal_finished:
-                    # if self.step_num_sfl > self.use_cost_num_steps:
                     num_worker, num_robot = infos['num_worker'], infos['num_robot']
                     if self.env_len_avgs[num_worker-1][num_robot-1].__len__() > 0:
                         reward_extra += 0.05*(self.env_len_avgs[num_worker-1][num_robot-1].get_mean() - _infos['env_length'])/self.env_len_avgs[num_worker-1][num_robot-1].get_mean()
@@ -904,9 +843,17 @@ class SafeRlFilterAgentRCPO():
                     fatigue_data_list.append(_data)
             if infos['overwork']:
                 self.current_overworks += 1
-            use_cost_func = self.step_num_sfl > self.use_cost_num_steps
-            if self.evaluate_use_cost_step < 0 and use_cost_func:
-                self.evaluate_use_cost_step = self.evaluate_step_num             
+            
+            if 'overwork_phy_values' in infos:
+                overwork_phy_values = infos['overwork_phy_values']
+                for _value in overwork_phy_values:
+                    if self.use_wandb:
+                        wandb.log({
+                                "Evaluate2/EpOverworkPhyValues": _value,
+                            })
+            # use_cost_func = self.step_num_sfl > self.use_cost_num_steps
+            # if self.evaluate_use_cost_step < 0 and use_cost_func:
+            #     self.evaluate_use_cost_step = self.evaluate_step_num             
             if dones_flag[0]:
                 print_info = infos['print_info']          
                 if len(fatigue_data_list)>0:
@@ -914,6 +861,12 @@ class SafeRlFilterAgentRCPO():
                     EpFilterPredictLoss = dict_loss_pf_filter['EpFilterPredictLoss']
                     FilterRecoverCoeLoss = dict_loss_pf_filter['FilterRecoverCoeAccu']
                     FilterFatigueCoeLoss = dict_loss_pf_filter['FilterFatigueCoeAccu']
+                    EpFilterPredictLoss_kf = dict_loss_kf_filter['EpFilterPredictLoss_kf']
+                    FilterRecoverCoeAccu_kf = dict_loss_kf_filter['FilterRecoverCoeAccu_kf']
+                    FilterFatigueCoeAccu_kf = dict_loss_kf_filter['FilterFatigueCoeAccu_kf']
+                    EpFilterPredictLoss_ekf = dict_loss_ekf_filter['EpFilterPredictLoss_ekf']
+                    FilterRecoverCoeAccu_ekf = dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf']
+                    FilterFatigueCoeAccu_ekf = dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf']
                     if self.use_wandb:                    
                         wandb.log({
                             "Evaluate/EpFilterPredictLoss": EpFilterPredictLoss,
@@ -921,23 +874,24 @@ class SafeRlFilterAgentRCPO():
                             "Evaluate/EpFilterFatigueCoeAccu": FilterFatigueCoeLoss,
                             # "Evaluate/EpPredictLoss": torch.sqrt(EpLoss).item(),
                             "Evaluate/EpPredictLossCompare": EpLossCompare, 
+                            "Evaluate/EpMoveHuman": infos['human_move'],
+                            "Evaluate/EpMoveRobot": infos['agv_move'],
                         })
                         if self.config['other_filters']:
                             wandb.log({
-                                "Evaluate/EpFilterPredictLoss_kf": dict_loss_kf_filter['EpFilterPredictLoss_kf'],
-                                "Evaluate/EpFilterRecoverCoeAccu_kf": dict_loss_kf_filter['FilterRecoverCoeAccu_kf'],
-                                "Evaluate/EpFilterFatigueCoeAccu_kf": dict_loss_kf_filter['FilterFatigueCoeAccu_kf'],
-                            })
-                            wandb.log({
-                                "Evaluate/EpFilterPredictLoss_ekf": dict_loss_ekf_filter['EpFilterPredictLoss_ekf'],
-                                "Evaluate/EpFilterRecoverCoeAccu_ekf": dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf'],
-                                "Evaluate/EpFilterFatigueCoeAccu_ekf": dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf'],
+                                "Evaluate/EpFilterPredictLoss_kf": EpFilterPredictLoss_kf,
+                                "Evaluate/EpFilterRecoverCoeAccu_kf": FilterRecoverCoeAccu_kf,
+                                "Evaluate/EpFilterFatigueCoeAccu_kf": FilterFatigueCoeAccu_kf,
+                                "Evaluate/EpFilterPredictLoss_ekf": EpFilterPredictLoss_ekf,
+                                "Evaluate/EpFilterRecoverCoeAccu_ekf": FilterRecoverCoeAccu_ekf,
+                                "Evaluate/EpFilterFatigueCoeAccu_ekf": FilterFatigueCoeAccu_ekf,
                             })
                     print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
                     " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
                         " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
                 else:
                     print(print_info)
+                    # print(print_info + " use_cost_func:{},".format(use_cost_func) + " evaluate_use_cost_step:{}".format(self.evaluate_use_cost_step))
                 if self.use_wandb:
                     wandb.log({
                         'Evaluate/step': self.evaluate_step_num,
@@ -957,6 +911,12 @@ class SafeRlFilterAgentRCPO():
                     self.eval_env_len_avgs[num_worker-1][num_robot-1].update(torch.tensor([infos['env_length']], dtype=torch.float32, device=self._device))
                     wandb.log({f'Eval_avg_progress/{num_worker}_{num_robot}': self.eval_progress_avgs[num_worker-1][num_robot-1].get_mean()})
                     wandb.log({f'Eval_avg_env_len/{num_worker}_{num_robot}': self.eval_env_len_avgs[num_worker-1][num_robot-1].get_mean()})
+                        # self.evaluate_table.add_data(infos['env_length'], ' '.join(action_info_list), infos['progress'])
+                        # wandb.log({"Action": self.evaluate_table}) 
+                        # if not test:
+                        #     # checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num) + '_len_' + str(infos['env_length'].item()) + '_rew_' + "{:.2f}".format(self.evaluate_current_rewards.item())
+                        #     checkpoint_name = self.config['name'] + '_ep_' + str(self.episode_num)
+                        #     self.save(os.path.join(self.nn_dir, checkpoint_name)) 
                     if test:
                         self.test_table.add_data(infos['worker_initial_pose'] , infos["robot_initial_pose"], infos['box_initial_pose'], infos['progress'], infos['env_length'], infos['human_move'], infos['agv_move'])
                         self.test_table3.add_data(' '.join(time_step_list), ' '.join(action_info_list))
@@ -1066,3 +1026,4 @@ class SafeRlFilterAgentRCPO():
         dict_loss_kf_filter = {'EpFilterPredictLoss_kf': EpFilterPredictLoss_kf, 'FilterRecoverCoeAccu_kf': FilterRecoverCoeAccu_kf, 'FilterFatigueCoeAccu_kf': FilterFatigueCoeAccu_kf}
         dict_loss_ekf_filter = {'EpFilterPredictLoss_ekf': EpFilterPredictLoss_ekf, 'FilterRecoverCoeAccu_ekf': FilterRecoverCoeAccu_ekf, 'FilterFatigueCoeAccu_ekf': FilterFatigueCoeAccu_ekf}
         return EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter
+    

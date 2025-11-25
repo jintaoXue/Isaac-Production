@@ -794,9 +794,8 @@ if __name__ == '__main__':
     ## 2 metric for 2 subfigure, each subfigure has 9 algorithms, draw the boxplot
     ## data source
     metric_name_file_dir_list = {
-        "Makespan": os.path.dirname(__file__) + "/revise_r1" + "/env_len_fatigue.csv",
-        "Overwork": os.path.dirname(__file__) + "/revise_r1" + "/overwork_fatigue.csv",
-        "Progress": os.path.dirname(__file__) + "/revise_r1" + "/succes_fatigue.csv",
+        "Makespan (Test)": os.path.dirname(__file__) + "/test" + "/EpEnvLen.csv",
+        "Overwork (Test)": os.path.dirname(__file__) + "/test" + "/EpOverCost.csv",
         # "Progress (Test)": os.path.dirname(__file__) + "/test" + "/EpProgress.csv"
     }
     title_dict = {
@@ -806,18 +805,34 @@ if __name__ == '__main__':
     }
     data_algo_name_dict = {
         # 1_test_rl_filter_test_49600_2025-07-25_15-02-16  D3QN
-        # "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
-        "test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
+        "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
+        "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
         # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
-        # "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
-        # "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
-        # "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
-        # "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
-        "test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
-        # "10_test_ppolag_filter_dis_49600_2025-08-08_13-46-57": "PF-PPO-Lag"
+        "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
+        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
+        "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
+        "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
+        "9_test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
+        "10_test_ppolag_filter_dis_49600_2025-08-08_13-46-57": "PF-PPO-Lag"
     }
     # 定义算法分组
-    fatigue_value = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    group_A = {
+        "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
+        "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
+        # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
+    }
+    group_B = {
+        "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
+        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
+    }
+    group_C = {
+        "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
+        "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
+    }
+    group_D = {
+        "9_test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
+        "10_test_ppolag_filter_dis_49600_2025-08-08_13-46-57": "PF-PPO-Lag"
+    }
     
     # 合并所有算法字典
     data_algo_name_dict = {**group_A, **group_B, **group_C, **group_D}

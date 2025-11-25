@@ -773,7 +773,7 @@ class SafeDQNTrans(nn.Module):
         action_mask = x['action_mask']
         cost_mask = None
 
-    x = self.transformer(x)
+    x = self.transformer(x) # (batch_size, 1, d_model)
     x = x.squeeze(1) # squeeze the query sequence
     v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
     a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
@@ -1176,6 +1176,110 @@ class SafePPOTrans(nn.Module):
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
     return q
      
+    
+  def reset_noise(self):
+    for name, module in self.named_children():
+      if 'fc' in name:
+        module.reset_noise()
+
+
+
+##### ablation study #####
+##### MLP model #####
+
+class MLPBlock(nn.Module):
+  def __init__(self, hidden_size: int, seq_len: int = 79):
+    """
+    Args:
+        hidden_size: 隐藏层大小 (512)
+        seq_len: 序列长度 (79)
+    """
+    super(MLPBlock, self).__init__()
+    self.feature_embedding_block = FeatureEmbeddingBlock(hidden_size, DimState())
+    # 使用线性层压缩序列维度 (79 -> 1)
+    self.seq_compress = nn.Linear(seq_len, 1)
+    
+    self.mlp_proj_layer = nn.Sequential(
+        nn.Linear(hidden_size, hidden_size),
+        nn.ReLU(),
+        nn.Linear(hidden_size, hidden_size),
+        nn.ReLU(),
+    )
+    
+  def forward(self, x):
+    x = self.feature_embedding_block(x)  # (batch, 79, 512)
+    
+    # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
+    x = x.transpose(1, 2)  # (batch, 512, 79)
+    x = self.seq_compress(x)  # (batch, 512, 1)
+    x = x.transpose(1, 2)  # (batch, 1, 512)
+    
+    x = self.mlp_proj_layer(x)  # (batch, 1, 512)
+    return x
+
+class SafeDqnMLP(nn.Module):
+  def __init__(self, config, action_space):
+    super(SafeDqnMLP, self).__init__()
+    self.action_space = action_space
+    hidden_size = config['hidden_size']
+    self.mlp_block : MLPBlock = MLPBlock(hidden_size)
+    self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
+    self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_a = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
+    self.Vmin = config.get('V_min', -20)
+    self.Vmax = config.get('V_max', 20)
+    self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.95)
+    self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.8)
+
+    cost_training_dict = {'transformer.encoder', 'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
+    self.trainable_params_sft = []
+    self.trainable_params_rl = []
+    for name, p in self.named_parameters():
+        if any([1 for sub_name in cost_training_dict if sub_name in name]):
+          self.trainable_params_sft.append(p)
+        else:
+          self.trainable_params_rl.append(p)
+    
+  def forward(self, x, use_cost_function=False, log=False):
+
+    if use_cost_function:
+        # print('use_cost function')
+        delta_predict = self.predict_cost(x)
+        # cost_mask = torch.where(cost_predict[..., 0] < self.ftg_thresh_phy, 1, 0)*torch.where(cost_predict[..., 1] < self.ftg_thresh_psy, 1, 0)
+        predict = delta_predict[..., 0] + x['worker_fatigue_phy'][..., 0].unsqueeze(1).repeat(1, self.action_space, 1)
+        cost_mask = torch.where(predict < self.ftg_thresh_phy, 1, 0)
+        worker_mask = x['worker_mask'].unsqueeze(1).repeat(1, self.action_space, 1)
+        cost_mask = cost_mask*worker_mask
+        action_mask = x['action_mask']*torch.any(cost_mask, dim=-1)
+    else:
+        action_mask = x['action_mask']
+        cost_mask = None
+
+    x = self.mlp_block(x) # (batch_size, 1, d_model)
+    x = x.squeeze(1) # squeeze the query sequence
+    v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
+    a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
+    q = v + a - a.mean(1, keepdim=True)  # Combine streams
+    # q = torch.nn.functional.normalize(q, dim=1)
+    assert log==False, "rainbowmini only support log False"
+    # if log:  # Use log softmax for numerical stability
+    #   q = F.log_softmax(q, dim=1)  # Log probabilities with action over second dimension
+    # else:
+    q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
+    q = (action_mask-1)*(-self.Vmin) + q*action_mask
+    return q, cost_mask
+    
+  def predict_cost(self, x):
+    assert False, "predict_cost is not implemented"
+    with torch.no_grad():
+        src = self.mlp_block.encode(x, None)
+        return self.transformer.predict_cost(src, x)
+  
+  def cost_forward(self, x, log=False):
+    assert False, "cost_forward is not implemented"
+    src = self.mlp_block.encode(x, None)
+    return self.mlp_block.decode_cost(src, cost_state=x)
     
   def reset_noise(self):
     for name, module in self.named_children():
