@@ -86,7 +86,6 @@ run_test_3() {
             --wandb_activate \
             --test \
             --use_fatigue_mask \
-            --test_all_settings \
             --other_filters \
             --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
             --load_name "/HRTA_direct_ep_${num}.pth" \
