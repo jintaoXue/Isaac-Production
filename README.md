@@ -324,3 +324,7 @@ fatigue measurement noise的 这里可能还是要加一个zero shot performance
 #10.21
 加一个sensitive的实验
 关于这个cost limit
+
+#11.25
+正在跑sensitivity的实验
+现在需要加上关于model的ablation study
