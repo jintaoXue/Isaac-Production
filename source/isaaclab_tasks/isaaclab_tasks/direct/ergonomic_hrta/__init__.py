@@ -28,6 +28,7 @@ gym.register(
         "dqn": f"{agents.__name__}:dqn.yaml",
         "cpo_filter": f"{agents.__name__}:cpo_filter.yaml",
         "rl_filter_mlp": f"{agents.__name__}:rl_filter_mlp.yaml",
+        "rl_filter_selfattn": f"{agents.__name__}:rl_filter_selfattn.yaml",
         # "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:CartpolePPORunnerCfg",
         # "skrl_cfg_entry_point": f"{agents.__name__}:skrl_ppo_cfg.yaml",
         # "sb3_cfg_entry_point": f"{agents.__name__}:sb3_ppo_cfg.yaml",

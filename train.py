@@ -71,7 +71,7 @@ from source.isaaclab_rl.isaaclab_rl.rl_games import RlGamesGpuEnv, RlGamesVecEnv
 from rl_games.common import env_configurations, vecenv
 from rl_games.common.algo_observer import IsaacAlgoObserver
 from rl_games.torch_runner import Runner
-from source.algo.safe_rl import ppolag_filter_dis, rl_filter, ppo_dis, dqn, cpo_filter, rl_filter_mlp
+from source.algo.safe_rl import ppolag_filter_dis, rl_filter, ppo_dis, dqn, cpo_filter, rl_filter_mlp, rl_filter_selfattn
 
 from isaaclab.envs import (
     DirectMARLEnv,
@@ -230,6 +230,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     runner.algo_factory.register_builder('dqn', lambda **kwargs: dqn.DqnAgent(**kwargs))
     runner.algo_factory.register_builder('cpo_filter', lambda **kwargs: cpo_filter.SafeRlFilterAgentCPO(**kwargs))
     runner.algo_factory.register_builder('rl_filter_mlp', lambda **kwargs: rl_filter_mlp.SafeRlFilterAgentMLP(**kwargs))
+    runner.algo_factory.register_builder('rl_filter_selfattn', lambda **kwargs: rl_filter_selfattn.SafeRlFilterAgentSelfAttention(**kwargs))
     # runner.algo_factory.register_builder('rainbownoe', lambda **kwargs: rainbownoe.RainbownoeAgent(**kwargs))
     # runner.algo_factory.register_builder('rainbowepsilon', lambda **kwargs: rainbowepsilon.RainbowepsilonAgent(**kwargs))
     # runner.algo_factory.register_builder('epsilon_noisy', lambda **kwargs: epsilon_noisy.EpsilonNoisyAgent(**kwargs))
