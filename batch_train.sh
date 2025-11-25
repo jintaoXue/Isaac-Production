@@ -2,10 +2,10 @@
 
 # 检查命令行参数
 if [ $# -eq 0 ]; then
-    echo "用法: $0 [A|B|1-10] [cuda:N]"
+    echo "用法: $0 [A|B|1-14] [cuda:N]"
     echo "  A: 运行A组训练 (1-5)"
     echo "  B: 运行B组训练 (6-10)"
-    echo "  1-10: 运行单个训练序号"
+    echo "  1-14: 运行单个训练序号"
     echo "  cuda:N: 可选，指定CUDA设备，默认cuda:0"
     exit 1
 fi
@@ -15,14 +15,14 @@ DEVICE=${2:-cuda:0}
 DEVICE_ARG="--device ${DEVICE}"
 echo "使用设备: ${DEVICE}"
 
-# 检查是否为数字（1-10）
-if [[ "$GROUP" =~ ^[1-9]$|^10$ ]]; then
+# 检查是否为数字（1-14）
+if [[ "$GROUP" =~ ^([1-9]|1[0-4])$ ]]; then
     echo "运行单个训练序号: $GROUP"
     SINGLE_TEST=true
 else
     if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
-        echo "错误: 参数必须是 A、B 或 1-10 中的数字"
-        echo "用法: $0 [A|B|1-10]"
+        echo "错误: 参数必须是 A、B 或 1-14 中的数字"
+        echo "用法: $0 [A|B|1-14] [cuda:N]"
         exit 1
     fi
     SINGLE_TEST=false
@@ -43,6 +43,11 @@ run_test_1() {
 run_test_3() {
     echo "运行训练 3: PF-CD3Q"
     python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --use_fatigue_mask ${DEVICE_ARG}
+}
+
+run_test_4() {
+    echo "运行训练 4: PF-CD3QP"
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --wandb_activate --use_fatigue_mask --other_filters ${DEVICE_ARG}
 }
 
 run_test_5() {
@@ -103,14 +108,20 @@ run_test_14() {
 # 单个训练
 if [ "$SINGLE_TEST" = true ]; then
     case $GROUP in
+        1) run_test_1 ;;
         2) run_test_2 ;;
         3) run_test_3 ;;
+        4) run_test_4 ;;
         5) run_test_5 ;;
         6) run_test_6 ;;
         7) run_test_7 ;;
         8) run_test_8 ;;
         9) run_test_9 ;;
         10) run_test_10 ;;
+        11) run_test_11 ;;
+        12) run_test_12 ;;
+        13) run_test_13 ;;
+        14) run_test_14 ;;
         *) echo "错误: 无效的训练序号 $GROUP" ;;
     esac
     echo "训练 $GROUP 完成！"
@@ -120,8 +131,10 @@ fi
 # A组训练 (1-5)
 if [ "$GROUP" = "A" ]; then
     echo "=== 运行A组训练 (1-5) ==="
+    run_test_1
     run_test_2
     run_test_3
+    run_test_4
     run_test_5
     run_test_6  
     echo "A组训练完成！"
