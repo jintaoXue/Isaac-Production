@@ -241,11 +241,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     runner.reset()
     if agent_cfg["params"]["config"]['wandb_activate']:
         if agent_cfg["params"]["config"]["test"]:
+            fatigue_str = f"ftg_{args_cli.ftg_thresh_phy}"
             if agent_cfg["params"]["config"]['env_rule_based_exploration']:
                 run_name = 'test_rule_'+ time_str
             else:
                 load_name = agent_cfg["params"]["config"]['load_name'].split('_')[-1][:-4] + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3]
-                run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}"
+                run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}" + '_' + fatigue_str
         else:
             run_name = f"{agent_cfg['params']['algo']['name']}_{time_str}"
 

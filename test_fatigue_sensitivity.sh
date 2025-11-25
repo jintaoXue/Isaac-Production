@@ -85,6 +85,7 @@ run_test_3() {
             --headless \
             --wandb_activate \
             --test \
+            --test_all_settings \
             --use_fatigue_mask \
             --other_filters \
             --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
