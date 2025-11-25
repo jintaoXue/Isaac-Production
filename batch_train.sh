@@ -72,6 +72,30 @@ run_test_10() {
     python train.py --task Isaac-TaskAllocation-Direct-v1 --algo ppolag_filter_dis --headless --wandb_activate --use_fatigue_mask
 }
 
+
+##### ablation study #####
+run_test_11() {
+    echo "运行训练 11: rl_filter_no_noisy"
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --use_fatigue_mask
+}
+
+run_test_12() {
+    echo "运行训练 12: rl_filter_no_dueling"
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --use_fatigue_mask
+}
+
+run_test_13() {
+    echo "运行训练 13: rl_filter_selfattn"
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --use_fatigue_mask
+}
+
+run_test_14() {
+    echo "运行训练 14: rl_filter_mlp"
+    python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --use_fatigue_mask
+}
+
+
+
 # 单个训练
 if [ "$SINGLE_TEST" = true ]; then
     case $GROUP in
