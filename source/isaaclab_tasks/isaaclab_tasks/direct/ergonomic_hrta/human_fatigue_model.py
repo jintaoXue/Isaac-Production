@@ -357,7 +357,7 @@ class Fatigue(object):
         if prediction is not None:
             #adopt rule based mask
             _fatigue = np.array(list(prediction.values())) + self.phy_fatigue
-            _mask = np.where(_fatigue + 0.05 < self.ftg_thresh_phy, 1, 0)
+            _mask = np.where(_fatigue < self.ftg_thresh_phy, 1, 0)
             self.ftg_task_mask = torch.from_numpy(_mask) 
             self.ftg_task_mask[0] = 1
         else:
