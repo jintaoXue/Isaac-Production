@@ -9,9 +9,10 @@ usage() {
 选项:
   --algo <名称>    仅运行指定算法，可重复。可选值: 3, pf-cd3q, 9, ppo-lag
   --ftg <数值>     仅测试指定疲劳阈值，可重复
+  --ftg-range <起始> <终止> <步长>  指定连续疲劳阈值范围 (包含端点)
   -h, --help       显示本帮助
 
-默认：遍历全部疲劳阈值 (0.0~1.0, 步长0.1) 并运行所有算法。
+默认：遍历全部疲劳阈值 (0.0~1.0, 步长0.05) 并运行所有算法。
 EOF
 }
 
@@ -23,6 +24,8 @@ PY
 
 declare -a SELECTED_FTGS=()
 declare -a SELECTED_ALGOS=()
+declare -a FTG_RANGE=()
+declare -a RANGE_FTG_VALUES=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -35,6 +38,14 @@ while [[ $# -gt 0 ]]; do
             [[ $# -lt 2 ]] && { echo "错误: --ftg 需要参数" >&2; exit 1; }
             SELECTED_FTGS+=("$2")
             shift 2
+            ;;
+        --ftg-range)
+            if [[ $# -lt 4 ]]; then
+                echo "错误: --ftg-range 需要三个参数 (起始 终止 步长)" >&2
+                exit 1
+            fi
+            FTG_RANGE=("$2" "$3" "$4")
+            shift 4
             ;;
         -h|--help)
             usage
@@ -70,6 +81,24 @@ else
     done
 fi
 
+if [[ ${#FTG_RANGE[@]} -eq 3 ]]; then
+    RANGE_FTG_VALUES=($(python - <<PY
+start = float("${FTG_RANGE[0]}")
+end = float("${FTG_RANGE[1]}")
+step = float("${FTG_RANGE[2]}")
+if step <= 0:
+    raise ValueError("步长必须为正数")
+values = []
+current = start
+epsilon = 1e-8
+while current <= end + epsilon:
+    values.append(f"{current:.3f}".rstrip('0').rstrip('.'))
+    current += step
+print(" ".join(values))
+PY
+))
+fi
+
 describe_algo() {
     case "$1" in
         run_test_3) echo "PF-CD3Q" ;;
@@ -79,7 +108,15 @@ describe_algo() {
 }
 
 if [[ ${#SELECTED_FTGS[@]} -eq 0 ]]; then
-    SELECTED_FTGS=("${FTG_VALUES[@]}")
+    if [[ ${#RANGE_FTG_VALUES[@]} -gt 0 ]]; then
+        SELECTED_FTGS=("${RANGE_FTG_VALUES[@]}")
+    else
+        SELECTED_FTGS=("${FTG_VALUES[@]}")
+    fi
+else
+    if [[ ${#RANGE_FTG_VALUES[@]} -gt 0 ]]; then
+        SELECTED_FTGS+=("${RANGE_FTG_VALUES[@]}")
+    fi
 fi
 
 run_test_3() {
