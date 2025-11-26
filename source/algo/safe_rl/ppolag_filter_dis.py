@@ -295,6 +295,7 @@ class SafeRlFilterAgentPPO():
         wandb.define_metric("Evaluate/EpFilterPredictLoss", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu", step_metric="Evaluate/step_episode")
         wandb.define_metric("Evaluate/EpFilterFatigueCoeAccu", step_metric="Evaluate/step_episode")
+        wandb.define_metric("Evaluate2/EpOverworkPhyValues")
         if self.config['other_filters']:
             wandb.define_metric("Evaluate/EpFilterPredictLoss_kf", step_metric="Evaluate/step_episode")
             wandb.define_metric("Evaluate/EpFilterRecoverCoeAccu_kf", step_metric="Evaluate/step_episode")
@@ -898,6 +899,13 @@ class SafeRlFilterAgentPPO():
                     fatigue_data_list.append(_data)
             if infos['overwork']:
                 self.current_overworks += 1
+            if 'overwork_phy_values' in infos:
+                overwork_phy_values = infos['overwork_phy_values']
+                for _value in overwork_phy_values:
+                    if self.use_wandb:
+                        wandb.log({
+                                "Evaluate2/EpOverworkPhyValues": _value,
+                            })
             use_cost_func = self.step_num_sfl > self.use_cost_num_steps
             if self.evaluate_use_cost_step < 0 and use_cost_func:
                 self.evaluate_use_cost_step = self.evaluate_step_num             
