@@ -189,30 +189,33 @@ if __name__ == '__main__':
                     label_used = True
         
         # 设置标签和标题
-        ax.set_xlabel('Fatigue', fontsize=12)
+        ax.set_xlabel('Fatigue constraint', fontsize=14)
         if metric_name == "ValueDistribution":
-            ax.set_ylabel('Overwork values', fontsize=12)
+            ax.set_ylabel('Overwork values', fontsize=14)
             vd_title = 'Overwork Value Distribution'
             if config["algo_name"]:
                 vd_title += f" - {config['algo_name']}"
-            ax.set_title(vd_title, fontsize=14)
+            ax.set_title(vd_title, fontsize=16)
         else:
-            ax.set_ylabel(metric_name, fontsize=12)
-            ax.set_title(metric_name, fontsize=14)
+            ax.set_ylabel(metric_name, fontsize=14)
+            ax.set_title(metric_name, fontsize=16)
         ax.grid(True, alpha=0.3, linestyle='--')
         if metric_name != "ValueDistribution":
-            ax.legend(fontsize=10)
+            ax.legend(fontsize=12)
         elif len(positions) > 0:
-            ax.legend(fontsize=10, loc='lower right', bbox_to_anchor=(1, 0.2))
-        ax.set_xlim(-0.05, 1.05)
+            ax.legend(fontsize=12, loc='lower right', bbox_to_anchor=(1, 0.2))
         row_idx = 0 if idx < num_cols else 1
         if row_idx == 0:
+            ax.set_xlim(-0.05, 1.05)
             ax.set_xticks(np.arange(0, 1.01, 0.1))
         else:
-            ax.set_xticks(np.arange(0, 1.01, 0.05))
+            ax.set_xlim(-0.05, 1)
+            ticks = np.arange(0, 1.01, 0.1)
+            ax.set_xticks(ticks)
+            ax.set_xticklabels([f"{t:.1f}" for t in ticks])
             ax.set_ylim(0, 1)
             ax.set_yticks(np.arange(0, 1.01, 0.1))
-        ax.tick_params(labelsize=10)
+        ax.tick_params(labelsize=12)
     
     # 调整布局
     plt.tight_layout()
