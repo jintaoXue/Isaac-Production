@@ -351,7 +351,7 @@ class noDuelingDQNTrans(nn.Module):
     hidden_size = config['hidden_size']
     self.transformer : CostTransformer = build_cost_net(config['max_num_worker'], DimState(), hidden_size) 
     self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
-    self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
+    self.fc_z_v = NoisyLinear(hidden_size, action_space, std_init=config['noisy_std'])
     self.Vmin = config.get('V_min', -20)
     self.Vmax = config.get('V_max', 20)
     self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.95)
