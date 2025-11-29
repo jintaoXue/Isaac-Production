@@ -328,3 +328,6 @@ fatigue measurement noise的 这里可能还是要加一个zero shot performance
 #11.25
 正在跑sensitivity的实验
 现在需要加上关于model的ablation study
+
+#11.29
+test times 的区别也要说明
