@@ -13,16 +13,35 @@ from .model import CostTransformer, build_cost_net
 ##### MLP model #####
 
 class MLPBlock(nn.Module):
-  def __init__(self, hidden_size: int, seq_len: int = 79):
+  def __init__(self, hidden_size: int, seq_len: int = 79, compress_method: str = 'mean'):
     """
     Args:
         hidden_size: 隐藏层大小 (512)
         seq_len: 序列长度 (79)
+        compress_method: 压缩方法，可选:
+            - 'linear': 线性层压缩 (默认)
+            - 'mean': 平均池化
+            - 'max': 最大池化
+            - 'attention': 注意力池化
+            - 'weighted_mean': 加权平均
+            - 'first': 取第一个元素
+            - 'last': 取最后一个元素
     """
     super(MLPBlock, self).__init__()
     self.feature_embedding_block = FeatureEmbeddingBlock(hidden_size, DimState())
-    # 使用线性层压缩序列维度 (79 -> 1)
-    self.seq_compress = nn.Linear(seq_len, 1)
+    self.compress_method = compress_method
+    self.seq_len = seq_len
+    
+    if compress_method == 'linear':
+      # 使用线性层压缩序列维度 (79 -> 1)
+      self.seq_compress = nn.Linear(seq_len, 1)
+    elif compress_method == 'attention':
+      # 注意力池化: 使用可学习的查询向量
+      self.attention_query = nn.Parameter(torch.randn(1, 1, hidden_size))
+      self.attention_scale = math.sqrt(hidden_size)
+    elif compress_method == 'weighted_mean':
+      # 加权平均: 可学习的权重
+      self.seq_weights = nn.Parameter(torch.ones(1, seq_len, 1))
     
     self.mlp_proj_layer = nn.Sequential(
         nn.Linear(hidden_size, hidden_size),
@@ -32,10 +51,36 @@ class MLPBlock(nn.Module):
   def forward(self, x):
     x = self.feature_embedding_block(x)  # (batch, 79, 512)
     
-    # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
-    x = x.transpose(1, 2)  # (batch, 512, 79)
-    x = self.seq_compress(x)  # (batch, 512, 1)
-    x = x.transpose(1, 2)  # (batch, 1, 512)
+    # 根据压缩方法处理序列维度
+    if self.compress_method == 'linear':
+      # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
+      x = x.transpose(1, 2)  # (batch, 512, 79)
+      x = self.seq_compress(x)  # (batch, 512, 1)
+      x = x.transpose(1, 2)  # (batch, 1, 512)
+    elif self.compress_method == 'mean':
+      # 平均池化: (batch, 79, 512) -> (batch, 1, 512)
+      x = x.mean(dim=1, keepdim=True)
+    elif self.compress_method == 'max':
+      # 最大池化: (batch, 79, 512) -> (batch, 1, 512)
+      x = x.max(dim=1, keepdim=True)[0]
+    elif self.compress_method == 'attention':
+      # 注意力池化: (batch, 79, 512) -> (batch, 1, 512)
+      query = self.attention_query.expand(x.size(0), -1, -1)  # (batch, 1, 512)
+      scores = torch.matmul(query, x.transpose(1, 2)) / self.attention_scale  # (batch, 1, 79)
+      attn_weights = F.softmax(scores, dim=-1)  # (batch, 1, 79)
+      x = torch.matmul(attn_weights, x)  # (batch, 1, 512)
+    elif self.compress_method == 'weighted_mean':
+      # 加权平均: (batch, 79, 512) -> (batch, 1, 512)
+      weights = F.softmax(self.seq_weights, dim=1)  # (1, 79, 1)
+      x = (x * weights).sum(dim=1, keepdim=True)  # (batch, 1, 512)
+    elif self.compress_method == 'first':
+      # 取第一个元素: (batch, 79, 512) -> (batch, 1, 512)
+      x = x[:, 0:1, :]
+    elif self.compress_method == 'last':
+      # 取最后一个元素: (batch, 79, 512) -> (batch, 1, 512)
+      x = x[:, -1:, :]
+    else:
+      raise ValueError(f"Unknown compress_method: {self.compress_method}")
     
     x = self.mlp_proj_layer(x)  # (batch, 1, 512)
     return x
