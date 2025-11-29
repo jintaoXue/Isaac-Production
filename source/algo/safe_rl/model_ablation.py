@@ -90,6 +90,7 @@ class SafeDqnMLP(nn.Module):
     #   q = F.log_softmax(q, dim=1)  # Log probabilities with action over second dimension
     # else:
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
+    q = q.flip(dims=[-1])  # 反转最后一维元素
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
     return q, cost_mask
     
