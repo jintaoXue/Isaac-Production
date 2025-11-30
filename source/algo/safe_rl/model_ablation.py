@@ -13,7 +13,7 @@ from .model import CostTransformer, build_cost_net
 ##### MLP model #####
 
 class MLPBlock(nn.Module):
-  def __init__(self, hidden_size: int, seq_len: int = 79, compress_method: str = 'linear'):
+  def __init__(self, hidden_size: int, seq_len: int = 79, compress_method: str = 'mean'):
     """
     Args:
         hidden_size: 隐藏层大小 (512)
