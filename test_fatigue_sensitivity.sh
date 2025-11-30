@@ -136,7 +136,7 @@ run_test_3() {
             --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
             --load_name "/HRTA_direct_ep_${num}.pth" \
             --wandb_project test_ftg_sensitivity \
-            --test_times 10 \
+            --test_times 50 \
             --ftg_thresh_phy "${ftg_value}"
     done
 }
