@@ -13,7 +13,7 @@ from .model import CostTransformer, build_cost_net
 ##### MLP model #####
 
 class MLPBlock(nn.Module):
-  def __init__(self, hidden_size: int, seq_len: int = 79, compress_method: str = 'mean'):
+  def __init__(self, hidden_size: int, seq_len: int = 79, compress_method: str = 'linear'):
     """
     Args:
         hidden_size: 隐藏层大小 (512)
@@ -34,7 +34,8 @@ class MLPBlock(nn.Module):
     
     if compress_method == 'linear':
       # 使用线性层压缩序列维度 (79 -> 1)
-      self.seq_compress = nn.Linear(seq_len, 1)
+      self.seq_compress = nn.Linear(hidden_size, 1)
+      self.seq_compress2 = nn.Linear(seq_len, hidden_size)
     elif compress_method == 'attention':
       # 注意力池化: 使用可学习的查询向量
       self.attention_query = nn.Parameter(torch.randn(1, 1, hidden_size))
@@ -54,9 +55,8 @@ class MLPBlock(nn.Module):
     # 根据压缩方法处理序列维度
     if self.compress_method == 'linear':
       # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
-      x = x.transpose(1, 2)  # (batch, 512, 79)
-      x = self.seq_compress(x)  # (batch, 512, 1)
-      x = x.transpose(1, 2)  # (batch, 1, 512)
+      x = self.seq_compress(x).squeeze(-1)  # (batch, seq_len)
+      x = self.seq_compress2(x)  # (batch, hidden_size)
     elif self.compress_method == 'mean':
       # 平均池化: (batch, 79, 512) -> (batch, 1, 512)
       x = x.mean(dim=1, keepdim=True)
@@ -124,7 +124,7 @@ class SafeDqnMLP(nn.Module):
         action_mask = x['action_mask']
         cost_mask = None
 
-    x = self.mlp_block(x) # (batch_size, 1, d_model)
+    x = self.mlp_block(x) # (batch_size, hidden_size)
     x = x.squeeze(1) # squeeze the query sequence
     v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
     a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
