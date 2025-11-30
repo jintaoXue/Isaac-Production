@@ -331,3 +331,12 @@ fatigue measurement noise的 这里可能还是要加一个zero shot performance
 
 #11.29
 test times 的区别也要说明
+
+#11.30
+rl_filter_no_dueling_2025-11-29_18-11-35  4070
+
+rl_filter_selfattn_2025-11-26_16-56-20 4070
+
+rl_filter_no_noisy_2025-11-25_15-04-29 server
+
+
