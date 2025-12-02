@@ -173,7 +173,7 @@ run_test_12() {
     list=(49600)
     for num in "${list[@]}"
     do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --test --test_all_settings \
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
             --load_dir "/rl_filter_no_noisy_2025-11-25_15-04-29/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
     done
 }
@@ -183,7 +183,7 @@ run_test_13() {
     list=(400)
     for num in "${list[@]}"
     do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --test --test_all_settings \
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
             --load_dir "/rl_filter_no_dueling_2025-11-29_18-11-35/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
     done
 }
@@ -193,7 +193,7 @@ run_test_14() {
     list=(400)
     for num in "${list[@]}"
     do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --test --test_all_settings \
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
             --load_dir "/rl_filter_selfattn_2025-11-26_16-56-20/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
     done
 }
@@ -203,7 +203,7 @@ run_test_15() {
     list=(400)
     for num in "${list[@]}"
     do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --test --test_all_settings \
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
             --load_dir "/rl_filter_mlp_2025-12-02_00-17-01/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
     done
 }
