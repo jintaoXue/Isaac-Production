@@ -170,7 +170,7 @@ run_test_11() {
 
 run_test_12() {
     echo "运行测试 12: rl_filter_no_noisy_2025-11-25_15-04-29 server"
-    list=(400)
+    list=(49600)
     for num in "${list[@]}"
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --test --test_all_settings \
