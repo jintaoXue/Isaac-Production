@@ -2,23 +2,23 @@
 
 # 检查命令行参数
 if [ $# -eq 0 ]; then
-    echo "用法: $0 [A|B|1-11] [更多编号...]"
+    echo "用法: $0 [A|B|1-15] [更多编号...]"
     echo "  A: 运行A组测试 (1-5)"
     echo "  B: 运行B组测试 (6-10)"
-    echo "  1-11: 运行单个或多个测试序号 (支持逗号或空格分隔, 例如: '3,9,10' 或 '3 9 10')"
+    echo "  1-15: 运行单个或多个测试序号 (支持逗号或空格分隔, 例如: '3,9,10' 或 '3 9 10')"
     exit 1
 fi
 
 GROUP=$1
 
 # 检查是否为数字（1-11）
-if [[ "$GROUP" =~ ^([1-9]|10|11)$ ]]; then
+if [[ "$GROUP" =~ ^([1-9]|10|11|12|13|14|15)$ ]]; then
     echo "运行单个测试序号: $GROUP"
     SINGLE_TEST=true
 else
     if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
-        echo "错误: 参数必须是 A、B 或 1-11 中的数字"
-        echo "用法: $0 [A|B|1-11] [更多编号...]"
+        echo "错误: 参数必须是 A、B 或 1-15 中的数字"
+        echo "用法: $0 [A|B|1-15] [更多编号...]"
         exit 1
     fi
     SINGLE_TEST=false
@@ -215,7 +215,7 @@ if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
     for arg in "$@"; do
         IFS=',' read -ra parts <<< "$arg"
         for p in "${parts[@]}"; do
-            if [[ "$p" =~ ^([1-9]|10|11)$ ]]; then
+            if [[ "$p" =~ ^([1-9]|10|11|12|13|14|15)$ ]]; then
                 TEST_IDS+=("$p")
             elif [ -n "$p" ]; then
                 echo "错误: 无效的测试序号 $p"
