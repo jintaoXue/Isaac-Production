@@ -157,7 +157,7 @@ run_test_10() {
 }
 
 run_test_11() {
-    echo "运行测试 11: CPO 4090_cpo_filter_2025-11-13_20-16-30_ep_400"
+    echo "运行测试 11: CPO 4090_cpo_filter_2025-11-13_20-16-30_ep_400 4090"
     list=(400)
     for num in "${list[@]}"
     do
