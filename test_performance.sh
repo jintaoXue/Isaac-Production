@@ -166,6 +166,49 @@ run_test_11() {
     done
 }
 
+## ablation study ##
+
+run_test_12() {
+    echo "运行测试 12: rl_filter_no_noisy_2025-11-25_15-04-29 server"
+    list=(400)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_noisy --headless --wandb_activate --test --test_all_settings \
+            --load_dir "/rl_filter_no_noisy_2025-11-25_15-04-29/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+    done
+}
+
+run_test_13() {
+    echo "运行测试 13: rl_filter_no_dueling_2025-11-29_18-11-35 4070"
+    list=(400)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --test --test_all_settings \
+            --load_dir "/rl_filter_no_dueling_2025-11-29_18-11-35/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+    done
+}
+
+run_test_14() {
+    echo "运行测试 14: rl_filter_selfattn_2025-11-26_16-56-20 4070"
+    list=(400)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_selfattn --headless --wandb_activate --test --test_all_settings \
+            --load_dir "/rl_filter_selfattn_2025-11-26_16-56-20/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+    done
+}
+
+run_test_15() {
+    echo "运行测试 15: rl_filter_mlp_2025-12-02_00-17-01 4070"
+    list=(400)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --test --test_all_settings \
+            --load_dir "/rl_filter_mlp_2025-12-02_00-17-01/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+    done
+}
+
+
 # 支持多个编号（逗号或空格分隔）
 if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
     TEST_IDS=()
@@ -196,6 +239,10 @@ if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
                 9) run_test_9 ;;
                 10) run_test_10 ;;
                 11) run_test_11 ;;
+                12) run_test_12 ;;
+                13) run_test_13 ;;
+                14) run_test_14 ;;
+                15) run_test_15 ;;
             esac
         done
         echo "测试列表完成！"
@@ -217,6 +264,10 @@ if [ "$SINGLE_TEST" = true ]; then
         9) run_test_9 ;;
         10) run_test_10 ;;
         11) run_test_11 ;;
+        12) run_test_12 ;;
+        13) run_test_13 ;;
+        14) run_test_14 ;;
+        15) run_test_15 ;;
         *) echo "错误: 无效的测试序号 $GROUP" ;;
     esac
     echo "测试 $GROUP 完成！"
@@ -226,20 +277,21 @@ fi
 # A组测试 (1-5)
 if [ "$GROUP" = "A" ]; then
     echo "=== 运行A组测试 (1-5) ==="
+    run_test_1
     run_test_2
     run_test_3
-    run_test_4
-    run_test_9
+    run_test_11
     echo "A组测试完成！"
 fi
 
 # B组测试 (6-10)
 if [ "$GROUP" = "B" ]; then
     echo "=== 运行B组测试 (6-10) ==="
+    run_test_4
     run_test_5
     run_test_6
     run_test_7
-    run_test_8
+    run_test_9
     run_test_10
     echo "B组测试完成！"
 fi
