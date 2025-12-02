@@ -445,7 +445,7 @@ class Transformer(nn.Module):
         return self.projection_layer(tgt)
     
 
-def build_transformer(dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=2048) -> Transformer:
+def build_transformer(dim_state: DimState, d_model: int=512, h: int=8, dropout: float=0.1, d_ff: int=1024) -> Transformer:
     # Create the embedding layers
     src_embed = FeatureEmbeddingBlock(d_model, dim_state)
     tgt_embed = nn.Sequential(
@@ -1116,8 +1116,10 @@ class SafePPOTrans(nn.Module):
     self.ftg_thresh_phy = config.get('ftg_thresh_phy', 0.95)
     self.ftg_thresh_psy = config.get('ftg_thresh_psy', 0.8)
 
-    critic_training_dict = {'transformer.critic_decoder', 'transformer.projection_layer_critic'}
-    cost_training_dict = {'transformer.cost_decoder', 'transformer.projection_layer_cost'}
+    critic_training_dict = {'transformer.critic_decoder', 'transformer.projection_layer_critic', 
+      'fc_h_v_critic', 'fc_h_a_critic', 'fc_z_v_critic', 'fc_z_a_critic'}
+    cost_training_dict = {'transformer.cost_decoder', 'transformer.projection_layer_cost', 
+      'fc_h_v_cost', 'fc_h_a_cost', 'fc_z_v_cost', 'fc_z_a_cost'}
     self.trainable_params_sft = []
     self.trainable_params_rl = []
     self.trainable_params_cost = []

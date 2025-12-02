@@ -339,4 +339,18 @@ rl_filter_selfattn_2025-11-26_16-56-20 4070
 
 rl_filter_no_noisy_2025-11-25_15-04-29 server
 
+#11.2
+mlp 3279383 -> 3.1M  3.1274633407592773
+param.element_size()
+sum([param.nelement() for param in self.online_net.parameters()])
+sum([param.nelement()*param.element_size() for param in self.online_net.parameters()])
 
+
+dqn 9357332 -> 8.9M 9357332
+
+
+PF-CD3Q -> 9883670 9.4M 9.425802230834961
+
+cost_param_dict = {'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
+
+PPO  
