@@ -353,4 +353,12 @@ PF-CD3Q -> 9883670 9.4M 9.425802230834961
 
 cost_param_dict = {'transformer.cost_decoder', 'transformer.cost_tgt_embed', 'transformer.cost_projection_layer'}
 
-PPO  
+PPO 13369882 12.8M 12.750513076782227
+
+PPO-Lag 16856094 16.1M  16.075223922729492
+
+cost_training_dict = {
+    'transformer.cost_decoder',
+    'transformer.projection_layer_cost', 
+    'fc_h_v_cost', 'fc_h_a_cost', 'fc_z_v_cost', 'fc_z_a_cost'
+}
