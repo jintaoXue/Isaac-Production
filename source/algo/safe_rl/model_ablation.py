@@ -31,7 +31,7 @@ class MLPBlock(nn.Module):
     self.feature_embedding_block = FeatureEmbeddingBlock(hidden_size, DimState())
     self.compress_method = compress_method
     self.seq_len = seq_len
-    
+    self.hidden_size = hidden_size
     if compress_method == 'linear':
       # 使用线性层压缩序列维度 (79 -> 1)
       self.seq_compress = nn.Linear(hidden_size, 1)
@@ -55,6 +55,7 @@ class MLPBlock(nn.Module):
     # 根据压缩方法处理序列维度
     if self.compress_method == 'linear':
       # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
+      x = x/math.sqrt(self.hidden_size)
       x = x.mean(dim=2, keepdim=False)# (batch, seq_len)
       x = self.seq_compress2(x)  # (batch, hidden_size)
     elif self.compress_method == 'mean':
@@ -135,7 +136,6 @@ class SafeDqnMLP(nn.Module):
     #   q = F.log_softmax(q, dim=1)  # Log probabilities with action over second dimension
     # else:
     q = torch.clamp(q, min=self.Vmin, max=self.Vmax)
-    q = q.flip(dims=[-1])  # 反转最后一维元素
     q = (action_mask-1)*(-self.Vmin) + q*action_mask
     return q, cost_mask
     
