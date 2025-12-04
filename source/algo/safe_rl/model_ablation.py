@@ -62,7 +62,7 @@ class MLPBlock(nn.Module):
     if self.compress_method == 'linear':
       # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
       x = x/self.hidden_size
-      x = self.seq_compress(x)# (batch, seq_len)
+      x = self.seq_compress(x).squeeze(-1)# (batch, seq_len)
       x = self.seq_compress2(x)  # (batch, hidden_size)
     elif self.compress_method == 'mean':
       # 平均池化: (batch, 79, 512) -> (batch, 1, 512)
