@@ -889,15 +889,16 @@ class SafeRlFilterAgent():
                                 "Evaluate/EpFilterRecoverCoeAccu_ekf": FilterRecoverCoeAccu_ekf,
                                 "Evaluate/EpFilterFatigueCoeAccu_ekf": FilterFatigueCoeAccu_ekf,
                             })
-                    self.fat_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterFatigueCoeAccu'].item())
-                    self.rec_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterRecoverCoeAccu'].item())
-                    if self.config['other_filters']:
-                        self.fat_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterFatigueCoeAccu_kf'].item())
-                        self.rec_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterRecoverCoeAccu_kf'].item())
-                        self.fat_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf'].item())
-                        self.rec_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf'].item())
-                    print("fatigue_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.fat_coe_accu_dict.items()}))
-                    print("recovery_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.rec_coe_accu_dict.items()}))
+                    if self._test
+                        self.fat_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterFatigueCoeAccu'].item())
+                        self.rec_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterRecoverCoeAccu'].item())
+                        if self.config['other_filters']:
+                            self.fat_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterFatigueCoeAccu_kf'].item())
+                            self.rec_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterRecoverCoeAccu_kf'].item())
+                            self.fat_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf'].item())
+                            self.rec_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf'].item())
+                        print("fatigue_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.fat_coe_accu_dict.items()}))
+                        print("recovery_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.rec_coe_accu_dict.items()}))
                     print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
                     " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
                         " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))
