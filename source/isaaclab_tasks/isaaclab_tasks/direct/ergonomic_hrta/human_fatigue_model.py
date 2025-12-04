@@ -90,13 +90,14 @@ class Fatigue(object):
         self.psy_history = None
         # self.time_history = None
         self.visualize = False
+        self.pf_inference_time_step = -1.0
         self.activate_other_filters = train_cfg['other_filters']
         self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
 
     def reset(self):
         if self.time_step is not None and self.time_step > 100 and self.visualize and self.activate_other_filters:
-            self.plot_comprehensive_fatigue_analysis()  
+            self.plot_comprehensive_fatigue_analysis()
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
             #         if v is not None:
@@ -243,7 +244,10 @@ class Fatigue(object):
         if self.cfg.use_partial_filter == True:
             # 合并疲劳和恢复过滤器列表
             pf_filters = {**self.pfs_phy_fat, **self.pfs_phy_rec}
+            start_time = time.time()
             esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, pf_filters)
+            end_time = time.time()
+            self.pf_inference_time_step = end_time - start_time
             # if np.isnan(esitmate_phy_fatigue_coe):
             #     a = 1
             if self.activate_other_filters:
