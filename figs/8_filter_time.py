@@ -47,7 +47,12 @@ if __name__ == '__main__':
     # Q-networks add overhead. There’s no report of step latency or throughput. Please provide (i) 
     # per-step inference time, (ii) cost vs. number of humans/subtasks/particles, and (iii) whether 
     # decisions meet cycle-time constraints in your simulated line. 
-    
+    self.pf_inference_time_step
+    pf_inference_time_step = 6.914138793945312e-05
+    self.ekf_inference_time_step
+    ekf_inference_time_step = 0.00016617774963378906
+    self.kf_inference_time_step
+    kf_inference_time_step = 0.0003380775451660156
     # 配置
     metric_name_file_dir_list = {
         "Makespan": os.path.dirname(__file__) + "/revise_r1/env_len_fatigue.csv",

@@ -11,6 +11,7 @@ from .eg_hrta_env_cfg import HRTaskAllocEnvCfg, high_level_task_dic, high_level_
 import random
 import os
 from matplotlib import gridspec
+import time
 
 ######### for human fatigue #####
 
@@ -90,7 +91,10 @@ class Fatigue(object):
         self.psy_history = None
         # self.time_history = None
         self.visualize = False
-        self.pf_inference_time_step = -1.0
+        # self.time_latency_study = False
+        self.pf_inference_time_step_list = []
+        self.kf_inference_time_step_list = []
+        self.ekf_inference_time_step_list = []
         self.activate_other_filters = train_cfg['other_filters']
         self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
@@ -98,6 +102,13 @@ class Fatigue(object):
     def reset(self):
         if self.time_step is not None and self.time_step > 100 and self.visualize and self.activate_other_filters:
             self.plot_comprehensive_fatigue_analysis()
+        
+        if self.time_step is not None and self.time_step > 100 and len(self.pf_inference_time_step_list) > 0:
+            mean_pf, mean_kf, mean_ekf = np.mean(self.pf_inference_time_step_list), np.mean(self.kf_inference_time_step_list), np.mean(self.ekf_inference_time_step_list)
+            print(f"PF inference time step: {mean_pf}, KF inference time step: {mean_kf}, EKF inference time step: {mean_ekf}")
+            self.pf_inference_time_step_list = []
+            self.kf_inference_time_step_list = []
+            self.ekf_inference_time_step_list = []
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
             #         if v is not None:
@@ -246,17 +257,23 @@ class Fatigue(object):
             pf_filters = {**self.pfs_phy_fat, **self.pfs_phy_rec}
             start_time = time.time()
             esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, pf_filters)
-            end_time = time.time()
-            self.pf_inference_time_step = end_time - start_time
+            end_time = time.time()  
+            self.pf_inference_time_step_list.append(end_time - start_time)
             # if np.isnan(esitmate_phy_fatigue_coe):
             #     a = 1
             if self.activate_other_filters:
                 # KF filter
                 kf_filters = {**self.kfs_phy_fat, **self.kfs_phy_rec}
+                start_time = time.time()
                 esitmate_phy_fatigue_coe_kf, _phy_fatigue_prediction_kf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic, kf_filters)
+                end_time = time.time()
+                self.kf_inference_time_step_list.append(end_time - start_time)
                 # EKF filter
                 ekf_filters = {**self.ekfs_phy_fat, **self.ekfs_phy_rec}
+                start_time = time.time()
                 esitmate_phy_fatigue_coe_ekf, _phy_fatigue_prediction_ekf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic, ekf_filters)
+                end_time = time.time()
+                self.ekf_inference_time_step_list.append(end_time - start_time)
         
         self.phy_fatigue = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME,  self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
         self.task_phy_prediction_dic = self.update_predict_dic()
