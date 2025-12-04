@@ -46,7 +46,7 @@ class MLPBlock(nn.Module):
     
     self.mlp_proj_layer = nn.Sequential(
         nn.Linear(hidden_size, hidden_size),
-        nn.ReLU(),
+        nn.Sigmoid(),
     )
     
   def forward(self, x):
