@@ -34,8 +34,14 @@ class MLPBlock(nn.Module):
     self.hidden_size = hidden_size
     if compress_method == 'linear':
       # 使用线性层压缩序列维度 (79 -> 1)
-      self.seq_compress = nn.Linear(hidden_size, 1)
-      self.seq_compress2 = nn.Linear(seq_len, hidden_size)
+      self.seq_compress = nn.Sequential(
+        nn.Linear(hidden_size, 1),
+        nn.Sigmoid(),
+      )
+      self.seq_compress2 = nn.Sequential(
+        nn.Linear(seq_len, hidden_size),
+        nn.Sigmoid(),
+      )
     elif compress_method == 'attention':
       # 注意力池化: 使用可学习的查询向量
       self.attention_query = nn.Parameter(torch.randn(1, 1, hidden_size))
@@ -56,7 +62,7 @@ class MLPBlock(nn.Module):
     if self.compress_method == 'linear':
       # 使用线性层压缩: (batch, 79, 512) -> (batch, 512, 79) -> (batch, 512, 1) -> (batch, 1, 512)
       x = x/math.sqrt(self.hidden_size)
-      x = x.mean(dim=2, keepdim=False)# (batch, seq_len)
+      x = self.seq_compress(x)# (batch, seq_len)
       x = self.seq_compress2(x)  # (batch, hidden_size)
     elif self.compress_method == 'mean':
       # 平均池化: (batch, 79, 512) -> (batch, 1, 512)
