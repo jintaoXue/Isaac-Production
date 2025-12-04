@@ -92,7 +92,7 @@ class Fatigue(object):
         self.psy_history = None
         # self.time_history = None
         self.visualize = False
-        self.visualize_inference_time = True
+        self.visualize_inference_time = False
         # self.time_latency_study = False
         self.pf_inference_time_step_list = []
         self.kf_inference_time_step_list = []
@@ -269,7 +269,8 @@ class Fatigue(object):
             self.pf_inference_time_step_list.append(end_time - start_time)
             if subtask not in self.pf_subtask_inference_time_step_dict:
                 self.pf_subtask_inference_time_step_dict[subtask] = []
-            self.pf_subtask_inference_time_step_dict[subtask].append(end_time - start_time)
+            if self.visualize_inference_time:
+                self.pf_subtask_inference_time_step_dict[subtask].append(end_time - start_time)
             # if np.isnan(esitmate_phy_fatigue_coe):
             #     a = 1
             if self.activate_other_filters:
@@ -278,13 +279,15 @@ class Fatigue(object):
                 start_time = time.time()
                 esitmate_phy_fatigue_coe_kf, _phy_fatigue_prediction_kf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic, kf_filters)
                 end_time = time.time()
-                self.kf_inference_time_step_list.append(end_time - start_time)
+                if self.visualize_inference_time:
+                    self.kf_inference_time_step_list.append(end_time - start_time)
                 # EKF filter
                 ekf_filters = {**self.ekfs_phy_fat, **self.ekfs_phy_rec}
                 start_time = time.time()
                 esitmate_phy_fatigue_coe_ekf, _phy_fatigue_prediction_ekf = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.ekfs_phy_fat_ce_dic, self.ekfs_phy_rec_ce_dic, ekf_filters)
                 end_time = time.time()
-                self.ekf_inference_time_step_list.append(end_time - start_time)
+                if self.visualize_inference_time:
+                    self.ekf_inference_time_step_list.append(end_time - start_time)
         
         self.phy_fatigue = self.step_helper_delta_phy_fatigue(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME,  self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, self.phy_free_state_dic)
         self.task_phy_prediction_dic = self.update_predict_dic()
