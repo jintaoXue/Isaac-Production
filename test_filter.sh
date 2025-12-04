@@ -49,6 +49,19 @@ run_test_2() {
      done
 }
 
+
+# noisy test filter
+run_test_3() {
+    echo "运行测试 1: PF-CD3Q rl_filter_2025-07-20_12-17-12"
+    list=(49600)
+    for num in "${list[@]}"
+    do
+        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --test --use_fatigue_mask \
+            --load_dir "/rl_filter_2025-07-20_12-17-12/nn" --load_name "/HRTA_direct_ep_$num.pth" --test_times 10 --wandb_activate \
+            --wandb_project test_filter_latency 
+     done
+}
+
 # 支持多个编号（逗号或空格分隔）
 if [ "$GROUP" != "A" ] && [ "$GROUP" != "B" ]; then
     TEST_IDS=()
