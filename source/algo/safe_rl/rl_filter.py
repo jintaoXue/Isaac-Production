@@ -889,7 +889,7 @@ class SafeRlFilterAgent():
                                 "Evaluate/EpFilterRecoverCoeAccu_ekf": FilterRecoverCoeAccu_ekf,
                                 "Evaluate/EpFilterFatigueCoeAccu_ekf": FilterFatigueCoeAccu_ekf,
                             })
-                    if self._test
+                    if self._test:
                         self.fat_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterFatigueCoeAccu'].item())
                         self.rec_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterRecoverCoeAccu'].item())
                         if self.config['other_filters']:
