@@ -57,8 +57,8 @@ params:
     max_num_worker: 3
     max_num_robot: 3
     # test_one:
-    acti_agv: 2
-    acti_charc: 3
+    acti_agv: 1
+    acti_charc: 1
     test_times: 10
     test_env_max_length: 2500
     only_train_cost: False

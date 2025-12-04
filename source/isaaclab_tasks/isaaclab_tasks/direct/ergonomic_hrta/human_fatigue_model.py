@@ -91,10 +91,12 @@ class Fatigue(object):
         self.psy_history = None
         # self.time_history = None
         self.visualize = False
+        self.visualize_inference_time = True
         # self.time_latency_study = False
         self.pf_inference_time_step_list = []
         self.kf_inference_time_step_list = []
         self.ekf_inference_time_step_list = []
+        self.pf_subtask_inference_time_step_dict = {}
         self.activate_other_filters = train_cfg['other_filters']
         self.gantt_chart_data = train_cfg['gantt_chart_data']
         return
@@ -103,12 +105,16 @@ class Fatigue(object):
         if self.time_step is not None and self.time_step > 100 and self.visualize and self.activate_other_filters:
             self.plot_comprehensive_fatigue_analysis()
         
-        if self.time_step is not None and self.time_step > 100 and len(self.pf_inference_time_step_list) > 0:
+        if self.time_step is not None and self.time_step > 100 and len(self.pf_inference_time_step_list) > 0 and self.visualize_inference_time:
             mean_pf, mean_kf, mean_ekf = np.mean(self.pf_inference_time_step_list), np.mean(self.kf_inference_time_step_list), np.mean(self.ekf_inference_time_step_list)
             print(f"PF inference time step: {mean_pf}, KF inference time step: {mean_kf}, EKF inference time step: {mean_ekf}")
+            for subtask, time_list in self.pf_subtask_inference_time_step_dict.items():
+                mean_subtask = np.mean(time_list)
+                # print(f"PF subtask {subtask} inference time step: {mean_subtask}")
             self.pf_inference_time_step_list = []
             self.kf_inference_time_step_list = []
             self.ekf_inference_time_step_list = []
+            self.pf_subtask_inference_time_step_dict = {}
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
             #         if v is not None:
@@ -259,6 +265,9 @@ class Fatigue(object):
             esitmate_phy_fatigue_coe, _phy_fatigue_prediction = self.step_filter(self.phy_fatigue, state_type, subtask, self.ONE_STEP_TIME, self.phy_fatigue_ce_dic, self.phy_recovery_ce_dic, pf_filters)
             end_time = time.time()  
             self.pf_inference_time_step_list.append(end_time - start_time)
+            if subtask not in self.pf_subtask_inference_time_step_dict:
+                self.pf_subtask_inference_time_step_dict[subtask] = []
+            self.pf_subtask_inference_time_step_dict[subtask].append(end_time - start_time)
             # if np.isnan(esitmate_phy_fatigue_coe):
             #     a = 1
             if self.activate_other_filters:
