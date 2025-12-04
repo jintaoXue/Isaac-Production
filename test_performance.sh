@@ -180,7 +180,10 @@ run_test_12() {
 
 run_test_13() {
     echo "运行测试 13: rl_filter_no_dueling_2025-11-29_18-11-35 4070"
-    list=(49600)
+    list=(
+        49200
+        48800
+    )
     for num in "${list[@]}"
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_no_dueling --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
@@ -200,7 +203,10 @@ run_test_14() {
 
 run_test_15() {
     echo "运行测试 15: rl_filter_mlp_2025-12-02_00-17-01 4070"
-    list=(49600)
+    list=(
+        49200
+        48800
+    )
     for num in "${list[@]}"
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
