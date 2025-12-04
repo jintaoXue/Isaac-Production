@@ -49,6 +49,7 @@ class Fatigue(object):
         #task_human_subtasks_dic
         #"approaching" subtask in ommitted as it is high dynamic and hard to caculate
         self.cfg = env_cfg
+        self.num_particles = self.cfg.num_particles
         self._test = train_cfg['test']
         self.hyper_param_time = self.cfg.hyper_param_time
         self.task_human_subtasks_dic =  {'none': ['free'], 'hoop_preparing': ['put_hoop_into_box', 'put_hoop_on_table']*BoxCapacity.hoop, 
@@ -107,14 +108,15 @@ class Fatigue(object):
         
         if self.time_step is not None and self.time_step > 100 and len(self.pf_inference_time_step_list) > 0 and self.visualize_inference_time:
             mean_pf, mean_kf, mean_ekf = np.mean(self.pf_inference_time_step_list), np.mean(self.kf_inference_time_step_list), np.mean(self.ekf_inference_time_step_list)
-            print(f"PF inference time step: {mean_pf}, KF inference time step: {mean_kf}, EKF inference time step: {mean_ekf}")
-            for subtask, time_list in self.pf_subtask_inference_time_step_dict.items():
-                mean_subtask = np.mean(time_list)
-                # print(f"PF subtask {subtask} inference time step: {mean_subtask}")
-            self.pf_inference_time_step_list = []
-            self.kf_inference_time_step_list = []
-            self.ekf_inference_time_step_list = []
-            self.pf_subtask_inference_time_step_dict = {}
+            print(f"PF inference time step: {mean_pf, len(self.pf_inference_time_step_list)}, \
+              KF inference time step: {mean_kf, len(self.kf_inference_time_step_list)}, \
+              EKF inference time step: {mean_ekf, len(self.ekf_inference_time_step_list)}")
+            
+            # print(f"PF subtask {subtask} inference time step: {mean_subtask}")
+            # self.pf_inference_time_step_list = []
+            # self.kf_inference_time_step_list = []
+            # self.ekf_inference_time_step_list = []
+            # self.pf_subtask_inference_time_step_dict = {}
             # if self.cfg.use_partial_filter:
             #     for k, v in self.phy_fatigue_ce_dic.items():
             #         if v is not None:
@@ -149,7 +151,7 @@ class Fatigue(object):
             v_pf = self.pfs_phy_fat_ce_dic.get(key, v)
             if v is not None:
                 # self.pfs_phy_fat[key] = EkfFatigue(dt=1, num_steps=100, true_lambda=v, F0=0, Q=np.diag([0.01, 0.0001]), R=np.array([[0.1]]), x0=np.array([0., 0.1]), P0=np.diag([1.0, 1.0]))
-                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=500, sigma_w=0.00000003, 
+                self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=self.phy_fatigue, num_particles=self.cfg.num_particles, sigma_w=0.00000003, 
                     sigma_v=0.005, lamda_init = v_pf, upper_bound=v_pf*(1+random_per_for_pf), lower_bound=v_pf*(1-random_per_for_pf))
                 # self.pfs_phy_fat[key] = ParticleFilter(dt=0.1, num_steps=100, true_lambda=v, F0=0, num_particles=500, sigma_w=0.01, sigma_v=0.001, lamda_init = v, upper_bound=v*(1+random_percent), lower_bound=v*(1+random_percent))
                 self.pfs_phy_fat_ce_dic[key] = np.sum(self.pfs_phy_fat[key].particles * self.pfs_phy_fat[key].weights)

@@ -88,6 +88,8 @@ class SafeRlFilterAgent():
         # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
         self.loss_criterion = nn.MSELoss(reduction= 'none')
         self.use_wandb = config.get('wandb_activate', False)
+        self.fat_coe_accu_dict = {"pf": [], "kf": [], "ekf": []}
+        self.rec_coe_accu_dict = {"pf": [], "kf": [], "ekf": []}
         if self.use_wandb:
             self.init_wandb_logger()
     # def load_networks(self, params):
@@ -748,6 +750,7 @@ class SafeRlFilterAgent():
                 # assert len(fatigue_data_list)>0, "no fatigue data"
                 if len(fatigue_data_list) > 0:
                     EpLossCompare, dict_loss_pf_filter, dict_loss_kf_filter, dict_loss_ekf_filter = self.get_fatigue_related_predtion_loss(fatigue_data_list)
+
                     print_info = infos['print_info']
                     # print(print_info + " | warm_up:{},".format(random_exploration) + " use_cost_func:{}".format(self.step_num_sfl > self.use_cost_num_steps))
                     print(print_info + " | Warm_up:{},".format(random_exploration) + " Comp_loss:{:.3}".format(EpLossCompare) + \
@@ -886,6 +889,14 @@ class SafeRlFilterAgent():
                                 "Evaluate/EpFilterRecoverCoeAccu_ekf": FilterRecoverCoeAccu_ekf,
                                 "Evaluate/EpFilterFatigueCoeAccu_ekf": FilterFatigueCoeAccu_ekf,
                             })
+                    self.fat_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterFatigueCoeAccu'].item())
+                    self.rec_coe_accu_dict["pf"].append(dict_loss_pf_filter['FilterRecoverCoeAccu'].item())
+                    self.fat_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterFatigueCoeAccu_kf'])
+                    self.rec_coe_accu_dict["kf"].append(dict_loss_kf_filter['FilterRecoverCoeAccu_kf'])
+                    self.fat_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterFatigueCoeAccu_ekf'])
+                    self.rec_coe_accu_dict["ekf"].append(dict_loss_ekf_filter['FilterRecoverCoeAccu_ekf'])
+                    print("fatigue_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.fat_coe_accu_dict.items()}))
+                    print("recovery_coe_accu: {}".format({k: np.mean(v) if len(v) > 0 else None for k, v in self.rec_coe_accu_dict.items()}))
                     print(print_info + " Comp_loss:{:.3}".format(EpLossCompare) + \
                     " Fat_predict_loss:{:.3}".format(EpFilterPredictLoss) + \
                         " Fat_coe_accu:{:.3}".format(FilterFatigueCoeLoss) + " Rec_coe_accu:{:.3}".format(FilterRecoverCoeLoss))

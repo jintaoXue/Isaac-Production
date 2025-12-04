@@ -1022,6 +1022,8 @@ def plot_filter_latency_vs_humans(raw_text: str, save_path: str | None = None):
 
     humans = sorted(human_stats.keys())
     fig, ax = plt.subplots(figsize=(7, 4))
+    # 对每种滤波器分别画一条线：
+    # human=2 时，对应的是 human1+human2 的该滤波器 latency 之和（累积和）
     style_map = {
         'PF': ('#1f77b4', 'o'),
         'KF': ('#ff7f0e', 's'),
@@ -1029,19 +1031,24 @@ def plot_filter_latency_vs_humans(raw_text: str, save_path: str | None = None):
     }
 
     for filter_name, (color, marker) in style_map.items():
-        means = [_nanmean(human_stats[h][filter_name]) * 1e6 for h in humans]
+        per_human_us = []
+        for h in humans:
+            mean_val = _nanmean(human_stats[h][filter_name])
+            per_human_us.append(mean_val * 1e6)  # 单个 human、单个滤波器的平均 latency（µs）
+        cumulative_us = np.cumsum(per_human_us)
+
         ax.plot(
             humans,
-            means,
-            label=f'{filter_name} latency',
+            cumulative_us,
+            label=f'{filter_name} latency (cumulative)',
             color=color,
             marker=marker,
             linewidth=2,
         )
 
     ax.set_xlabel('Number of humans', fontsize=14)
-    ax.set_ylabel('Step update latency (µs)', fontsize=14)
-    ax.set_title('Filter latency vs. number of humans', fontsize=16)
+    ax.set_ylabel('Cumulative step latency (µs)', fontsize=14)
+    ax.set_title('Filter latency vs. number of humans (cumulative)', fontsize=16)
     ax.grid(True, linestyle='--', alpha=0.3)
     ax.set_xticks(humans)
     ax.legend(fontsize=12)
@@ -1163,26 +1170,33 @@ def create_combined_figure(save_path: str | None = None):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
-    # Left subplot: latency vs humans for three filters
+    # Left subplot: 对每种滤波器分别画累积 latency 曲线
     humans = sorted(human_stats.keys())
     style_map = {
         'PF': ('#1f77b4', 'o'),
         'KF': ('#ff7f0e', 's'),
         'EKF': ('#2ca02c', '^'),
     }
+
     for filter_name, (color, marker) in style_map.items():
-        means = [_nanmean(human_stats[h][filter_name]) * 1e6 for h in humans]
+        per_human_us = []
+        for h in humans:
+            mean_val = _nanmean(human_stats[h][filter_name])
+            per_human_us.append(mean_val * 1e6)
+        cumulative_us = np.cumsum(per_human_us)
+
         ax1.plot(
             humans,
-            means,
-            label=f'{filter_name}',
+            cumulative_us,
+            label=f'{filter_name} (cumulative)',
             color=color,
             marker=marker,
             linewidth=2,
         )
+
     ax1.set_xlabel('Number of humans', fontsize=12)
-    ax1.set_ylabel('Step update latency (µs)', fontsize=12)
-    ax1.set_title('Filter latency vs. humans', fontsize=14)
+    ax1.set_ylabel('Cumulative step latency (µs)', fontsize=12)
+    ax1.set_title('Filter latency vs. humans (cumulative)', fontsize=14)
     ax1.grid(True, linestyle='--', alpha=0.3)
     ax1.set_xticks(humans)
     ax1.legend(fontsize=10)

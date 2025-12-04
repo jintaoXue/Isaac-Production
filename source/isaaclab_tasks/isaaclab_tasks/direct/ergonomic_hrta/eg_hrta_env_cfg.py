@@ -104,6 +104,7 @@ class HRTaskAllocEnvCfg(DirectRLEnvCfg):
     use_partial_filter = True
     measure_noise_mu = 0.0
     measure_noise_sigma = 0.00005
+    num_particles = 500
 
     def _valid_train_cfg(self):
         #update train_cfg when running train.py

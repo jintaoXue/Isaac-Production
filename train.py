@@ -44,6 +44,8 @@ parser.add_argument(
     default=0.95,
     help="Override the physical fatigue threshold (0-1).",
 )
+parser.add_argument("--num_particles", type=int, default=500, help="Number of particles for the particle filter.")
+parser.add_argument("--measure_noise_sigma", type=float, default=0.00005, help="Noise sigma for the measure noise.")
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
 # parse the arguments
@@ -126,6 +128,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.cuda_device_str = args_cli.device if args_cli.device is not None else env_cfg.cuda_device_str
     if args_cli.ftg_thresh_phy is not None:
         env_cfg.ftg_thresh_phy = args_cli.ftg_thresh_phy
+    if args_cli.num_particles is not None:
+        env_cfg.num_particles = args_cli.num_particles
+    if args_cli.measure_noise_sigma is not None:
+        env_cfg.measure_noise_sigma = args_cli.measure_noise_sigma
     # randomly sample a seed if seed = -1
     if args_cli.seed == -1:
         args_cli.seed = random.randint(0, 10000)
@@ -248,11 +254,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if agent_cfg["params"]["config"]['wandb_activate']:
         if agent_cfg["params"]["config"]["test"]:
             fatigue_str = f"ftg_{args_cli.ftg_thresh_phy}"
+            num_particles_str = f"parti_{args_cli.num_particles}"
+            measure_noise_sigma_str = f"noise_{args_cli.measure_noise_sigma}"
             if agent_cfg["params"]["config"]['env_rule_based_exploration']:
                 run_name = 'test_rule_'+ time_str
             else:
                 load_name = agent_cfg["params"]["config"]['load_name'].split('_')[-1][:-4] + '_' + agent_cfg["params"]["config"]['load_dir'][-22:-3]
-                run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}" + '_' + fatigue_str
+                run_name = f"test_{agent_cfg['params']['algo']['name']}_{load_name}" + '_' + fatigue_str + '_' + num_particles_str + '_' + measure_noise_sigma_str
         else:
             run_name = f"{agent_cfg['params']['algo']['name']}_{time_str}"
 

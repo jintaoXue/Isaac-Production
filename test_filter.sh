@@ -39,27 +39,57 @@ run_test_1() {
 
 # 定义测试函数
 run_test_2() {
-    echo "运行测试 1: PF-CD3Q rl_filter_2025-07-20_12-17-12"
+    echo "运行测试 2: PF-CD3Q rl_filter_2025-07-20_12-17-12，num_particles=100~1000"
     list=(49600)
-    for num in "${list[@]}"
-    do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --test --use_fatigue_mask \
-            --load_dir "/rl_filter_2025-07-20_12-17-12/nn" --load_name "/HRTA_direct_ep_$num.pth" --test_times 10 --wandb_activate \
-            --wandb_project test_filter_latency 
-     done
+    particles=(100 200 300 400 500 600 700 800 900 1000)
+
+    for num in "${list[@]}"; do
+        for n_part in "${particles[@]}"; do
+            echo "  -> num_particles = $n_part"
+            python train.py \
+                --task Isaac-TaskAllocation-Direct-v1 \
+                --algo rl_filter \
+                --headless \
+                --test \
+                --use_fatigue_mask \
+                --num_particles "$n_part" \
+                --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
+                --load_name "/HRTA_direct_ep_$num.pth" \
+                --test_times 10 \
+                --test_all_settings \
+                --wandb_activate \
+                --wandb_project test_filter_latency
+        done
+    done
 }
 
 
 # noisy test filter
 run_test_3() {
-    echo "运行测试 1: PF-CD3Q rl_filter_2025-07-20_12-17-12"
+    echo "运行测试 3: PF-CD3Q rl_filter_2025-07-20_12-17-12，measure_noise_sigma 从 0.1 -> 0.00005"
     list=(49600)
-    for num in "${list[@]}"
-    do
-        python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter --headless --test --use_fatigue_mask \
-            --load_dir "/rl_filter_2025-07-20_12-17-12/nn" --load_name "/HRTA_direct_ep_$num.pth" --test_times 10 --wandb_activate \
-            --wandb_project test_filter_latency 
-     done
+    # 噪声从 0.1 开始，每次 x0.1，直到 0.00005（最后一项单独补）
+    noise_list=(0.1 0.01 0.001 0.0001 0.00005)
+
+    for num in "${list[@]}"; do
+        for noise in "${noise_list[@]}"; do
+            echo "  -> measure_noise_sigma = $noise"
+            python train.py \
+                --task Isaac-TaskAllocation-Direct-v1 \
+                --algo rl_filter \
+                --headless \
+                --test \
+                --use_fatigue_mask \
+                --other_filters \
+                --test_all_settings \
+                --measure_noise_sigma "$noise" \
+                --load_dir "/rl_filter_2025-07-20_12-17-12/nn" \
+                --load_name "/HRTA_direct_ep_$num.pth" \
+                --test_times 50 \
+                --wandb_activate \
+                --wandb_project test_noisy
+        done
+    done
 }
 
 # 支持多个编号（逗号或空格分隔）
