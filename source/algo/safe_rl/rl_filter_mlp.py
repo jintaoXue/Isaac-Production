@@ -321,7 +321,7 @@ class SafeRlFilterAgentMLP():
                 # Higher density near 0, nearly zero chance at 0.2
                 # 连续均匀分布噪声: 在[-0.2, 0.2]之间采样，均匀扰动（连续分布）
                 shape = action[...,0].shape
-                noise = (torch.rand(shape, device=action.device) * 0.2)
+                noise = (torch.rand(shape, device=action.device) * 0.1)
                 action[...,0] += noise
                 return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
