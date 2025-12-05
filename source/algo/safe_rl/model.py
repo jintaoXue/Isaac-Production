@@ -1226,6 +1226,9 @@ class SafeDqnMLP(nn.Module):
     self.action_space = action_space
     hidden_size = config['hidden_size']
     self.mlp_block : MLPBlock = MLPBlock(hidden_size)
+    for p in self.mlp_block.parameters():
+      if p.dim() > 1:
+          nn.init.xavier_uniform_(p)
     self.fc_h_v = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_h_a = NoisyLinear(hidden_size, hidden_size, std_init=config['noisy_std'])
     self.fc_z_v = NoisyLinear(hidden_size, 1, std_init=config['noisy_std'])
