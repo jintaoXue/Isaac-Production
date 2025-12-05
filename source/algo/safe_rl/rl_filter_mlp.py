@@ -80,7 +80,9 @@ class SafeRlFilterAgentMLP():
         self.target_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
         self.update_target_net()
         self.target_net.train()
-        for param in self.target_net.parameters():Algorithm performance in the test stage, evaluated through makespan and overwork metrics.
+        for param in self.target_net.parameters():
+            param.requires_grad = False
+        #####
         self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
         # self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
         # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
