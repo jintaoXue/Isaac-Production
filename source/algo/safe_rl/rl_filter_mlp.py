@@ -316,6 +316,13 @@ class SafeRlFilterAgentMLP():
                 return action.argmax(1).unsqueeze(0), cost_mask
             else:
                 action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0))
+                # Generate noise from a custom distribution: from 0.0 to 0.2, with 0.0 being the most probable and decaying probability.
+                # We'll use an exponential distribution clipped at 0.2 and with reversed sign for symmetry around 0.
+                # Higher density near 0, nearly zero chance at 0.2
+                # 连续均匀分布噪声: 在[-0.2, 0.2]之间采样，均匀扰动（连续分布）
+                shape = action[...,0].shape
+                noise = (torch.rand(shape, device=action.device) * 0.7) - 0.35
+                action[...,0] += noise
                 return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
 
