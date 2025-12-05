@@ -14,6 +14,9 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
     # 只处理前两个metric
     for idx, (metric_name, file_path) in enumerate(list(metric_name_file_dir_list.items())[:2]):
         # 读取数据
+        if not os.path.exists(file_path):
+            print(f"警告: 文件不存在: {file_path}")
+            continue
         df = pd.read_csv(file_path)
         # 整理数据为长表格格式
         data = []
@@ -25,36 +28,58 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
             else:
                 data_dict[data_name.split(' ')[0]] = df.iloc[0:, i]
         
+        # 调试：打印可用的列名
+        if idx == 0:  # 只在第一次打印
+            print(f"可用的数据列名: {list(data_dict.keys())[:10]}...")  # 只打印前10个
+            print(f"期望的算法键名: {list(data_algo_name_dict.keys())}")
+        
         # 根据data_dict和data_algo_name_dict匹配数据
         for algo_key, algo_name in data_algo_name_dict.items():
+            # 尝试完全匹配
             if algo_key in data_dict:
                 for value in data_dict[algo_key].dropna():
                     data.append({'Algorithm': algo_name, metric_name: value})
+            else:
+                # 尝试部分匹配（CSV列名可能包含额外信息）
+                matched = False
+                for data_key in data_dict.keys():
+                    if algo_key in data_key or data_key in algo_key:
+                        for value in data_dict[data_key].dropna():
+                            data.append({'Algorithm': algo_name, metric_name: value})
+                        matched = True
+                        break
+                if not matched:
+                    print(f"警告: 未找到算法 {algo_name} ({algo_key}) 的数据")
         
-        # 定义分组颜色
-        group_colors = {
-            'A': '#1f77b4',  # 蓝色
-            'B': '#2ca02c',  # 绿色
-            'C': '#9467bd',  # 紫色
-            'D': '#e377c2'   # 粉色
+        # 定义算法颜色映射（为每个算法分配独特颜色）
+        algo_colors = {
+            'PF-CD3Q': '#1f77b4',    # 深蓝色（基准）
+            'No_noisy': '#d62728',   # 红色
+            'No_dueling': '#2ca02c', # 绿色
+            'SelfAttn': '#9467bd',   # 紫色
+            'MLP': '#ff7f0e',        # 橙色
         }
-        # 算法到分组的映射
-        algo_group_map = {}
-        for group_name, group_dict in groups:
-            for algo_key in group_dict:
-                algo_group_map[algo_key] = group_name
 
         plot_df = pd.DataFrame(data)
-        # 保证算法顺序
-        algo_order = [algo_name for _, algo_name in data_algo_name_dict.items()]
+        
+        # 检查是否有数据
+        if plot_df.empty:
+            print(f"警告: {metric_name} 没有数据可绘制")
+            continue
+        
+        # 保证算法顺序（只包含实际有数据的算法）
+        algo_order = [algo_name for _, algo_name in data_algo_name_dict.items() 
+                     if algo_name in plot_df['Algorithm'].values]
+        
+        if not algo_order:
+            print(f"警告: {metric_name} 没有匹配的算法数据")
+            continue
+        
         # 算法到颜色的映射
         algo_color_map = {}
         for algo_key, algo_name in data_algo_name_dict.items():
-            group = algo_group_map.get(algo_key, None)
-            if group:
-                algo_color_map[algo_name] = group_colors[group]
-            else:
-                algo_color_map[algo_name] = '#333333'
+            # 从颜色映射中获取颜色，如果没有则使用默认颜色
+            algo_color_map[algo_name] = algo_colors.get(algo_name, '#808080')  # 默认灰色
 
         # 绘制箱线图或条形图
         if idx == 1:  # 图二 Overwork 用条形图
@@ -72,8 +97,12 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
                 axes[idx].text(i, v, f'{v:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
         else:
             # 箱线图，包含异常值
+            # 为每个算法设置颜色
             box = sns.boxplot(x='Algorithm', y=metric_name, data=plot_df, ax=axes[idx], order=algo_order,
-                        palette=algo_color_map, showmeans=False, meanprops={"marker":"o","markerfacecolor":"white","markeredgecolor":"black"}, showfliers=True)
+                        showmeans=False, meanprops={"marker":"o","markerfacecolor":"white","markeredgecolor":"black"}, showfliers=True)
+            # 手动设置箱体颜色
+            for patch, algo in zip(box.artists, algo_order):
+                patch.set_facecolor(algo_color_map[algo])
             # 在箱线图上显示均值，颜色与箱体一致
             for i, algo in enumerate(algo_order):
                 vals = plot_df[plot_df['Algorithm'] == algo][metric_name]
@@ -111,60 +140,40 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
     return fig
 
 if __name__ == '__main__':
-    ## 3 metric for 3 subfigure, each subfigure has 9 algorithms, draw the boxplot
+    ## 3 metric for 3 subfigure, each subfigure has model ablation algorithms, draw the boxplot
     ## data source
     metric_name_file_dir_list = {
-        "Makespan (Test)": os.path.dirname(__file__) + "/test" + "/EpEnvLen.csv",
-        "Overwork (Test)": os.path.dirname(__file__) + "/test" + "/EpOverCost.csv",
-        # "Progress (Test)": os.path.dirname(__file__) + "/test" + "/EpProgress.csv"
+        "Makespan (Test)": os.path.dirname(__file__) + "/model_ablation/test" + "/EpEnvLen.csv",
+        "Overwork (Test)": os.path.dirname(__file__) + "/model_ablation/test" + "/EpOverCost.csv",
+        # "Progress (Test)": os.path.dirname(__file__) + "/model_ablation/test" + "/EpProgress.csv"
     }
     title_dict = {
         "Makespan (Test)": "Makespan (Test)",
         "Overwork (Test)": "Overwork (Test)",
         # "Progress (Test)": "Progress (Test)"
     }
-    data_algo_name_dict = {
-        # 1_test_rl_filter_test_49600_2025-07-25_15-02-16  D3QN
-        "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
-        "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
-        # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
-        "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
-        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
-        "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
-        "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
-        "9_test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
-        "10_test_ppolag_filter_dis_49600_2025-08-08_13-46-57": "PF-PPO-Lag"
-    }
-    # 定义算法分组
+    # 定义算法分组（model ablation）
+    # 注意：键名需要匹配CSV文件中的实际列名（去掉空格后的第一部分）
     group_A = {
-        "2_test_rl_filter_49600_2025-07-29_22-22-18": "D3QN",
+        "test_rl_filter_no_noisy_49600_2025-11-25_15-04-29_ftg_0.95": "No_noisy",
+        "test_rl_filter_no_dueling_49200_2025-11-29_18-11-35_ftg_0.95": "No_dueling",
+        "test_rl_filter_selfattn_49600_2025-11-26_16-56-20_ftg_0.95": "SelfAttn",
+        "test_rl_filter_mlp_49600_2025-12-02_00-17-01_ftg_0.95": "MLP",
         "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
-        # "4_test_rl_filter_49600_2025-07-27_14-41-12": "PF-CD3QP",
-    }
-    group_B = {
-        "5_test_dqn_49600_2025-07-27_11-39-32": "DQN",
-        "6_test_dqn_49600_2025-07-29_13-21-06": "PF-DQN",
-    }
-    group_C = {
-        "7_test_ppo_dis_49600_2025-07-31_13-37-58": "PPO",
-        "8_test_ppo_dis_49600_2025-07-30_13-18-07": "PF-PPO",
-    }
-    group_D = {
-        "9_test_ppolag_filter_dis_49600_2025-08-08_13-49-16": "PPO-Lag",
-        "10_test_ppolag_filter_dis_49600_2025-08-08_13-46-57": "PF-PPO-Lag"
+        # "test_mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
     }
     
     # 合并所有算法字典
-    data_algo_name_dict = {**group_A, **group_B, **group_C, **group_D}
+    data_algo_name_dict = {**group_A}
     
     # 定义groups
-    groups = [('A', group_A), ('B', group_B), ('C', group_C), ('D', group_D)]
+    groups = [('A', group_A)]
     
     # 创建图表
     fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_dict)
     
     # 保存图表
-    output_path = os.path.dirname(__file__) + "/test_boxplot.pdf"
+    output_path = os.path.dirname(__file__) + "/model_ablation_test_boxplot.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
     print(f"图表已保存到: {output_path}")
     
