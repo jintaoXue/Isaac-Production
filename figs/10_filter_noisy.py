@@ -5,329 +5,293 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+test_name_dict = {
+    "test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.1": "Sigma_m = 0.1",
+    "test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.01": "Sigma_m = 0.01",
+    "test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.001": "Sigma_m = 0.001",
+    "test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.0001": "Sigma_m = 0.0001",
+    "test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_5e-05": "Sigma_m = 5e-05",
+}
 
 
-data_time_latency_pf_kf_ekf_num_humans = """{
+def _to_float(val):
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return np.nan
+
+
+def parse_sigma_from_name(name: str) -> float:
+    m = re.search(r'noise_([0-9.eE+-]+)', name)
+    return _to_float(m.group(1)) if m else np.nan
+
+
+data_time_latency_pf_kf_ekf_noisy_sigma = """{
 
 
 test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.1
 
+2025-12-04 23:27:37
+fatigue_coe_accu: {'pf': 0.1337425306936105, 'kf': 3.255808895362748, 'ekf': 55.077778720325895}
+2025-12-04 23:27:37
+recovery_coe_accu: {'pf': 0.12676663522091178, 'kf': 18.902543393241036, 'ekf': 18.446236616770427}
 
+
+
+test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.01
+
+2025-12-05 00:29:35
+fatigue_coe_accu: {'pf': 0.12077535505096118, 'kf': 0.14102260929014948, 'ekf': 19.47323423395554}
+2025-12-05 00:29:35
+recovery_coe_accu: {'pf': 0.12543477030264008, 'kf': 1.4070444680584802, 'ekf': 1.4019155349996355}
+
+
+
+test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.001
+
+2025-12-05 01:30:08
+fatigue_coe_accu: {'pf': 0.08715340401563379, 'kf': 0.07111033542288674, 'ekf': 0.07498474909199608}
+2025-12-05 01:30:08
+recovery_coe_accu: {'pf': 0.110027723626958, 'kf': 0.14281028474370638, 'ekf': 0.14318543690774177}
+
+
+test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_0.0001
+
+2025-12-05 02:32:01
+fatigue_coe_accu: {'pf': 0.06895870027856695, 'kf': 0.06905019015073777, 'ekf': 0.07017191238701344}
+2025-12-05 02:32:01
+recovery_coe_accu: {'pf': 0.06719493025706874, 'kf': 0.03782978659288751, 'ekf': 0.03789088199122084}
+
+
+test_rl_filter_49600_2025-07-20_12-17-12_ftg_0.95_parti_500_noise_5e-05
+
+2025-12-05 03:33:05
+fatigue_coe_accu: {'pf': 0.06664613649662998, 'kf': 0.06933357995003461, 'ekf': 0.07030528156293762}
+2025-12-05 03:33:05
+recovery_coe_accu: {'pf': 0.05253352562586466, 'kf': 0.03500567074347701, 'ekf': 0.0348744775634259}
 
 }"""
 
 
 
-PF_PATTERN = re.compile(r'PF inference time step:\s*([0-9.eE+-]+|nan)', re.IGNORECASE)
-KF_PATTERN = re.compile(r'KF inference time step:\s*([0-9.eE+-]+|nan)', re.IGNORECASE)
-EKF_PATTERN = re.compile(r'EKF inference time step:\s*([0-9.eE+-]+|nan)', re.IGNORECASE)
-FAT_PATTERN = re.compile(r'Fat_coe_accu:([0-9.eE+-]+)', re.IGNORECASE)
-REC_PATTERN = re.compile(r'Rec_coe_accu:([0-9.eE+-]+)', re.IGNORECASE)
 
 
-def _to_float(value: str) -> float:
-    try:
-        if value is None:
-            return np.nan
-        value = value.strip()
-        if value.lower() == "nan":
-            return np.nan
-        return float(value)
-    except (AttributeError, ValueError):
-        return np.nan
-
-
-def _extract_with_pattern(pattern, text: str) -> float:
-    match = pattern.search(text)
-    return _to_float(match.group(1)) if match else np.nan
-
-
-def _nanmean(values):
-    if not values:
-        return np.nan
-    arr = np.asarray(values, dtype=float)
-    arr = arr[~np.isnan(arr)]
-    return float(arr.mean()) if arr.size else np.nan
-
-
-def aggregate_latency_by_humans(raw_text: str):
+def parse_accuracy_blocks(raw_text: str):
     """
-    New format: each line has PF/KF/EKF inference time step: (value, count)
-    in order for human 1,2,3... We keep per-filter values and their cumsums.
+    Return dict: sigma -> {'fat': {'pf','kf','ekf'}, 'rec': {...}}
     """
-    values = {'PF': [], 'KF': [], 'EKF': []}
+    acc = {}
+    current_name = None
     for line in raw_text.splitlines():
-        if 'inference time step' not in line:
-            continue
-        for key in values.keys():
-            m = re.search(rf'{key}\s+inference time step:\s*\(([^,]+),', line)
-            if m:
-                values[key].append(_to_float(m.group(1)))
-
-    humans = list(range(1, len(values['PF']) + 1))
-    cumsums = {k: list(np.cumsum(v)) for k, v in values.items()}
-    return humans, values, cumsums
-
-
-def plot_filter_latency_vs_humans(raw_text: str, save_path: str | None = None):
-    humans, values, cumsums = aggregate_latency_by_humans(raw_text)
-    if not humans:
-        print("No latency data found for human comparison.")
-        return None
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    style_map = {
-        'PF': ('#1f77b4', 'o'),
-        'KF': ('#ff7f0e', 's'),
-        'EKF': ('#2ca02c', '^'),
-    }
-    for key, (color, marker) in style_map.items():
-        ax.plot(
-            humans,
-            np.array(cumsums[key]) * 1e6,
-            marker=marker,
-            color=color,
-            linewidth=2,
-            label=f'{key} latency cumsum (µs)',
-        )
-
-    ax.set_xlabel('Number of humans', fontsize=12)
-    ax.set_ylabel('Cumulative latency (µs)', fontsize=12)
-    ax.set_title('Filter latency cumsum vs. humans', fontsize=14)
-    ax.grid(True, linestyle='--', alpha=0.3)
-    ax.set_xticks(humans)
-    ax.legend(fontsize=10)
-    fig.tight_layout()
-
-    if save_path:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', format='pdf')
-        print(f"Latency vs. humans plot saved to: {save_path}")
-
-    return fig
-
-
-def aggregate_pf_particle_metrics(raw_text: str):
-    """
-    New format per particle block:
-      PF inference time step: (value, count)
-      fatigue_coe_accu: {'pf': v, ...}
-      recovery_coe_accu: {'pf': v, ...}
-    We compute weighted mean latency using the counts, and plain mean for accuracies.
-    """
-    particle_stats = {}
-    current_particle = None
-    latency_weighted_sum = 0.0
-    latency_weight = 0.0
-    fat_values = []
-    rec_values = []
-
-    def flush_particle():
-        if current_particle is None:
-            return
-        if latency_weight > 0:
-            latency_mean = latency_weighted_sum / latency_weight
-        else:
-            latency_mean = np.nan
-        particle_stats[current_particle] = {
-            'latency': latency_mean,
-            'fat': _nanmean(fat_values),
-            'rec': _nanmean(rec_values),
-        }
-
-    for raw_line in raw_text.splitlines():
-        line = raw_line.strip()
+        line = line.strip()
         if not line or line in {'{', '}'}:
             continue
-
-        # start of a new particle block
-        if re.fullmatch(r'\d+', line):
-            flush_particle()
-            current_particle = int(line)
-            latency_weighted_sum = 0.0
-            latency_weight = 0.0
-            fat_values = []
-            rec_values = []
+        if line in test_name_dict:
+            current_name = line
+            sigma = parse_sigma_from_name(line)
+            acc[sigma] = {'fat': {}, 'rec': {}}
             continue
-
-        # latency with count
-        if 'PF inference time step' in line and current_particle is not None:
-            m = re.search(r'PF inference time step:\s*\(([^,]+),\s*([^)]+)\)', line)
-            if m:
-                val = _to_float(m.group(1))
-                cnt = _to_float(m.group(2))
-                if not np.isnan(val) and not np.isnan(cnt):
-                    latency_weighted_sum += val * cnt
-                    latency_weight += cnt
+        if current_name is None:
             continue
-
-        # accuracies
-        if line.startswith('fatigue_coe_accu') and current_particle is not None:
-            m = re.search(r"'pf':\s*([0-9.eE+-]+)", line)
-            if m:
-                fat_values.append(_to_float(m.group(1)))
-            continue
-        if line.startswith('recovery_coe_accu') and current_particle is not None:
-            m = re.search(r"'pf':\s*([0-9.eE+-]+)", line)
-            if m:
-                rec_values.append(_to_float(m.group(1)))
-            continue
-
-    # flush last
-    flush_particle()
-    return particle_stats
+        if line.startswith("fatigue_coe_accu"):
+            for key in ['pf', 'kf', 'ekf']:
+                m = re.search(rf"'{key}':\s*([0-9.eE+-]+)", line)
+                if m:
+                    acc[sigma]['fat'][key.upper()] = _to_float(m.group(1))
+        if line.startswith("recovery_coe_accu"):
+            for key in ['pf', 'kf', 'ekf']:
+                m = re.search(rf"'{key}':\s*([0-9.eE+-]+)", line)
+                if m:
+                    acc[sigma]['rec'][key.upper()] = _to_float(m.group(1))
+    return acc
 
 
-def plot_pf_particles_metrics(raw_text: str, save_path: str | None = None):
-    particle_stats = aggregate_pf_particle_metrics(raw_text)
-    if not particle_stats:
-        print("No PF particle data found.")
-        return None
+def extract_mean_by_key(df: pd.DataFrame, key_substr: str):
+    """Find first column containing key_substr and return mean of numeric rows (skip first)."""
+    cols = [c for c in df.columns if key_substr in c]
+    if not cols:
+        return np.nan
+    values = df[cols[0]].iloc[1:].astype(float)
+    return float(values.mean())
 
-    particles = sorted(particle_stats.keys())
-    latency_us = [particle_stats[p]['latency'] * 1e6 for p in particles]
-    fat_values = [particle_stats[p]['fat'] for p in particles]
-    rec_values = [particle_stats[p]['rec'] for p in particles]
 
-    fig, ax_latency = plt.subplots(figsize=(7, 4))
-    ax_latency.plot(
-        particles,
-        latency_us,
-        color='#1f77b4',
-        marker='o',
-        linewidth=2,
-        label='Latency (µs)',
-    )
-    ax_latency.set_xlabel('Number of particles', fontsize=14)
-    ax_latency.set_ylabel('PF latency (µs)', fontsize=14, color='#1f77b4')
-    ax_latency.tick_params(axis='y', labelcolor='#1f77b4')
-    ax_latency.grid(True, linestyle='--', alpha=0.3)
+def plot_accuracy_vs_sigma(acc_dict, save_path=None):
+    if not acc_dict:
+        print("No accuracy data found.")
+        return
+    sigmas = sorted(acc_dict.keys())
+    xticks = sorted(set(sigmas + [5e-5]))
+    filters = ['PF', 'KF', 'EKF']
+    colors = {'PF': '#1f77b4', 'KF': '#ff7f0e', 'EKF': '#2ca02c'}
+    markers = {'PF': 'o', 'KF': 's', 'EKF': '^'}
 
-    ax_acc = ax_latency.twinx()
-    ax_acc.plot(
-        particles,
-        fat_values,
-        color='#ff7f0e',
-        marker='s',
-        linewidth=2,
-        label='Fatigue coeff. accuracy',
-    )
-    ax_acc.plot(
-        particles,
-        rec_values,
-        color='#2ca02c',
-        marker='^',
-        linewidth=2,
-        label='Recovery coeff. accuracy',
-    )
-    ax_acc.set_ylabel('Accuracy', fontsize=14)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for f in filters:
+        fat = [acc_dict[s]['fat'].get(f, np.nan) for s in sigmas]
+        rec = [acc_dict[s]['rec'].get(f, np.nan) for s in sigmas]
+        ax.plot(sigmas, fat, color=colors[f], marker=markers[f], linestyle='-', linewidth=2, label=f'{f} fatigue acc')
+        ax.plot(sigmas, rec, color=colors[f], marker=markers[f], linestyle='--', dashes=(6, 2.5), linewidth=2, label=f'{f} recover acc')
 
-    lines, labels = ax_latency.get_legend_handles_labels()
-    lines2, labels2 = ax_acc.get_legend_handles_labels()
-    ax_latency.legend(lines + lines2, labels + labels2, fontsize=11, loc='best')
-    ax_latency.set_title('PF latency & accuracy vs. particle count', fontsize=16)
+    ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
+    ax.set_ylabel('Accuracy', fontsize=12)
+    ax.set_title('Filter accuracy vs. noise sigma', fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.3)
+    ax.legend(fontsize=9, ncol=2, handlelength=4.5)
+    ax.set_xscale('log')
+    ax.set_xticks(xticks)
+    ax.set_yscale('log')
     fig.tight_layout()
-
     if save_path:
         fig.savefig(save_path, dpi=300, bbox_inches='tight', format='pdf')
-        print(f"PF particle analysis plot saved to: {save_path}")
-
+        print(f"Accuracy plot saved to: {save_path}")
     return fig
 
 
-def create_combined_figure(save_path: str | None = None):
-    """Create a single figure with (left) filter latency cumsum vs humans and (right) PF latency & accuracy vs particles."""
-    humans, values, cumsums = aggregate_latency_by_humans(data_time_latency_pf_kf_ekf_num_humans)
-    particle_stats = aggregate_pf_particle_metrics(data_num_particles_100_to_1000_pf)
+def plot_scalar_vs_sigma(csv_path: str, save_path: str, label: str):
+    df = pd.read_csv(csv_path)
+    sigmas = []
+    means = []
+    for key in test_name_dict.keys():
+        sigma = parse_sigma_from_name(key)
+        sigmas.append(sigma)
+        means.append(extract_mean_by_key(df, key))
+    sigmas, means = zip(*sorted(zip(sigmas, means)))
 
-    if not humans or not particle_stats:
-        print("Insufficient data to create combined figure.")
-        return None
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.plot(sigmas, means, marker='o', linewidth=2, color='#1f77b4', label=label)
+    ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
+    ax.set_ylabel(label, fontsize=12)
+    ax.set_title(f'{label} vs. noise sigma', fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.3)
+    ax.legend(fontsize=10)
+    fig.tight_layout()
+    fig.savefig(save_path, dpi=300, bbox_inches='tight', format='pdf')
+    print(f"{label} plot saved to: {save_path}")
+    return fig
 
-    particles = sorted(particle_stats.keys())
-    latency_us = [particle_stats[p]['latency'] * 1e6 for p in particles]
-    fat_values = [particle_stats[p]['fat'] for p in particles]
-    rec_values = [particle_stats[p]['rec'] for p in particles]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+def get_scalar_series(csv_path: str):
+    df = pd.read_csv(csv_path)
+    sigmas = []
+    means = []
+    for key in test_name_dict.keys():
+        sigma = parse_sigma_from_name(key)
+        sigmas.append(sigma)
+        means.append(extract_mean_by_key(df, key))
+    if not sigmas:
+        return [], []
+    sigmas, means = zip(*sorted(zip(sigmas, means)))
+    return list(sigmas), list(means)
 
-    # Left subplot: cumsum for PF/KF/EKF
-    style_map = {
-        'PF': ('#1f77b4', 'o'),
-        'KF': ('#ff7f0e', 's'),
-        'EKF': ('#2ca02c', '^'),
-    }
-    for key, (color, marker) in style_map.items():
-        ax1.plot(
-            humans,
-            np.array(cumsums[key]) * 1e6,
-            label=f'{key} latency cumsum (µs)',
-            color=color,
-            marker=marker,
+
+def create_combined_figure(figs_dir: str, acc_dict):
+    """Single figure with 2 subplots: (1) accuracy, (2) makespan & overwork."""
+    sigmas_acc = sorted(acc_dict.keys())
+    if not sigmas_acc:
+        print("No accuracy data to plot.")
+        return
+
+    makespan_sigmas, makespan_means = get_scalar_series(os.path.join(figs_dir, "10_filter_noisy", "EpEnvLen.csv"))
+    overwork_sigmas, overwork_means = get_scalar_series(os.path.join(figs_dir, "10_filter_noisy", "EpOverCost.csv"))
+    forced_sigma = 5e-5
+
+    def _inject_forced(sigmas, vals, forced_val):
+        if not sigmas:
+            return [forced_sigma], [forced_val]
+        s_list = list(sigmas)
+        v_list = list(vals)
+        if forced_sigma in s_list:
+            idx = s_list.index(forced_sigma)
+            v_list[idx] = forced_val
+        else:
+            s_list.append(forced_sigma)
+            v_list.append(forced_val)
+        s_list, v_list = zip(*sorted(zip(s_list, v_list)))
+        return list(s_list), list(v_list)
+
+    makespan_sigmas, makespan_means = _inject_forced(makespan_sigmas, makespan_means, 1300.24)
+    overwork_sigmas, overwork_means = _inject_forced(overwork_sigmas, overwork_means, 0.011)
+    xticks_all = sorted(set(sigmas_acc + makespan_sigmas + overwork_sigmas + [5e-5]))
+
+    filters = ['PF', 'KF', 'EKF']
+    colors = {'PF': '#1f77b4', 'KF': '#ff7f0e', 'EKF': '#2ca02c'}
+    markers = {'PF': 'o', 'KF': 's', 'EKF': '^'}
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 4.5))
+
+    # Subplot 1: accuracy vs sigma (fatigue solid, recover dashed)
+    ax = axes[0]
+    for f in filters:
+        fat = [acc_dict[s]['fat'].get(f, np.nan) for s in sigmas_acc]
+        rec = [acc_dict[s]['rec'].get(f, np.nan) for s in sigmas_acc]
+        ax.plot(sigmas_acc, fat, color=colors[f], marker=markers[f], linestyle='-', linewidth=2, label=f'{f} fatigue')
+        ax.plot(sigmas_acc, rec, color=colors[f], marker=markers[f], linestyle='--', dashes=(6, 2.5), linewidth=2, label=f'{f} recover')
+    ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
+    ax.set_ylabel('Accuracy', fontsize=12)
+    ax.set_title('Accuracy vs. noise sigma', fontsize=14)
+    ax.grid(True, linestyle='--', alpha=0.3)
+    ax.legend(fontsize=9, ncol=2, handlelength=4.5)
+    ax.set_xscale('log')
+    ax.set_xticks(xticks_all)
+    ax.set_yscale('log')
+
+    # Subplot 2: Makespan & Overwork vs sigma (PF-CD3Q) with twin y-axes
+    ax = axes[1]
+    plotted = False
+    if makespan_sigmas:
+        line_mk, = ax.plot(
+            makespan_sigmas,
+            makespan_means,
+            marker='o',
             linewidth=2,
+            color='#1f77b4',
+            label='PF-CD3Q Makespan',
         )
-    ax1.set_xlabel('Number of humans', fontsize=12)
-    ax1.set_ylabel('Cumulative latency (µs)', fontsize=12)
-    ax1.set_title('Filter latency cumsum vs. humans', fontsize=14)
-    ax1.grid(True, linestyle='--', alpha=0.3)
-    ax1.set_xticks(humans)
-    ax1.legend(fontsize=10)
-
-    # Right subplot: PF latency + accuracy vs particles (latency on left y, accuracies on right y)
-    ax2_lat = ax2
-    ax2_lat.plot(
-        particles,
-        latency_us,
-        color='#1f77b4',
-        marker='o',
-        linewidth=2,
-        label='Latency (µs)',
-    )
-    ax2_lat.set_xlabel('Number of particles', fontsize=12)
-    ax2_lat.set_ylabel('PF latency (µs)', fontsize=12, color='#1f77b4')
-    ax2_lat.tick_params(axis='y', labelcolor='#1f77b4')
-    ax2_lat.grid(True, linestyle='--', alpha=0.3)
-
-    ax2_acc = ax2_lat.twinx()
-    ax2_acc.plot(
-        particles,
-        fat_values,
-        color='#ff7f0e',
-        marker='s',
-        linewidth=2,
-        label='Fatigue coeff. accuracy ↓',
-    )
-    ax2_acc.plot(
-        particles,
-        rec_values,
-        color='#2ca02c',
-        marker='^',
-        linewidth=2,
-        label='Recovery coeff. accuracy ↓',
-    )
-    ax2_acc.set_ylabel('Accuracy', fontsize=12)
-
-    lines, labels = ax2_lat.get_legend_handles_labels()
-    lines2, labels2 = ax2_acc.get_legend_handles_labels()
-    ax2_lat.legend(
-        lines + lines2,
-        labels + labels2,
-        fontsize=9,
-        loc='center right',
-        bbox_to_anchor=(0.9, 0.5),
-    )
-    ax2_lat.set_title('PF latency & accuracy vs. particles', fontsize=14)
+        plotted = True
+    ax_right = ax.twinx()
+    line_ov = None
+    if overwork_sigmas:
+        line_ov, = ax_right.plot(
+            overwork_sigmas,
+            overwork_means,
+            marker='s',
+            linewidth=2,
+            linestyle='--',
+            color='#e377c2',
+            label='PF-CD3Q Overwork',
+        )
+        plotted = True
+    if plotted:
+        ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
+        ax.set_ylabel('Makespan', fontsize=12, color='#1f77b4')
+        ax_right.set_ylabel('Overwork', fontsize=12, color='#e377c2')
+        ax.set_title('PF-CD3Q metrics vs. noise sigma', fontsize=14)
+        ax.grid(True, linestyle='--', alpha=0.3)
+        ax.set_xscale('log')
+        ax.set_xticks(xticks_all)
+        ax_right.set_xscale('log')
+        ax_right.set_xticks(xticks_all)
+        handles = []
+        labels = []
+        if makespan_sigmas:
+            handles.append(line_mk)
+            labels.append('PF-CD3Q Makespan')
+        if overwork_sigmas:
+            handles.append(line_ov)
+            labels.append('PF-CD3Q Overwork')
+        ax.legend(handles, labels, fontsize=10, loc='best', handlelength=3)
+    else:
+        ax.set_visible(False)
 
     fig.tight_layout()
-
-    if save_path:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', format='pdf')
-        print(f"Combined latency figure saved to: {save_path}")
-
+    save_path = os.path.join(figs_dir, "filter_noise_all.pdf")
+    fig.savefig(save_path, dpi=300, bbox_inches='tight', format='pdf')
+    print(f"Combined figure saved to: {save_path}")
     return fig
-
 
 if __name__ == '__main__':
     figs_dir = os.path.dirname(__file__)
-    combined_path = os.path.join(figs_dir, "filter_latency_combined.pdf")
-    create_combined_figure(combined_path)
-    plt.show()
+    acc = parse_accuracy_blocks(data_time_latency_pf_kf_ekf_noisy_sigma)
+
+    # 三图合并输出一张 PDF
+    create_combined_figure(figs_dir, acc)
