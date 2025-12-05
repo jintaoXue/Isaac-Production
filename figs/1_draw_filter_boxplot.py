@@ -236,7 +236,12 @@ if __name__ == '__main__':
         "Recovery Coefficient": fig_three_boxplot_data
     }
     
-    fig_names = ["Predict loss comparison", "Fatigue parameter accuracy", "Recovery parameter accuracy"]
+    # 箭头加粗版本，使用 Unicode 粗体箭头（↓ ➤ ⇩ 等）；"↓" 可能已最大化兼容，可以尝试使用 "⇩" 或更粗体的符号
+    fig_names = [
+        "Predict loss comparison ↓", 
+        "Fatigue parameter accuracy ↓", 
+        "Recovery parameter accuracy ↓"
+    ]
     
     # 创建箱线图
     fig = create_boxplot_figure(fig_data_dict, fig_names, "")
