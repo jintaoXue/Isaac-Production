@@ -125,12 +125,13 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
             for key in data_dict:
                 data_dict[key] = data_dict[key][mask]
         
-        # 定义group颜色和线型
-        group_colors = {
-            'A': '#1f77b4',  # 蓝色
-            'B': '#2ca02c',  # 绿色
-            'C': '#9467bd',  # 紫色
-            'D': '#e377c2'   # 粉色
+        # 定义算法颜色映射（为每个算法分配独特颜色）
+        algo_colors = {
+            'PF-CD3Q': '#1f77b4',    # 深蓝色（基准）
+            'No_noisy': '#d62728',   # 红色
+            'No_dueling': '#2ca02c', # 绿色
+            'SelfAttn': '#9467bd',   # 紫色
+            'MLP': '#ff7f0e',        # 橙色
         }
         
         # 按group顺序绘制数据
@@ -143,7 +144,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                     if algo_key in data_key:
                         raw_y = data_dict[data_key]
                         smoothed_y = smooth_line(raw_y, alpha)
-                        color = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10]
+                        color = algo_colors.get(algo_name, ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10])
                         ax.plot(x, smoothed_y, '-', color=color, label=algo_name, linewidth=2)
                         found_data = True
                         break
@@ -160,14 +161,8 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                             raw_y = data_dict[data_key]
                             smoothed_y = smooth_line(raw_y, alpha)
                             
-                            # 为group A特殊处理：D3QN和PF-CD3Q使用相同颜色
-                            if group_name == 'A':
-                                if algo_name in ['D3QN', 'PF-CD3Q']:
-                                    color = group_colors[group_name]  # 使用group A的主颜色
-                                else:
-                                    color = '#ff7f0e'  # 橙色，用于PF-CD3QP
-                            else:
-                                color = group_colors[group_name]  # 其他group使用单一颜色
+                            # 从颜色映射中获取颜色，如果没有则使用默认颜色
+                            color = algo_colors.get(algo_name, '#808080')  # 默认灰色
                             
                             # 根据是否带PF选择线型
                             if algo_name.startswith('PF-'):
@@ -348,7 +343,7 @@ def create_figure(metric_data, algo_dict, groups=None):
         "Evaluate Episode", 
         "Overwork", 
         [0, 2100], 
-        [0, 5.0], 
+        [0, 0.2], 
         y_log=False, 
         y_log_func=None,
         alpha=0.008,
@@ -379,10 +374,10 @@ if __name__ == '__main__':
     ## 4 metric for 4 subfigure, each subfigure has 9 algorithms, draw the line using Time weighted EMA
     ## data source
     metric_name_file_dir_list = {
-        "Return (Training)": os.path.dirname(__file__) + "/train" + "/Mrewards.csv",
-        "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpEnvLen.csv",
-        "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpOverCost.csv",
-        "Progress (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpProgress.csv"
+        "Return (Training)": os.path.dirname(__file__) + "/model_ablation/train" + "/Mrewards.csv",
+        "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpEnvLen.csv",
+        "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpOverCost.csv",
+        "Progress (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpProgress.csv"
     }
     
     # 定义算法分组
@@ -397,10 +392,10 @@ if __name__ == '__main__':
 
     
     # 合并所有算法字典
-    data_algo_name_dict = {**group_A, **group_B, **group_C, **group_D}
+    data_algo_name_dict = {**group_A}
     
     # 定义groups
-    groups = [('A', group_A), ('B', group_B), ('C', group_C), ('D', group_D)]
+    groups = [('A', group_A)]
     
     # 创建图表
     fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups)

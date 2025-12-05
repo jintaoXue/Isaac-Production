@@ -80,9 +80,7 @@ class SafeRlFilterAgentMLP():
         self.target_net = SafeDqnMLP(config, self.actions_num).to(device=self._device)
         self.update_target_net()
         self.target_net.train()
-        for param in self.target_net.parameters():
-            param.requires_grad = False
-        #####
+        for param in self.target_net.parameters():Algorithm performance in the test stage, evaluated through makespan and overwork metrics.
         self.optimiser = optim.Adam(self.online_net.parameters(), lr=config['learning_rate'], eps=config['adam_eps'])
         # self.optimiser = optim.Adam(self.online_net.trainable_params_rl, lr=config['learning_rate'], eps=config['adam_eps'])
         # self.cost_optimiser = optim.Adam(self.online_net.trainable_params_sft, lr=config['learning_rate_sft'], eps=config['adam_eps'])
@@ -321,7 +319,7 @@ class SafeRlFilterAgentMLP():
                 # Higher density near 0, nearly zero chance at 0.2
                 # 连续均匀分布噪声: 在[-0.2, 0.2]之间采样，均匀扰动（连续分布）
                 shape = action[...,0].shape
-                noise = (torch.rand(shape, device=action.device)*5)
+                noise = (torch.rand(shape, device=action.device))
                 action[...,0] += noise
                 return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
