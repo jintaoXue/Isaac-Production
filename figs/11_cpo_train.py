@@ -75,10 +75,10 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
         data_names = df.loc[0]
         
         # 设置图表属性
-        ax.set_title(title, fontsize=18)
-        ax.set_xlabel(x_label, fontsize=14)
-        ax.set_ylabel(y_label, fontsize=14)
-        ax.tick_params(axis='both', which='both', labelsize=14)
+        ax.set_title(title, fontsize=20)
+        ax.set_xlabel(x_label, fontsize=16)
+        ax.set_ylabel(y_label, fontsize=16)
+        ax.tick_params(axis='both', which='both', labelsize=16)
         ax.set_xlim(x_range)
         ax.set_ylim(y_range)
         
@@ -132,6 +132,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
             'No_dueling': '#2ca02c', # 绿色
             'SelfAttn': '#9467bd',   # 紫色
             'MLP': '#ff7f0e',        # 橙色
+            'CPO': '#e377c2',        # 粉色
         }
         
         # 按group顺序绘制数据
@@ -194,7 +195,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                         break
         
         # 创建新的图例
-        leg = ax.legend(new_handles, new_labels, ncol=2, fontsize=14, handlelength=3.0)
+        leg = ax.legend(new_handles, new_labels, ncol=2, fontsize=16, handlelength=3.0)
         for line in leg.get_lines():
             line.set_linewidth(2.0)
         
@@ -301,7 +302,7 @@ def draw_boxplot(ax, data_dict, title, y_label):
 
 def create_figure(metric_data, algo_dict, groups=None):
     """创建包含2个子图的图表"""
-    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 4.5))
     
     # 子图1: Reward (Training) - 使用EMA平滑
     draw_training_curve(
@@ -311,7 +312,7 @@ def create_figure(metric_data, algo_dict, groups=None):
         "Training Steps", 
         "Reward", 
         [0, int(1.22e6)], 
-        [-220, 0], 
+        [-175, 0], 
         y_log=False, 
         y_log_func=None,
         alpha=0.0025,
@@ -343,12 +344,12 @@ if __name__ == '__main__':
     sns.set_palette("husl")  # 使用 husl 调色板，颜色更鲜艳
     plt.rcParams['figure.facecolor'] = 'white'  # 设置图表背景为白色
     plt.rcParams['axes.facecolor'] = 'white'  # 设置坐标轴背景为白色
-    plt.rcParams['font.size'] = 12  # 设置默认字体大小
-    plt.rcParams['axes.labelsize'] = 14  # 设置坐标轴标签字体大小
-    plt.rcParams['axes.titlesize'] = 16  # 设置标题字体大小
-    plt.rcParams['xtick.labelsize'] = 12  # 设置 x 轴刻度字体大小
-    plt.rcParams['ytick.labelsize'] = 12  # 设置 y 轴刻度字体大小
-    plt.rcParams['legend.fontsize'] = 12  # 设置图例字体大小
+    plt.rcParams['font.size'] = 14  # 设置默认字体大小
+    plt.rcParams['axes.labelsize'] = 16  # 设置坐标轴标签字体大小
+    plt.rcParams['axes.titlesize'] = 18  # 设置标题字体大小
+    plt.rcParams['xtick.labelsize'] = 14  # 设置 x 轴刻度字体大小
+    plt.rcParams['ytick.labelsize'] = 14  # 设置 y 轴刻度字体大小
+    plt.rcParams['legend.fontsize'] = 14  # 设置图例字体大小
     plt.rcParams['grid.alpha'] = 0.3  # 设置网格透明度
     
     ## 2 metric for 2 subfigure, draw the line using Time weighted EMA
