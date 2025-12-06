@@ -820,7 +820,7 @@ class SafeRlFilterAgent():
                     start_time = time.time()
                     action, cost_mask = self.act(obs)
                     end_time = time.time()
-                    print(f"Act time: {end_time - start_time}")
+                    # print(f"Act time: {end_time - start_time}")
             step_start = time.time()
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)
