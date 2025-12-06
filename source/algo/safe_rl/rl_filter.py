@@ -207,7 +207,8 @@ class SafeRlFilterAgent():
         # folders inside <train_dir>/<experiment_dir> for a specific purpose
         self.nn_dir = os.path.join(self.experiment_dir, 'nn')
         # self.summaries_dir = os.path.join(self.experiment_dir, 'summaries')
-
+            # if self.visualize_inference_time:
+            #     print(f"Update filter predict helper time: {end_time - start_time}")
         os.makedirs(self.train_dir, exist_ok=True)
         os.makedirs(self.experiment_dir, exist_ok=True)
         os.makedirs(self.nn_dir, exist_ok=True)
@@ -320,7 +321,6 @@ class SafeRlFilterAgent():
                 action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0))
                 return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
-
     # Acts with an ε-greedy policy (used for evaluation only)
     def act_e_greedy(self, state, epsilon=0.001):  # High ε can reduce evaluation scores drastically
         return self.act_random(state) if np.random.random() < epsilon else self.act(state)
@@ -817,7 +817,10 @@ class SafeRlFilterAgent():
                 action = None
             else:
                 with torch.no_grad():
+                    start_time = time.time()
                     action, cost_mask = self.act(obs)
+                    end_time = time.time()
+                    print(f"Act time: {end_time - start_time}")
             step_start = time.time()
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)

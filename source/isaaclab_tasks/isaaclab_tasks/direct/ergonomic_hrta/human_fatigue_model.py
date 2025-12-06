@@ -424,7 +424,11 @@ class Fatigue(object):
     def update_filter_predict_dic(self, filter_type = 'pf'):
 
         if filter_type == 'pf':
+            # start_time = time.time()
             filter_phy_predict = self.update_predict_helper(self.pfs_phy_fat_ce_dic, self.pfs_phy_rec_ce_dic, self.phy_free_state_dic)
+            # end_time = time.time()
+            # if self.visualize_inference_time:
+            #     print(f"Update filter predict helper time: {end_time - start_time}")
         elif filter_type == 'kf':
             filter_phy_predict = self.update_predict_helper(self.kfs_phy_fat_ce_dic, self.kfs_phy_rec_ce_dic, self.phy_free_state_dic)
         elif filter_type == 'ekf':
@@ -458,6 +462,7 @@ class Fatigue(object):
         返回指定高层任务下所有子任务的疲劳预测值列表
         """
         # 当前疲劳值作为初始值
+
         F_0 = self.phy_fatigue
         predict_list = [F_0]
         step_time_scale = (1 + self.hyper_param_time * math.log(1 + self.phy_fatigue))
@@ -474,6 +479,7 @@ class Fatigue(object):
             for i in range(0, int(time/self.ONE_STEP_TIME)):
                 F_0 = self.step_helper_delta_phy_fatigue(F_0, subtask, subtask, 0.1, phy_fatigue_ce_dic, phy_recovery_ce_dic, self.phy_free_state_dic)
                 predict_list.append(F_0)
+
         return predict_list
 
     def step_helper_delta_phy_fatigue(self, F_0, state_type, subtask, step_time, fatigue_coe_dic, recover_coe_dic, free_state_dic):
