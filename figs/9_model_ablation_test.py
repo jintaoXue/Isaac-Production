@@ -97,12 +97,8 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
                 axes[idx].text(i, v, f'{v:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
         else:
             # 箱线图，包含异常值
-            # 为每个算法设置颜色
             box = sns.boxplot(x='Algorithm', y=metric_name, data=plot_df, ax=axes[idx], order=algo_order,
-                        showmeans=False, meanprops={"marker":"o","markerfacecolor":"white","markeredgecolor":"black"}, showfliers=True)
-            # 手动设置箱体颜色
-            for patch, algo in zip(box.artists, algo_order):
-                patch.set_facecolor(algo_color_map[algo])
+                        palette=algo_color_map, showmeans=False, meanprops={"marker":"o","markerfacecolor":"white","markeredgecolor":"black"}, showfliers=True)
             # 在箱线图上显示均值，颜色与箱体一致
             for i, algo in enumerate(algo_order):
                 vals = plot_df[plot_df['Algorithm'] == algo][metric_name]

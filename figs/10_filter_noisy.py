@@ -133,7 +133,7 @@ def plot_accuracy_vs_sigma(acc_dict, save_path=None):
         ax.plot(sigmas, rec, color=colors[f], marker=markers[f], linestyle='--', dashes=(6, 2.5), linewidth=2, label=f'{f} recover acc')
 
     ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
-    ax.set_ylabel('Accuracy', fontsize=12)
+    ax.set_ylabel('Accuracy (↓)', fontsize=12)
     ax.set_title('Filter accuracy vs. noise sigma', fontsize=14)
     ax.grid(True, linestyle='--', alpha=0.3)
     ax.legend(fontsize=9, ncol=2, handlelength=4.5)
@@ -227,7 +227,7 @@ def create_combined_figure(figs_dir: str, acc_dict):
         ax.plot(sigmas_acc, fat, color=colors[f], marker=markers[f], linestyle='-', linewidth=2, label=f'{f} fatigue')
         ax.plot(sigmas_acc, rec, color=colors[f], marker=markers[f], linestyle='--', dashes=(6, 2.5), linewidth=2, label=f'{f} recover')
     ax.set_xlabel('Sigma (measurement noise)', fontsize=12)
-    ax.set_ylabel('Accuracy', fontsize=12)
+    ax.set_ylabel('Accuracy (↓)', fontsize=12)
     ax.set_title('Accuracy vs. noise sigma', fontsize=14)
     ax.grid(True, linestyle='--', alpha=0.3)
     ax.legend(fontsize=9, ncol=2, handlelength=4.5)

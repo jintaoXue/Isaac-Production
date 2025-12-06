@@ -432,7 +432,7 @@ def create_combined_figure(save_path: str | None = None):
         color='#ff7f0e',
         marker='s',
         linewidth=2,
-        label='Fatigue coeff. accuracy ↓',
+        label='Fatigue coeff. accuracy',
     )
     ax2_acc.plot(
         particles,
@@ -440,9 +440,9 @@ def create_combined_figure(save_path: str | None = None):
         color='#2ca02c',
         marker='^',
         linewidth=2,
-        label='Recovery coeff. accuracy ↓',
+        label='Recovery coeff. accuracy',
     )
-    ax2_acc.set_ylabel('Accuracy', fontsize=12)
+    ax2_acc.set_ylabel('Accuracy (↓)', fontsize=12)
 
     lines, labels = ax2_lat.get_legend_handles_labels()
     lines2, labels2 = ax2_acc.get_legend_handles_labels()
