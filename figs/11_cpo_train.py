@@ -125,12 +125,13 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
             for key in data_dict:
                 data_dict[key] = data_dict[key][mask]
         
-        # 定义group颜色和线型
-        group_colors = {
-            'A': '#1f77b4',  # 蓝色
-            'B': '#2ca02c',  # 绿色
-            'C': '#9467bd',  # 紫色
-            'D': '#e377c2'   # 粉色
+        # 定义算法颜色映射（为每个算法分配独特颜色）
+        algo_colors = {
+            'PF-CD3Q': '#1f77b4',    # 深蓝色（基准）
+            'No_noisy': '#d62728',   # 红色
+            'No_dueling': '#2ca02c', # 绿色
+            'SelfAttn': '#9467bd',   # 紫色
+            'MLP': '#ff7f0e',        # 橙色
         }
         
         # 按group顺序绘制数据
@@ -143,7 +144,7 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                     if algo_key in data_key:
                         raw_y = data_dict[data_key]
                         smoothed_y = smooth_line(raw_y, alpha)
-                        color = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10]
+                        color = algo_colors.get(algo_name, ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10])
                         ax.plot(x, smoothed_y, '-', color=color, label=algo_name, linewidth=2)
                         found_data = True
                         break
@@ -160,14 +161,8 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                             raw_y = data_dict[data_key]
                             smoothed_y = smooth_line(raw_y, alpha)
                             
-                            # 为group A特殊处理：D3QN和PF-CD3Q使用相同颜色
-                            if group_name == 'A':
-                                if algo_name in ['D3QN', 'PF-CD3Q']:
-                                    color = group_colors[group_name]  # 使用group A的主颜色
-                                else:
-                                    color = '#ff7f0e'  # 橙色，用于PF-CD3QP
-                            else:
-                                color = group_colors[group_name]  # 其他group使用单一颜色
+                            # 从颜色映射中获取颜色，如果没有则使用默认颜色
+                            color = algo_colors.get(algo_name, '#808080')  # 默认灰色
                             
                             # 根据是否带PF选择线型
                             if algo_name.startswith('PF-'):
@@ -305,9 +300,8 @@ def draw_boxplot(ax, data_dict, title, y_label):
                    ha='center', va='bottom', fontsize=10, fontweight='bold')
 
 def create_figure(metric_data, algo_dict, groups=None):
-    """创建包含4个子图的图表"""
-    fig, axes = plt.subplots(2, 2, figsize=(20, 12))
-    axes = axes.flatten()
+    """创建包含2个子图的图表"""
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6))
     
     # 子图1: Reward (Training) - 使用EMA平滑
     draw_training_curve(
@@ -316,59 +310,27 @@ def create_figure(metric_data, algo_dict, groups=None):
         "Reward (Training)",
         "Training Steps", 
         "Reward", 
-        [0, int(2.8e6)], 
-        [-1.5, 1.5], 
-        y_log=True, 
+        [0, int(1.3e6)], 
+        [-220, 0], 
+        y_log=False, 
         y_log_func=None,
         alpha=0.0025,
         groups=groups
     )
     
-    # 子图2: Makespan (Evaluate during training)
+    # 子图2: Makespan (Training)
     draw_training_curve(
         axes[1], 
-        metric_data["Makespan (Evaluate during training)"], 
-        "Makespan (Evaluate during training)",
-        "Evaluate Episode", 
+        metric_data["Makespan (Training)"], 
+        "Makespan (Training)",
+        "Episodes step", 
         "Makespan", 
-        [0, 2100], 
+        [0, 1250], 
         [1100, 3000], 
         y_log=True, 
         y_log_func=(inverse, forward),
         alpha=0.008,
-        groups=groups,
-        add_zoom=True
-    )
-    
-    # 子图3: Overwork (Evaluate during training) - 曲线图
-    draw_training_curve(
-        axes[2], 
-        metric_data["Overwork (Evaluate during training)"], 
-        "Overwork (Evaluate during training)",
-        "Evaluate Episode", 
-        "Overwork", 
-        [0, 2100], 
-        [0, 5.0], 
-        y_log=False, 
-        y_log_func=None,
-        alpha=0.008,
         groups=groups
-    )
-    
-    # 子图4: Progress (Evaluate during training)
-    draw_training_curve(
-        axes[3], 
-        metric_data["Progress (Evaluate during training)"], 
-        "Progress (Evaluate during training)",
-        "Evaluate Episode", 
-        "Progress", 
-        [0, 2100], 
-        [0.4, 1.1], 
-        y_log=True, 
-        y_log_func=(inverse, forward),
-        alpha=0.03,
-        groups=groups,
-        add_zoom=True
     )
     
     plt.tight_layout()
@@ -376,45 +338,43 @@ def create_figure(metric_data, algo_dict, groups=None):
 
 '''=========================================================Main drawing code=========================================================='''
 if __name__ == '__main__':
-    ## 4 metric for 4 subfigure, each subfigure has 9 algorithms, draw the line using Time weighted EMA
+    # 设置 seaborn 样式，让图表更美观
+    sns.set_style("whitegrid")  # 使用白色网格背景
+    sns.set_palette("husl")  # 使用 husl 调色板，颜色更鲜艳
+    plt.rcParams['figure.facecolor'] = 'white'  # 设置图表背景为白色
+    plt.rcParams['axes.facecolor'] = 'white'  # 设置坐标轴背景为白色
+    plt.rcParams['font.size'] = 12  # 设置默认字体大小
+    plt.rcParams['axes.labelsize'] = 14  # 设置坐标轴标签字体大小
+    plt.rcParams['axes.titlesize'] = 16  # 设置标题字体大小
+    plt.rcParams['xtick.labelsize'] = 12  # 设置 x 轴刻度字体大小
+    plt.rcParams['ytick.labelsize'] = 12  # 设置 y 轴刻度字体大小
+    plt.rcParams['legend.fontsize'] = 12  # 设置图例字体大小
+    plt.rcParams['grid.alpha'] = 0.3  # 设置网格透明度
+    
+    ## 2 metric for 2 subfigure, draw the line using Time weighted EMA
     ## data source
     metric_name_file_dir_list = {
-        "Reward (Training)": os.path.dirname(__file__) + "/train" + "/Mrewards.csv",
-        "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpEnvLen.csv",
-        "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpOverCost.csv",
-        "Progress (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpProgress.csv"
+        "Reward (Training)": os.path.dirname(__file__) + "/model_ablation/CPO" + "/CPO_Mrewards.csv",
+        "Makespan (Training)": os.path.dirname(__file__) + "/model_ablation/CPO" + "/CPO_EpEnvLen.csv",
     }
     
     # 定义算法分组
     group_A = {
-        "penalty_4070_rl_filter_2025-07-29_22-22-18": "D3QN",
-        "4070_rl_filter_2025-07-20_12-17-12": "PF-CD3Q",
-        # "mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
+        "cpo_filter_2025-11-19_21-13-35": "CPO",
     }
-    group_B = {
-        "penalty_4070_dqn_2025-07-27_11-39-32": "DQN",
-        "4090_dqn_2025-07-29_13-21-06": "PF-DQN",
-    }
-    group_C = {
-        "4070_penalty_ppo_dis_2025-07-31_13-37-58": "PPO",
-        "4090_ppo_dis_2025-07-30_13-18-07": "PF-PPO",
-    }
-    group_D = {
-        "4070_9_ppolag_filter_dis_2025-08-08_13-49-16": "PPO-Lag",
-        "4090_10_ppolag_filter_dis_2025-08-08_13-46-57": "PF-PPO-Lag"
-    }
+
     
     # 合并所有算法字典
-    data_algo_name_dict = {**group_A, **group_B, **group_C, **group_D}
+    data_algo_name_dict = {**group_A}
     
     # 定义groups
-    groups = [('A', group_A), ('B', group_B), ('C', group_C), ('D', group_D)]
+    groups = [('A', group_A)]
     
     # 创建图表
     fig = create_figure(metric_name_file_dir_list, data_algo_name_dict, groups)
     
     # 保存图表
-    output_path = os.path.dirname(__file__) + "/training_curves.pdf"
+    output_path = os.path.dirname(__file__) + "/cpo_training_curves.pdf"
     plt.savefig(output_path, dpi=300, bbox_inches='tight', format='pdf')
     print(f"图表已保存到: {output_path}")
     
