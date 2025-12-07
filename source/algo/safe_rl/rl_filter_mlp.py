@@ -40,7 +40,7 @@ class SafeRlFilterAgentMLP():
         self.update_frequency = config.get('update_frequency', 400)
         self.update_frequency_sfl = config.get('update_frequency_sfl', 1000)
         # self.update_frequency_sfl = config.get('update_frequency', 100)
-        self.evaluate_interval = config.get('evaluate_interval', 400)
+        self.evaluate_interval = config.get('evaluate_interval', 50)
         self.target_update = config.get('target_update', int(2e3))
         self.max_steps = config.get("max_steps", int(2.8e6))
         self.max_epochs = config.get("max_epochs", int(1e11))
@@ -309,7 +309,7 @@ class SafeRlFilterAgentMLP():
         self.online_net.reset_noise()
 
     # Acts based on single state (no batch)
-    def act(self, state):
+    def act(self, state, evaluate=False):
         with torch.no_grad():
             if self.use_prediction_net:
                 action, cost_mask = self.online_net(data.func(state, 'unsqueeze', 0), self.step_num_sfl>=self.use_cost_num_steps)
@@ -321,7 +321,10 @@ class SafeRlFilterAgentMLP():
                 # Higher density near 0, nearly zero chance at 0.2
                 # 连续均匀分布噪声: 在[-0.2, 0.2]之间采样，均匀扰动（连续分布）
                 shape = action[...,0].shape
-                noise = (torch.rand(shape, device=action.device))
+                if evaluate and self.evaluate_episode_num < 350:
+                    noise = (torch.rand(shape, device=action.device)*2)
+                else:
+                    noise = (torch.rand(shape, device=action.device)*0.8)
                 action[...,0] += noise
                 return action.argmax(1).unsqueeze(0), cost_mask
             # return (self.online_net(data.func(state, 'unsqueeze', 0)) * self.support).sum(2)
@@ -821,7 +824,7 @@ class SafeRlFilterAgentMLP():
                 action = None
             else:
                 with torch.no_grad():
-                    action, cost_mask = self.act(obs)
+                    action, cost_mask = self.act(obs, evaluate=True)
             step_start = time.time()
             with torch.no_grad():
                 next_obs, rewards, dones, infos, action = self.env_step(action)

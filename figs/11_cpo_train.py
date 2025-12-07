@@ -82,6 +82,11 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
         ax.set_xlim(x_range)
         ax.set_ylim(y_range)
         
+        # 加粗边缘框线并设置为纯黑色
+        for spine in ax.spines.values():
+            spine.set_linewidth(2.0)
+            spine.set_color('#000000')  # 纯黑色
+        
         # 为第四张图设置自定义x轴刻度
         if x_range[1] == 2100 and y_range[0] == 0.2 and y_range[1] == 1.1:  # 第四张图
             # 在[0, 500]区间更密集的刻度，但只显示部分标签避免重叠
