@@ -321,7 +321,7 @@ class SafeRlFilterAgentMLP():
                 # Higher density near 0, nearly zero chance at 0.2
                 # 连续均匀分布噪声: 在[-0.2, 0.2]之间采样，均匀扰动（连续分布）
                 shape = action[...,0].shape
-                if evaluate and self.evaluate_episode_num < 260:
+                if evaluate and self.evaluate_episode_num < 250:
                     noise = (torch.rand(shape, device=action.device)*2)
                 else:
                     noise = (torch.rand(shape, device=action.device)*0.8)
