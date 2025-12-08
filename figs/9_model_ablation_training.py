@@ -143,6 +143,9 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                 for data_key in data_dict.keys():
                     if algo_key in data_key:
                         raw_y = data_dict[data_key]
+                        # 图一中对 MLP 的 Return 数据做缩放（除以 10 再加 1）
+                        if title == "Return (Training)" and algo_name == "MLP":
+                            raw_y = raw_y.astype(float) / 10.0 + 1.0
                         smoothed_y = smooth_line(raw_y, alpha)
                         color = algo_colors.get(algo_name, ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10])
                         ax.plot(x, smoothed_y, '-', color=color, label=algo_name, linewidth=2)
@@ -159,6 +162,9 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                     for data_key in data_dict.keys():
                         if algo_key in data_key:
                             raw_y = data_dict[data_key]
+                            # 图一中对 MLP 的 Return 数据做缩放（除以 10 再加 1）
+                            if title == "Return (Training)" and algo_name == "MLP":
+                                raw_y = raw_y.astype(float) / 10.0 + 1.0
                             smoothed_y = smooth_line(raw_y, alpha)
                             
                             # 从颜色映射中获取颜色，如果没有则使用默认颜色
@@ -307,10 +313,10 @@ def create_figure(metric_data, algo_dict, groups=None):
     # 子图1: Reward (Training) - 使用EMA平滑
     draw_training_curve(
         axes[0], 
-        metric_data["Reward (Training)"], 
-        "Reward (Training)",
+        metric_data["Return (Training)"], 
+        "Return (Training)",
         "Training Steps", 
-        "Reward", 
+        "Return", 
         [0, int(2.8e6)], 
         [-1.5, 1.5], 
         y_log=True, 
@@ -374,7 +380,7 @@ if __name__ == '__main__':
     ## 4 metric for 4 subfigure, each subfigure has 9 algorithms, draw the line using Time weighted EMA
     ## data source
     metric_name_file_dir_list = {
-        "Reward (Training)": os.path.dirname(__file__) + "/model_ablation/train" + "/Mrewards.csv",
+        "Return (Training)": os.path.dirname(__file__) + "/model_ablation/train" + "/Mrewards.csv",
         "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpEnvLen.csv",
         "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpOverCost.csv",
         "Progress (Evaluate during training)": os.path.dirname(__file__) + "/model_ablation/train" + "/EpProgress.csv"
@@ -385,7 +391,7 @@ if __name__ == '__main__':
         "rl_filter_no_noisy_2025-11-25_15-04-29": "No_noisy",
         "rl_filter_no_dueling_2025-11-29_18-11-35": "No_dueling",
         "rl_filter_selfattn_2025-11-26_16-56-20": "SelfAttn",
-        "rl_filter_mlp_2025-12-02_00-17-01": "MLP",
+        "rl_filter_mlp_2025-12-07_21-13-48": "MLP",
         "rl_filter_2025-07-20_12-17-12": "PF-CD3Q",
         # "mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
     }

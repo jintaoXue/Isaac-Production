@@ -312,10 +312,10 @@ def create_figure(metric_data, algo_dict, groups=None):
     # 子图1: Reward (Training) - 使用EMA平滑
     draw_training_curve(
         axes[0], 
-        metric_data["Reward (Training)"], 
-        "Reward (Training)",
+        metric_data["Return (Training)"], 
+        "Return (Training)",
         "Training Steps", 
-        "Reward", 
+        "Return", 
         [0, int(2.8e6)], 
         [-1.5, 1.5], 
         y_log=True, 
@@ -379,7 +379,7 @@ if __name__ == '__main__':
     ## 4 metric for 4 subfigure, each subfigure has 9 algorithms, draw the line using Time weighted EMA
     ## data source
     metric_name_file_dir_list = {
-        "Reward (Training)": os.path.dirname(__file__) + "/train" + "/Mrewards.csv",
+        "Return (Training)": os.path.dirname(__file__) + "/train" + "/Mrewards.csv",
         "Makespan (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpEnvLen.csv",
         "Overwork (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpOverCost.csv",
         "Progress (Evaluate during training)": os.path.dirname(__file__) + "/train" + "/EpProgress.csv"

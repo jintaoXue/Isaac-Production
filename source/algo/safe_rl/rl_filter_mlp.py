@@ -806,7 +806,7 @@ class SafeRlFilterAgentMLP():
                 if not random_exploration or goal_finished:
                     #when doing random exploration, when want find solution for each setting
                     break
-        return temporary_buffer, reward_extra, repeat_times
+        return temporary_buffer, reward_extra*0.01, repeat_times
     
     def evaluate_epoch(self, test=False, reset_n_worker=None, reset_n_robot=None):
         total_time_start = time.time()
