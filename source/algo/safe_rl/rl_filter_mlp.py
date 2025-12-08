@@ -785,7 +785,7 @@ class SafeRlFilterAgentMLP():
             self.temp_current_lengths = self.temp_current_lengths * not_dones
             self.current_overworks = self.current_overworks * not_dones
             self.obs = next_obs.copy()
-            reward_extra = -0.01
+            reward_extra = 0.01
             repeat_times = 1
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
@@ -806,7 +806,7 @@ class SafeRlFilterAgentMLP():
                 if not random_exploration or goal_finished:
                     #when doing random exploration, when want find solution for each setting
                     break
-        return temporary_buffer, reward_extra*0.01, repeat_times
+        return temporary_buffer, reward_extra, repeat_times
     
     def evaluate_epoch(self, test=False, reset_n_worker=None, reset_n_robot=None):
         total_time_start = time.time()

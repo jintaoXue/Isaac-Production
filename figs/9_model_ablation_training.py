@@ -143,9 +143,9 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                 for data_key in data_dict.keys():
                     if algo_key in data_key:
                         raw_y = data_dict[data_key]
-                        # 图一中对 MLP 的 Return 数据做缩放（除以 10 再加 1）
-                        if title == "Return (Training)" and algo_name == "MLP":
-                            raw_y = raw_y.astype(float) / 10.0 + 1.0
+                        # 图一中 MLP 保持原始尺度
+                        # if title == "Return (Training)" and algo_name == "MLP":
+                        #     raw_y = raw_y.astype(float) / 10.0 + 1.0
                         smoothed_y = smooth_line(raw_y, alpha)
                         color = algo_colors.get(algo_name, ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan'][i % 10])
                         ax.plot(x, smoothed_y, '-', color=color, label=algo_name, linewidth=2)
@@ -162,9 +162,9 @@ def draw_training_curve(ax, data_file, title, x_label, y_label, x_range, y_range
                     for data_key in data_dict.keys():
                         if algo_key in data_key:
                             raw_y = data_dict[data_key]
-                            # 图一中对 MLP 的 Return 数据做缩放（除以 10 再加 1）
-                            if title == "Return (Training)" and algo_name == "MLP":
-                                raw_y = raw_y.astype(float) / 10.0 + 1.0
+                            # 图一中 MLP 保持原始尺度
+                            # if title == "Return (Training)" and algo_name == "MLP":
+                            #     raw_y = raw_y.astype(float) / 10.0 + 1.0
                             smoothed_y = smooth_line(raw_y, alpha)
                             
                             # 从颜色映射中获取颜色，如果没有则使用默认颜色
