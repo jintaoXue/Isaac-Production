@@ -571,7 +571,7 @@ class SafeRlFilterAgentMLP():
 
                 all_done_indices = dones.nonzero(as_tuple=False)
                 done_indices = all_done_indices[::self.num_agents]
-                self.game_rewards.update(self.current_rewards[done_indices])
+                self.game_rewards.update(self.current_rewards[done_indices]*(-0.1) - 0.45)
                 self.game_lengths.update(self.current_lengths[done_indices])
 
                 not_dones = 1.0 - dones.float()
@@ -785,7 +785,7 @@ class SafeRlFilterAgentMLP():
             self.temp_current_lengths = self.temp_current_lengths * not_dones
             self.current_overworks = self.current_overworks * not_dones
             self.obs = next_obs.copy()
-            reward_extra = 0.03
+            reward_extra = -0.01
             repeat_times = 1
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
