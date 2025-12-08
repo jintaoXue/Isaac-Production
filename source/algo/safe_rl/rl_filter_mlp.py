@@ -785,7 +785,7 @@ class SafeRlFilterAgentMLP():
             self.temp_current_lengths = self.temp_current_lengths * not_dones
             self.current_overworks = self.current_overworks * not_dones
             self.obs = next_obs.copy()
-            reward_extra = 0.01
+            reward_extra = 0.05
             repeat_times = 1
             if done_flag[0]:
                 _,_,_,_,_infos = temporary_buffer[-1]
