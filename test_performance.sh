@@ -202,15 +202,14 @@ run_test_14() {
 }
 
 run_test_15() {
-    echo "运行测试 15: rl_filter_mlp_2025-12-02_00-17-01 4070"
+    echo "运行测试 15: rl_filter_mlp_2025-12-07_21-13-48 4090"
     list=(
-        49200
-        48800
+        13650
     )
     for num in "${list[@]}"
     do
         python train.py --task Isaac-TaskAllocation-Direct-v1 --algo rl_filter_mlp --headless --wandb_activate --test --use_fatigue_mask --test_all_settings \
-            --load_dir "/rl_filter_mlp_2025-12-02_00-17-01/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
+            --load_dir "/rl_filter_mlp_2025-12-07_21-13-48/nn" --load_name "/HRTA_direct_ep_$num.pth" --wandb_project test_HRTA_fatigue --test_times 50
     done
 }
 
