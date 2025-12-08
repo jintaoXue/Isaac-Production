@@ -9,7 +9,7 @@ import seaborn as sns
 def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_dict):
     from matplotlib.gridspec import GridSpec
     fig = plt.figure(figsize=(15, 6))
-    gs = GridSpec(1, 2, width_ratios=[2.2, 1])  # 图一更宽，图二窄
+    gs = GridSpec(1, 2, width_ratios=[1.6, 1])  # 缩窄图一宽度
     axes = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])]
     # 只处理前两个metric
     for idx, (metric_name, file_path) in enumerate(list(metric_name_file_dir_list.items())[:2]):
@@ -97,8 +97,18 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
                 axes[idx].text(i, v, f'{v:.3f}', ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
         else:
             # 箱线图，包含异常值
-            box = sns.boxplot(x='Algorithm', y=metric_name, data=plot_df, ax=axes[idx], order=algo_order,
-                        palette=algo_color_map, showmeans=False, meanprops={"marker":"o","markerfacecolor":"white","markeredgecolor":"black"}, showfliers=True)
+            box = sns.boxplot(
+                x='Algorithm',
+                y=metric_name,
+                data=plot_df,
+                ax=axes[idx],
+                order=algo_order,
+                palette=algo_color_map,
+                width=0.6,  # 图一箱体再宽一些
+                showmeans=False,
+                meanprops={"marker": "o", "markerfacecolor": "white", "markeredgecolor": "black"},
+                showfliers=True
+            )
             # 在箱线图上显示均值，颜色与箱体一致
             for i, algo in enumerate(algo_order):
                 vals = plot_df[plot_df['Algorithm'] == algo][metric_name]
@@ -154,7 +164,7 @@ if __name__ == '__main__':
         "test_rl_filter_no_noisy_49600_2025-11-25_15-04-29_ftg_0.95": "No_noisy",
         "test_rl_filter_no_dueling_49200_2025-11-29_18-11-35_ftg_0.95": "No_dueling",
         "test_rl_filter_selfattn_49600_2025-11-26_16-56-20_ftg_0.95": "SelfAttn",
-        "test_rl_filter_mlp_49600_2025-12-02_00-17-01_ftg_0.95": "MLP",
+        "test_rl_filter_mlp_13650_2025-12-07_21-13-48_ftg_0.95_parti_500_noise_5e-05": "MLP",
         "3_test_rl_filter_49600_2025-07-20_12-17-12": "PF-CD3Q",
         # "test_mask_penalty_4090_rl_filter_2025-07-27_14-41-12": "PF-CD3QP",
     }
