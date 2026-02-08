@@ -3,6 +3,82 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
+
+
+def perform_ttest_and_annotate(ax, box_data, labels, baseline_label, plot_type="predict_loss"):
+    """对每个算法与基准算法进行独立样本T检验，并在图表底部显示P值和T值"""
+    # 找到基准算法的数据
+    try:
+        baseline_idx = labels.index(baseline_label)
+        baseline_data = box_data[baseline_idx]
+    except ValueError:
+        print(f"警告: 未找到基准算法 {baseline_label} 的数据")
+        return
+    
+    if len(baseline_data) == 0:
+        print(f"警告: 基准算法 {baseline_label} 的数据为空")
+        return
+    
+    # 根据plot_type确定标注位置
+    if plot_type == "predict_loss":
+        annotation_y = 0.0003
+    elif plot_type == "fatigue_accuracy":
+        annotation_y = 0.009
+    elif plot_type == "recovery_accuracy":
+        annotation_y = -0.001
+    else:
+        y_min, y_max = ax.get_ylim()
+        y_range = y_max - y_min
+        annotation_y = y_min + y_range * 0.02
+    
+    # 在baseline位置显示注释
+    ax.text(baseline_idx + 1, annotation_y, "T-test\nbaseline", 
+           ha='center', va='top', fontsize=9, 
+           bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8, edgecolor='#666666', linewidth=1),
+           zorder=100)
+    
+    # 对每个其他算法进行T检验并显示统计信息
+    for i, (data, label) in enumerate(zip(box_data, labels)):
+        if label == baseline_label:
+            continue
+        
+        if len(data) == 0:
+            continue
+        
+        # 执行独立样本T检验（假设方差不等）
+        t_stat, p_value = stats.ttest_ind(baseline_data, data, equal_var=False)
+        
+        # 打印T检验结果
+        print(f"{baseline_label} vs {label}: t={t_stat:.4f}, p={p_value:.4f}")
+        
+        # 格式化显示文本
+        t_text = f"t={t_stat:.3f}"
+        # 如果p值保留三位小数后为0.000，则显示约等于符号
+        p_formatted = f"{p_value:.3f}"
+        if p_formatted == "0.000":
+            p_text = "p≈0"
+        else:
+            p_text = f"p={p_formatted}"
+        stat_text = f"{t_text}\n{p_text}"
+        
+        # 根据plot_type确定标注位置
+        if plot_type == "predict_loss":
+            text_y = 0.0003
+        elif plot_type == "fatigue_accuracy":
+            text_y = 0.009
+        elif plot_type == "recovery_accuracy":
+            text_y = -0.001
+        else:
+            y_min, y_max = ax.get_ylim()
+            y_range = y_max - y_min
+            text_y = y_min + y_range * 0.02
+        
+        # 绘制文本
+        ax.text(i + 1, text_y, stat_text, 
+               ha='center', va='top', fontsize=9, 
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, edgecolor='#333333', linewidth=1),
+               zorder=100)
 
 def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
     '''绘制箱线图'''
@@ -128,6 +204,29 @@ def draw_one_sub_pic(ax, data_dict, title, plot_type="predict_loss"):
             ax.scatter(i+1, mean_val, marker='>', color='red', s=120, zorder=5)
             # 添加穿越三角形的直线
             ax.plot([i+1-0.13, i+1+0.13], [mean_val, mean_val], color='red', linewidth=1, zorder=6)
+        
+        # 执行T检验并标注显著性
+        print(f"\n=== {title} 的T检验结果 ===")
+        
+        # 根据plot_type确定baseline和y轴下界
+        if plot_type == "predict_loss":
+            baseline_label = "True_value"
+            y_min_orig, y_max_orig = ax.get_ylim()
+            ax.set_ylim(bottom=0, top=y_max_orig)
+        elif plot_type == "fatigue_accuracy":
+            baseline_label = "PF"
+            y_min_orig, y_max_orig = ax.get_ylim()
+            ax.set_ylim(bottom=0, top=y_max_orig)
+        elif plot_type == "recovery_accuracy":
+            baseline_label = "PF"
+            y_min_orig, y_max_orig = ax.get_ylim()
+            ax.set_ylim(bottom=-0.01, top=y_max_orig)
+        else:
+            baseline_label = None
+        
+        # 执行T检验并显示统计信息
+        if baseline_label and baseline_label in labels:
+            perform_ttest_and_annotate(ax, box_data, labels, baseline_label, plot_type)
     
     return ax
 

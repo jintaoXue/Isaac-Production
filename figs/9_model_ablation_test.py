@@ -3,6 +3,84 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
+
+
+def perform_ttest_and_annotate(ax, plot_df, algo_order, metric_name, baseline_algo='PF-CD3Q', idx=0, is_bar_plot=False):
+    """对每个算法与基准算法进行独立样本T检验，并在图表上显示P值和T值"""
+    # 获取基准算法的数据
+    baseline_data = plot_df[plot_df['Algorithm'] == baseline_algo][metric_name].dropna().values
+    
+    if len(baseline_data) == 0:
+        print(f"警告: 未找到基准算法 {baseline_algo} 的数据")
+        return
+    
+    # 获取当前y轴范围
+    y_min, y_max = ax.get_ylim()
+    y_range = y_max - y_min
+    
+    # 找到基准算法在algo_order中的位置
+    try:
+        baseline_idx = algo_order.index(baseline_algo)
+    except ValueError:
+        print(f"警告: 基准算法 {baseline_algo} 不在算法列表中")
+        return
+    
+    # 收集所有需要显示的算法索引（排除基准算法）
+    algo_indices = []
+    for i, algo in enumerate(algo_order):
+        if algo != baseline_algo:
+            algo_data = plot_df[plot_df['Algorithm'] == algo][metric_name].dropna().values
+            if len(algo_data) > 0:
+                algo_indices.append(i)
+    
+    # 在PF-CD3Q位置显示注释（图一和图二都显示）
+    if is_bar_plot:
+        # 图二（条形图）：在PF-CD3Q位置显示注释，放在0.017高度
+        ax.text(baseline_idx, 0.017, "T-test\nbaseline", 
+               ha='center', va='bottom', fontsize=9, 
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8, edgecolor='#666666', linewidth=1),
+               zorder=100)
+    else:
+        # 图一（箱线图）：在PF-CD3Q位置显示注释，放在800高度
+        ax.text(baseline_idx, 800, "T-test\nbaseline", 
+               ha='center', va='center', fontsize=9, 
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8, edgecolor='#666666', linewidth=1),
+               zorder=100)
+    
+    # 对每个其他算法进行T检验并显示统计信息
+    for idx_in_list, i in enumerate(algo_indices):
+        algo = algo_order[i]
+        algo_data = plot_df[plot_df['Algorithm'] == algo][metric_name].dropna().values
+        
+        # 执行独立样本T检验（假设方差不等）
+        t_stat, p_value = stats.ttest_ind(baseline_data, algo_data, equal_var=False)
+        
+        # 打印T检验结果
+        print(f"{baseline_algo} vs {algo}: t={t_stat:.4f}, p={p_value:.4f}")
+        
+        # 格式化显示文本
+        t_text = f"t={t_stat:.3f}"
+        # 如果p值保留三位小数后为0.000，则显示约等于符号
+        p_formatted = f"{p_value:.3f}"
+        if p_formatted == "0.000":
+            p_text = "p≈0"
+        else:
+            p_text = f"p={p_formatted}"
+        stat_text = f"{t_text}\n{p_text}"
+        
+        if is_bar_plot:
+            # 图二（条形图）：统一放在0.017高度
+            text_y = 0.017
+        else:
+            # 图一（箱线图）：统一放在800高度
+            text_y = 800
+        
+        # 绘制文本
+        ax.text(i, text_y, stat_text, 
+               ha='center', va='center' if not is_bar_plot else 'bottom', fontsize=9, 
+               bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.9, edgecolor='#333333', linewidth=1),
+               zorder=100)  # 使用更高的zorder确保在最上层
 
 
 '''=========================================================Main drawing code=========================================================='''
@@ -127,7 +205,27 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
         axes[idx].set_ylabel(metric_name)
         axes[idx].tick_params(axis='x', rotation=30)
         
-        # 只在第一个子图添加标记解释
+        # 执行T检验并标注显著性
+        print(f"\n=== {metric_name} 的T检验结果 (基准: PF-CD3Q) ===")
+        is_bar_plot = (idx == 1)  # Overwork使用条形图
+        
+        # 先调整y轴范围，为统计信息留出空间
+        y_min_orig, y_max_orig = axes[idx].get_ylim()
+        y_range_orig = y_max_orig - y_min_orig
+        
+        if not is_bar_plot:
+            # 图一（箱线图）：y轴上界设为2100，下界设为700
+            new_y_max = 2100
+            new_y_min = 700
+            axes[idx].set_ylim(bottom=new_y_min, top=new_y_max)
+        else:
+            # 图二（条形图）：y轴下界设为0，上界设为0.019
+            axes[idx].set_ylim(bottom=0, top=0.019)
+        
+        # 执行T检验并显示统计信息（在y轴调整之后）
+        perform_ttest_and_annotate(axes[idx], plot_df, algo_order, metric_name, baseline_algo='PF-CD3Q', idx=idx, is_bar_plot=is_bar_plot)
+        
+        # 只在第一个子图添加标记解释（在T检验之后）
         if idx == 0:
             # 在解释文本位置绘制示例图标
             legend_x, legend_y = 0.02, 0.95
@@ -141,7 +239,6 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
             axes[idx].text(legend_x + 0.12, legend_y, ': Mean value', 
                           transform=axes[idx].transAxes, fontsize=10, verticalalignment='center', fontweight='bold',
                           bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
-            axes[idx].set_ylim(top=2000)
     plt.tight_layout()
     return fig
 

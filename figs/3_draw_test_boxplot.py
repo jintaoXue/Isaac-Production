@@ -191,10 +191,9 @@ def create_figure(metric_name_file_dir_list, data_algo_name_dict, groups, title_
             new_y_min = 700
             axes[idx].set_ylim(bottom=new_y_min, top=new_y_max)
         else:
-            # 图二（条形图）：确保y轴范围包含0.15和0.1，并留出一些空间
-            # 条形图y轴通常从0开始，需要确保0.15可见
+            # 图二（条形图）：确保y轴下界为0，并留出空间显示0.1和0.15
             current_y_max = max(y_max_orig, 0.2)  # 至少到0.2
-            axes[idx].set_ylim(bottom=-0.05, top=current_y_max + 0.05)  # 向下稍微扩展，向上也扩展一点
+            axes[idx].set_ylim(bottom=0.0, top=current_y_max + 0.05)
         
         # 执行T检验并显示统计信息（在y轴调整之后）
         perform_ttest_and_annotate(axes[idx], plot_df, algo_order, metric_name, baseline_algo='PF-CD3Q', idx=idx, is_bar_plot=is_bar_plot)
